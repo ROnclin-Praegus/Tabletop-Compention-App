@@ -26,6 +26,14 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.homebrew.tabletopcompanion.model.Character
 import com.homebrew.tabletopcompanion.ui.theme.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.google.gson.Gson
+import java.util.UUID
+import android.widget.Toast
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Share
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +48,46 @@ fun CharacterSelectScreen(
     var showCreateDialog by remember { mutableStateOf(false) }
     var characterToEdit by remember { mutableStateOf<Character?>(null) }
     var characterToDelete by remember { mutableStateOf<Character?>(null) }
+    var characterToExport by remember { mutableStateOf<Character?>(null) }
+
+    val context = LocalContext.current
+    val gson = remember { Gson() }
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let { safeUri ->
+            characterToExport?.let { char ->
+                try {
+                    context.contentResolver.openOutputStream(safeUri)?.use { out ->
+                        out.write(gson.toJson(char).toByteArray())
+                    }
+                    Toast.makeText(context, "Character exported successfully", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Failed to export character", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        characterToExport = null
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { safeUri ->
+            try {
+                val json = context.contentResolver.openInputStream(safeUri)?.bufferedReader().use { it?.readText() }
+                if (json != null) {
+                    val importedChar = gson.fromJson(json, Character::class.java)
+                    if (importedChar != null && importedChar.name.isNotBlank()) {
+                        val newChar = importedChar.copy(id = UUID.randomUUID().toString())
+                        onCreateCharacter(newChar)
+                        Toast.makeText(context, "Character imported successfully", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Invalid character file", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to import character", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -62,6 +110,14 @@ fun CharacterSelectScreen(
                     }
                 },
                 actions = {
+                    TextButton(onClick = { importLauncher.launch("application/json") }) {
+                        Text(
+                            text = "📥 IMPORT",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = GoldAccent
+                        )
+                    }
                     TextButton(onClick = onCheckForUpdates) {
                         Text(
                             text = "v1.0 🔄",
@@ -127,7 +183,18 @@ fun CharacterSelectScreen(
                             character = character,
                             onUse = { onSelectCharacter(character) },
                             onEdit = { characterToEdit = character },
-                            onDelete = { characterToDelete = character }
+                            onDelete = { characterToDelete = character },
+                            onDuplicate = {
+                                val clone = character.copy(
+                                    id = UUID.randomUUID().toString(),
+                                    name = character.name + " (Copy)"
+                                )
+                                onCreateCharacter(clone)
+                            },
+                            onExport = {
+                                characterToExport = character
+                                exportLauncher.launch("${character.name}.json")
+                            }
                         )
                     }
                 }
@@ -191,7 +258,9 @@ fun CharacterCard(
     character: Character,
     onUse: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onDuplicate: () -> Unit,
+    onExport: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -258,19 +327,39 @@ fun CharacterCard(
                     }
                 }
 
-                IconButton(onClick = onEdit) {
+                IconButton(onClick = onExport, modifier = Modifier.size(36.dp)) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit Character",
-                        tint = GoldAccent
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Export Character",
+                        tint = GoldAccent,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
 
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = onDuplicate, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Duplicate Character",
+                        tint = GoldAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Character",
+                        tint = GoldAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Character",
-                        tint = CrimsonPrimary.copy(alpha = 0.8f)
+                        tint = CrimsonPrimary.copy(alpha = 0.8f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
