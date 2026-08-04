@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="100" fill="#121218"/>
+  <rect x="16" y="16" width="480" height="480" rx="84" fill="none" stroke="#ffc107" stroke-width="8" opacity="0.4"/>
+  <path d="M 256 70 L 390 120 C 390 280 256 420 256 440 C 256 420 122 280 122 120 Z" fill="#1e1e28" stroke="#ffc107" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M 256 90 L 370 135 C 370 270 256 395 256 410 C 256 395 142 270 142 135 Z" fill="#2a2a38" opacity="0.6"/>
+  <g transform="translate(256, 240) scale(1.1)" text-anchor="middle" dominant-baseline="central">
+    <polygon points="0,-70 -60,-30 -60,40 0,80 60,40 60,-30" fill="#e53935" stroke="#ffc107" stroke-width="6" stroke-linejoin="round"/>
+    <polygon points="0,-70 0,80" fill="none" stroke="#ffc107" stroke-width="4" opacity="0.7"/>
+    <polygon points="-60,-30 60,-30" fill="none" stroke="#ffc107" stroke-width="4" opacity="0.7"/>
+    <polygon points="-60,40 60,40" fill="none" stroke="#ffc107" stroke-width="4" opacity="0.7"/>
+    <polygon points="0,-70 -60,40" fill="none" stroke="#ffc107" stroke-width="4" opacity="0.7"/>
+    <polygon points="0,-70 60,40" fill="none" stroke="#ffc107" stroke-width="4" opacity="0.7"/>
+    <polygon points="0,80 -60,-30" fill="none" stroke="#ffc107" stroke-width="4" opacity="0.7"/>
+    <polygon points="0,80 60,-30" fill="none" stroke="#ffc107" stroke-width="4" opacity="0.7"/>
+    <text x="0" y="5" font-family="'Cinzel', serif, sans-serif" font-size="40" font-weight="bold" fill="#ffffff">20</text>
+  </g>
+</svg>

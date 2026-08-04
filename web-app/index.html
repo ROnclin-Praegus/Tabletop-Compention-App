@@ -1,0 +1,2894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>Homebrew RPG Companion - Web App (PWA)</title>
+  
+  <!-- PWA Manifest & App Icons -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="theme-color" content="#121218">
+  
+  <!-- Apple iOS Native PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RPG Companion">
+
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #121218;
+      --surface-dark: #1e1e28;
+      --surface-variant: #2a2a38;
+      --crimson-primary: #e53935;
+      --gold-accent: #ffc107;
+      --cyan-accent: #00e5ff;
+      --green-hp: #4caf50;
+      --blue-mp: #2196f3;
+      --text-primary: #f5f5f7;
+      --text-secondary: #a0a0b0;
+      --font-heading: 'Cinzel', serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: #0a0a0e;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .device-container {
+      width: 100%;
+      max-width: 420px;
+      height: 840px;
+      background-color: var(--bg-dark);
+      border-radius: 40px;
+      border: 12px solid #22222d;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 193, 7, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Mobile & Apple iOS Native PWA Viewport Rules */
+    @media (max-width: 768px), (display-mode: standalone) {
+      body {
+        padding: 0 !important;
+        background-color: var(--bg-dark) !important;
+      }
+      .device-container {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .status-bar {
+        display: none !important;
+      }
+    }
+
+    /* iOS PWA Install Banner */
+    .ios-install-banner {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      right: 12px;
+      background: var(--surface-dark);
+      border: 1.5px solid var(--gold-accent);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1000;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Android Status Bar */
+    .status-bar {
+      height: 28px;
+      background-color: var(--surface-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    /* App Header */
+    .app-header {
+      height: 60px;
+      background-color: var(--surface-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--surface-variant);
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-title h1 {
+      font-family: var(--font-heading);
+      font-size: 16px;
+      color: var(--text-primary);
+      letter-spacing: 0.5px;
+    }
+
+    .header-subtitle {
+      font-size: 11px;
+      color: var(--gold-accent);
+    }
+
+    .back-btn {
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Sub Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      background-color: var(--surface-dark);
+      border-bottom: 1px solid var(--surface-variant);
+    }
+
+    .nav-tab {
+      flex: 1;
+      padding: 10px 4px;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .nav-tab.active {
+      color: var(--gold-accent);
+      border-bottom-color: var(--gold-accent);
+    }
+
+    /* Main Scrollable Content Area */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* FAB */
+    .fab {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      background-color: var(--gold-accent);
+      color: var(--bg-dark);
+      border: none;
+      border-radius: 30px;
+      padding: 14px 20px;
+      font-weight: 700;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(255, 193, 7, 0.4);
+      transition: transform 0.2s, background-color 0.2s;
+      z-index: 10;
+    }
+
+    .fab:hover {
+      transform: translateY(-2px);
+      background-color: #ffd54f;
+    }
+
+    /* Character Card & Item Card */
+    .char-card {
+      background-color: var(--surface-dark);
+      border-radius: 14px;
+      padding: 16px;
+      border: 1px solid var(--surface-variant);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .item-card {
+      background-color: var(--surface-dark);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid var(--surface-variant);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .item-card.equipped {
+      border-color: rgba(255, 193, 7, 0.5);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar-circle {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(229, 57, 53, 0.2);
+      border: 2px solid var(--gold-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-heading);
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--gold-accent);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .avatar-circle img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card-meta {
+      flex: 1;
+    }
+
+    .card-meta h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .card-meta p {
+      font-size: 12px;
+      color: var(--gold-accent);
+    }
+
+    .action-icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 4px 6px;
+      opacity: 0.85;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .action-icon-btn:hover { opacity: 1; transform: scale(1.1); }
+
+    .edit-btn { color: var(--gold-accent); }
+    .delete-btn { color: var(--crimson-primary); }
+
+    .bars-container {
+      display: flex;
+      gap: 12px;
+    }
+
+    .bar-group {
+      flex: 1;
+    }
+
+    .bar-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .bar-bg {
+      height: 6px;
+      background-color: var(--surface-variant);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .fill-armor { background-color: var(--gold-accent); }
+    .fill-ward { background-color: var(--cyan-accent); }
+    .fill-hp { background-color: var(--green-hp); }
+    .fill-boost { background-color: #ff9800; }
+    .fill-mp { background-color: var(--blue-mp); }
+
+    .boost-tag {
+      background: rgba(255, 193, 7, 0.2);
+      border: 1px solid var(--gold-accent);
+      color: var(--gold-accent);
+      font-size: 10px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+    }
+
+    .save-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .save-armor {
+      background: rgba(255, 193, 7, 0.15);
+      color: var(--gold-accent);
+      border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .save-ward {
+      background: rgba(0, 229, 255, 0.15);
+      color: var(--cyan-accent);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+    }
+
+    .stats-badges {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 4px;
+    }
+
+    .stat-badge {
+      background-color: var(--surface-variant);
+      border-radius: 6px;
+      padding: 6px 2px;
+      text-align: center;
+    }
+
+    .stat-badge .lbl { font-size: 9px; color: var(--text-secondary); font-weight: 700; }
+    .stat-badge .val { font-size: 12px; color: var(--gold-accent); font-weight: 700; }
+
+    .use-btn {
+      width: 100%;
+      background-color: var(--surface-variant);
+      color: var(--text-primary);
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .use-btn:hover { background-color: #353546; }
+
+    /* Modal Dialog */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 20;
+    }
+
+    .modal-card {
+      background-color: var(--surface-dark);
+      border-radius: 16px;
+      width: 100%;
+      max-height: 90%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      border: 1px solid var(--surface-variant);
+    }
+
+    .modal-card h2 {
+      font-family: var(--font-heading);
+      font-size: 18px;
+      color: var(--gold-accent);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .checkbox-row input {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .form-input {
+      background-color: var(--bg-dark);
+      border: 1px solid var(--surface-variant);
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--text-primary);
+      font-size: 13px;
+      outline: none;
+    }
+
+    .form-input:focus { border-color: var(--gold-accent); }
+
+    .photo-upload-box {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .photo-preview {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      border: 2px dashed var(--gold-accent);
+      background-color: var(--bg-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .photo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .stepper-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: var(--surface-variant);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+
+    .stepper-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--text-primary);
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .stepper-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+    /* Interactive Use Screen */
+    .stat-display-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat-card-display {
+      background-color: var(--surface-dark);
+      border: 1px solid var(--surface-variant);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .stat-card-display:hover {
+      border-color: var(--gold-accent);
+    }
+
+    .prompt-btn {
+      flex: 1;
+      background-color: var(--surface-variant);
+      border: none;
+      color: var(--text-primary);
+      padding: 8px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+
+    .prompt-btn:hover { background-color: #353546; }
+
+    .next-round-btn {
+      background: rgba(255, 193, 7, 0.15);
+      color: var(--gold-accent);
+      border: 1px solid var(--gold-accent);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+
+    .next-round-btn:hover {
+      background: rgba(255, 193, 7, 0.3);
+    }
+
+    .damage-option {
+      background: var(--surface-variant);
+      padding: 10px 12px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .damage-option input { cursor: pointer; }
+
+    .effect-item-row {
+      background-color: var(--surface-variant);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .expired-popup {
+      position: absolute;
+      top: 90px;
+      left: 16px;
+      right: 16px;
+      background-color: var(--surface-variant);
+      border: 1.5px solid var(--gold-accent);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      z-index: 99;
+      cursor: pointer;
+      animation: fadeInDown 0.3s ease-out;
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .gold-header-btn {
+      background-color: rgba(255, 193, 7, 0.15);
+      border: 1px solid var(--gold-accent);
+      color: var(--gold-accent);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-weight: 700;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .gold-header-btn:hover {
+      background-color: rgba(255, 193, 7, 0.3);
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <div class="device-container">
+    <!-- iOS PWA Install Banner -->
+    <div id="iosInstallBanner" class="ios-install-banner hidden">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <img src="icon.svg" style="width:34px; height:34px; border-radius:8px;">
+        <div>
+          <div style="font-weight:bold; font-size:12px; color:var(--gold-accent);">Install RPG Companion on iOS</div>
+          <div style="font-size:11px; color:var(--text-primary);">Tap Share <span style="font-size:13px;">⎋</span> and select 'Add to Home Screen' <span style="font-size:13px;">➕</span></div>
+        </div>
+      </div>
+      <button onclick="dismissIosBanner()" style="background:none; border:none; color:var(--text-secondary); font-weight:bold; font-size:16px; cursor:pointer; padding:2px 6px;">✕</button>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span>21:45</span>
+      <span>📶 🔋 100%</span>
+    </div>
+
+    <!-- Header -->
+    <div class="app-header">
+      <div class="header-title">
+        <button id="backBtn" class="back-btn hidden" onclick="showSelectScreen()">←</button>
+        <div id="headerAvatarBox" class="avatar-circle hidden" style="width:34px; height:34px; border-width:1px;"></div>
+        <div>
+          <h1 id="appTitle">HOMEBREW RPG</h1>
+          <div id="appSubtitle" class="header-subtitle">Character Selection</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button id="headerGoldBtn" class="gold-header-btn hidden" title="Manage Gold" onclick="openGoldModal()">
+          <span>🪙</span> <span id="headerGoldText">0</span>
+        </button>
+        <button id="headerEditBtn" class="action-icon-btn edit-btn hidden" title="Edit Hero" onclick="editCurrentActiveChar()">✏️</button>
+      </div>
+    </div>
+
+    <!-- Session Tabs Bar (hidden on select screen) -->
+    <div id="sessionTabsBar" class="nav-tabs hidden">
+      <div id="tabVitals" class="nav-tab active" title="Vitals" onclick="switchSessionTab('vitals')">🛡️</div>
+      <div id="tabAbilities" class="nav-tab" title="Abilities" onclick="switchSessionTab('abilities')">✨</div>
+      <div id="tabEquipment" class="nav-tab" title="Equipment" onclick="switchSessionTab('equipment')">⚔️</div>
+      <div id="tabInventory" class="nav-tab" title="Inventory" onclick="switchSessionTab('inventory')">🎒</div>
+      <div id="tabNotes" class="nav-tab" title="Notes" onclick="switchSessionTab('notes')">📝</div>
+    </div>
+
+    <!-- Expiration Notification Popup -->
+    <div id="expiredPopup" class="expired-popup hidden" onclick="dismissExpiredPopup()">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:20px;">⚠️</span>
+        <div style="flex:1;">
+          <div style="font-size:10px; font-weight:bold; color:var(--gold-accent); letter-spacing:0.5px;">ROUND UPDATE NOTIFICATION</div>
+          <div id="expiredPopupMsg" style="font-size:12px; font-weight:600; color:var(--text-primary); white-space:pre-line; margin-top:2px;"></div>
+          <div style="font-size:9px; color:var(--text-secondary); margin-top:2px;">Tap to dismiss (Auto-closes in 5s)</div>
+        </div>
+        <span style="font-size:14px; color:var(--text-secondary); cursor:pointer;">✖</span>
+      </div>
+    </div>
+
+    <!-- Select Screen Content -->
+    <div id="selectScreen" class="content-area">
+      <div id="characterList"></div>
+    </div>
+
+    <!-- Use Screen Content -->
+    <div id="useScreen" class="content-area hidden">
+
+      <!-- TAB 1: VITALS & STATS -->
+      <div id="vitalsTabContent" style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Vital Trackers -->
+        <div class="char-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h4 style="font-size: 12px; color: var(--gold-accent);">DEFENSES & VITAL METRICS</h4>
+            <button class="next-round-btn" onclick="resetNextRound()">🔄 NEXT ROUND</button>
+          </div>
+
+          <!-- ARMOR BAR (Shown ABOVE HP if equipped Armor > 0) -->
+          <div id="armorBarBlock" class="bar-group hidden">
+            <div class="bar-header">
+              <span style="color: var(--gold-accent);">🛡️ Armor Points (Physical)</span>
+              <span id="useArmorText">0 / 0</span>
+            </div>
+            <div class="bar-bg"><div id="useArmorFill" class="bar-fill fill-armor"></div></div>
+            <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
+          </div>
+
+          <!-- WARD SAVE BAR (Shown ABOVE HP if equipped Ward > 0) -->
+          <div id="wardBarBlock" class="bar-group hidden">
+            <div class="bar-header">
+              <span style="color: var(--cyan-accent);">✨ Ward Save (Magical)</span>
+              <span id="useWardText">0 / 0</span>
+            </div>
+            <div class="bar-bg"><div id="useWardFill" class="bar-fill fill-ward"></div></div>
+            <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
+          </div>
+
+          <!-- HP BAR -->
+          <div class="bar-group">
+            <div class="bar-header">
+              <span style="color: var(--green-hp);">Health Points (HP)</span>
+              <span id="useHpText">0 / 0</span>
+            </div>
+            <div class="bar-bg"><div id="useHpFill" class="bar-fill fill-hp"></div></div>
+            <div style="display:flex; gap:6px; margin-top:10px;">
+              <button class="prompt-btn" style="color:var(--crimson-primary);" onclick="openDamageModal()">- DAMAGE</button>
+              <button class="prompt-btn" style="color:var(--green-hp);" onclick="promptHeal()">+ HEAL</button>
+              <button class="prompt-btn" style="color:var(--gold-accent); border: 1px solid var(--gold-accent);" onclick="promptBoostHp()">+ BOOST HP</button>
+            </div>
+          </div>
+
+          <!-- MP Block (hidden if maxMp === 0) -->
+          <div id="useMpBlock">
+            <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 12px 0;">
+
+            <div class="bar-group">
+              <div class="bar-header">
+                <span style="color: var(--blue-mp);">Mana Points (MP)</span>
+                <span id="useMpText">0 / 0</span>
+              </div>
+              <div class="bar-bg"><div id="useMpFill" class="bar-fill fill-mp"></div></div>
+              <div style="display:flex; gap:6px; margin-top:10px;">
+                <button class="prompt-btn" style="color:var(--text-secondary);" onclick="promptSpendMp()">- USE MP</button>
+                <button class="prompt-btn" style="color:var(--blue-mp);" onclick="promptRecoverMp()">+ RECOVER</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+          <h4 style="font-size: 11px; color: var(--text-secondary);">CHARACTER STATS</h4>
+          <span style="font-size: 10px; color: var(--gold-accent);">Tap stat to toggle Base/Total</span>
+        </div>
+        <div class="stat-display-grid" id="statsGrid"></div>
+
+        <!-- Active Status Effects Section (UNDER STATS) -->
+        <div class="char-card" style="margin-top:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h4 style="font-size: 12px; color: var(--gold-accent);" id="effectsTitle">ACTIVE EFFECTS & BUFFS (0)</h4>
+            <button class="prompt-btn" style="flex:none; width:auto; background:var(--gold-accent); color:var(--bg-dark); padding:4px 10px;" onclick="openAddEffectModal()">+ ADD EFFECT</button>
+          </div>
+          <div id="effectsList" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+      </div>
+
+      <!-- TAB 2: ABILITIES -->
+      <div id="abilitiesTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <div id="abilitiesList"></div>
+      </div>
+
+      <!-- TAB 3: EQUIPMENT (EQUIPPED ITEMS ONLY) -->
+      <div id="equipmentTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <div id="equipmentList"></div>
+      </div>
+
+      <!-- TAB 4: INVENTORY (CARRIED UNEQUIPPED ITEMS ONLY) -->
+      <div id="inventoryTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <div id="inventoryList"></div>
+      </div>
+
+      <!-- TAB 5: NOTES -->
+      <div id="notesTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <div id="notesList"></div>
+      </div>
+    </div>
+
+    <!-- FAB for Create / Add Item / Add Ability / Add Note -->
+    <button id="createFab" class="fab" onclick="openCreateModal()">
+      <span>+</span> CREATE HERO
+    </button>
+    <button id="addItemFab" class="fab hidden" onclick="openAddItemModal()">
+      <span>+</span> ADD ITEM
+    </button>
+    <button id="addAbilityFab" class="fab hidden" onclick="openAddAbilityModal()">
+      <span>+</span> ADD ABILITY
+    </button>
+    <button id="addNoteFab" class="fab hidden" onclick="openAddNoteModal()">
+      <span>+</span> ADD NOTE
+    </button>
+  </div>
+
+  <!-- Manage Gold Modal -->
+  <div id="goldModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width:360px;">
+      <h2 style="color:var(--gold-accent)">🪙 MANAGE GOLD</h2>
+      
+      <div style="background:var(--surface-variant); padding:14px; border-radius:10px; text-align:center; margin-bottom:14px;">
+        <div style="font-size:10px; font-weight:bold; color:var(--text-secondary);">CURRENT BALANCE</div>
+        <div id="modalGoldBalance" style="font-size:24px; font-weight:bold; color:var(--gold-accent); margin-top:4px;">🪙 0 Gold</div>
+      </div>
+
+      <div class="form-group">
+        <label>Gold Amount</label>
+        <input id="goldAmountInput" type="number" class="form-input" placeholder="e.g. 50">
+      </div>
+
+      <div style="display:flex; gap:8px; margin-bottom:14px;">
+        <button class="prompt-btn" style="background:var(--green-hp); color:var(--bg-dark);" onclick="modifyGold(1)">+ ADD GOLD</button>
+        <button class="prompt-btn" style="background:var(--crimson-primary); color:var(--text-primary);" onclick="modifyGold(-1)">- SPEND GOLD</button>
+      </div>
+
+      <label style="font-size:10px; font-weight:bold; color:var(--text-secondary);">QUICK ADJUSTMENTS</label>
+      <div style="display:flex; gap:4px; margin-top:6px;">
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--gold-accent); border:1px solid var(--gold-accent);" onclick="quickAddGold(1)">+1</button>
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--gold-accent); border:1px solid var(--gold-accent);" onclick="quickAddGold(5)">+5</button>
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--gold-accent); border:1px solid var(--gold-accent);" onclick="quickAddGold(10)">+10</button>
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--gold-accent); border:1px solid var(--gold-accent);" onclick="quickAddGold(50)">+50</button>
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--gold-accent); border:1px solid var(--gold-accent);" onclick="quickAddGold(100)">+100</button>
+      </div>
+
+      <div style="display:flex; gap:4px; margin-top:6px;">
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--crimson-primary); border:1px solid var(--crimson-primary);" onclick="quickAddGold(-1)">-1</button>
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--crimson-primary); border:1px solid var(--crimson-primary);" onclick="quickAddGold(-5)">-5</button>
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--crimson-primary); border:1px solid var(--crimson-primary);" onclick="quickAddGold(-10)">-10</button>
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--crimson-primary); border:1px solid var(--crimson-primary);" onclick="quickAddGold(-50)">-50</button>
+        <button class="prompt-btn" style="padding:4px; font-size:11px; color:var(--crimson-primary); border:1px solid var(--crimson-primary);" onclick="quickAddGold(-100)">-100</button>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+        <button class="prompt-btn" style="flex:none; width:auto; background:var(--gold-accent); color:var(--bg-dark);" onclick="closeGoldModal()">DONE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Damage Modal -->
+  <div id="damageModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 style="color:var(--crimson-primary)">TAKE DAMAGE</h2>
+      
+      <div class="form-group">
+        <label>Damage Type</label>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label class="damage-option">
+            <input type="radio" name="dmgType" value="physical" checked> 🛡️ Physical (Absorbed by Armor first)
+          </label>
+          <label class="damage-option">
+            <input type="radio" name="dmgType" value="magical"> ✨ Magical (Absorbed by Ward Save first)
+          </label>
+          <label class="damage-option" style="color:var(--crimson-primary);">
+            <input type="radio" name="dmgType" value="unsaveable"> 💥 Unsaveable (Bypasses Armor/Ward, Direct on HP)
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Damage Amount</label>
+        <input id="damageAmountInput" type="number" class="form-input" placeholder="e.g. 12">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeDamageModal()">CANCEL</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--crimson-primary); color:var(--text-primary);" onclick="confirmApplyDamage()">APPLY DAMAGE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boost HP Modal -->
+  <div id="boostHpModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 style="color:var(--gold-accent)">ADD BOOST HP</h2>
+      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Boost HP absorbs damage first before HP!</p>
+
+      <div class="form-group">
+        <label>Boost HP Amount</label>
+        <input id="boostHpAmountInput" type="number" class="form-input" value="10" placeholder="e.g. 10">
+      </div>
+
+      <div class="form-group">
+        <label>Duration in Turns (0 = Unlimited / Permanent)</label>
+        <input id="boostHpTurnsInput" type="number" class="form-input" value="0" placeholder="0 = Unlimited, or 1, 2, 3...">
+      </div>
+
+      <label class="checkbox-row" style="color:var(--gold-accent); margin-top:8px;">
+        <input type="checkbox" id="boostHpResetChk" checked> Reset to Max Amount on Next Round
+      </label>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeBoostHpModal()">CANCEL</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="confirmApplyBoostHp()">APPLY BOOST</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Effect Modal -->
+  <div id="addEffectModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2>APPLY EFFECT / BUFF</h2>
+      
+      <div class="form-group">
+        <label>Effect Name</label>
+        <input id="effectInputName" class="form-input" placeholder="e.g. Poison, Berserk, Mage Shield">
+      </div>
+
+      <div class="form-group">
+        <label>Effect Target Type</label>
+        <select id="effectInputType" class="form-input" onchange="toggleEffectTargetFields()">
+          <option value="STAT_MODIFIER">📊 Modifies Stat Score</option>
+          <option value="HP_CHANGE_PER_ROUND">❤️ HP per Round (Damage or Heal)</option>
+          <option value="MP_CHANGE_PER_ROUND">🔷 MP per Round (Use or Recover)</option>
+        </select>
+      </div>
+
+      <div id="effectStatGroup" class="form-group">
+        <label>Target Stat</label>
+        <select id="effectInputStat" class="form-input">
+          <option value="strength">Strength</option>
+          <option value="intelligence">Intelligence</option>
+          <option value="endurance">Endurance</option>
+          <option value="spirit">Spirit</option>
+          <option value="finesse">Finesse</option>
+          <option value="charisma">Charisma</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Effect Value (+ or -)</label>
+        <input id="effectInputValue" type="number" class="form-input" value="1" placeholder="e.g. +3 or -5" oninput="toggleEffectTargetFields()">
+      </div>
+
+      <div id="effectDamageTypeGroup" class="form-group hidden">
+        <label style="color:var(--crimson-primary)">Damage Type (for negative HP damage)</label>
+        <select id="effectInputDamageType" class="form-input">
+          <option value="unsaveable">💥 Unsaveable (Bypasses Armor/Ward, Direct to Boost/HP)</option>
+          <option value="physical">🛡️ Physical (Absorbed by Armor first)</option>
+          <option value="magical">✨ Magical (Absorbed by Ward Save first)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Duration in Rounds (0 = Unlimited / Permanent)</label>
+        <input id="effectInputRounds" type="number" class="form-input" value="0" placeholder="0 = Unlimited, or 1, 2, 3...">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeAddEffectModal()">CANCEL</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="saveNewEffect()">APPLY EFFECT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create/Edit Character Modal -->
+  <div id="createModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 id="modalTitle">CREATE NEW HERO</h2>
+
+      <!-- Picture Upload -->
+      <div class="form-group">
+        <label>Character Picture</label>
+        <div class="photo-upload-box">
+          <div class="photo-preview" onclick="document.getElementById('photoFileInput').click()">
+            <div id="photoPreviewContent" style="font-size:24px; color:var(--gold-accent)">📷</div>
+          </div>
+          <div>
+            <button class="prompt-btn" style="padding:8px 12px;" onclick="document.getElementById('photoFileInput').click()">UPLOAD PICTURE</button>
+            <input type="file" id="photoFileInput" accept="image/*" class="hidden" onchange="handlePhotoUpload(this)">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Name</label>
+        <input id="inputName" class="form-input" placeholder="e.g. Ignis Firebrand">
+      </div>
+      <div class="form-group">
+        <label>Race</label>
+        <input id="inputRace" class="form-input" placeholder="e.g. Dragonkin">
+      </div>
+
+      <!-- Disable MP Checkbox (Under Race field) -->
+      <div style="background:var(--surface-variant); padding:10px 12px; border-radius:10px; margin-bottom:14px; display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="document.getElementById('inputHideMp').click()">
+        <input type="checkbox" id="inputHideMp" style="width:18px; height:18px; accent-color:var(--crimson-primary);" onclick="event.stopPropagation(); updateModalDerivedPreview();" onchange="updateModalDerivedPreview()">
+        <div>
+          <div style="font-weight:bold; font-size:13px; color:var(--text-primary);">Disable MP (Hide Mana Points)</div>
+          <div style="font-size:11px; color:var(--text-secondary);">Check this if the character is not allowed to use MP</div>
+        </div>
+      </div>
+
+      <!-- Derived Vitals Preview -->
+      <div style="background:var(--surface-variant); padding:12px; border-radius:10px; margin-bottom:16px; display:flex; justify-content:space-around; text-align:center;">
+        <div>
+          <div style="font-size:10px; font-weight:bold; color:var(--text-secondary);">MAX HP</div>
+          <div id="modalPreviewHp" style="font-size:18px; font-weight:bold; color:var(--green-hp);">0</div>
+          <div style="font-size:9px; color:var(--text-secondary);">Endurance × 10</div>
+        </div>
+        <div>
+          <div style="font-size:10px; font-weight:bold; color:var(--text-secondary);">MAX MP</div>
+          <div id="modalPreviewMp" style="font-size:18px; font-weight:bold; color:var(--blue-mp);">0</div>
+          <div style="font-size:9px; color:var(--text-secondary);">Intelligence × 1</div>
+        </div>
+        <div>
+          <div style="font-size:10px; font-weight:bold; color:var(--text-secondary);">MP RECHARGE</div>
+          <div id="modalPreviewMpRecharge" style="font-size:18px; font-weight:bold; color:var(--gold-accent);">+0/turn</div>
+          <div style="font-size:9px; color:var(--text-secondary);">Spirit</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:6px;">
+        <label style="font-size:12px; font-weight:700; color:var(--crimson-primary); text-transform:uppercase; letter-spacing:0.5px;">STATS (DEFAULT 0)</label>
+      </div>
+      <div id="modalStatsList" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeCreateModal()">CANCEL</button>
+        <button id="modalSaveBtn" class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="saveNewCharacter()">SAVE HERO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Equipment Modal -->
+  <div id="addItemModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 id="addItemModalTitle">ADD ITEM</h2>
+      <div class="form-group">
+        <label>Item Name</label>
+        <input id="itemInputName" class="form-input" placeholder="e.g. Dragon Armor, Flame Sword">
+      </div>
+      <div class="form-group">
+        <label>Category / Type (Freeform)</label>
+        <input id="itemInputCategory" class="form-input" placeholder="e.g. Weapon, Armor, Shield, Potion, Scroll...">
+      </div>
+
+      <div class="form-group">
+        <label>Equipped Status</label>
+        <select id="itemInputEquipped" class="form-input">
+          <option value="true">Equipped (Goes to Equipment)</option>
+          <option value="false">Unequipped (Goes to Inventory)</option>
+        </select>
+      </div>
+
+      <hr style="border:0; border-top:1px solid var(--surface-variant);">
+
+      <!-- CHECKBOX 1: HAS ARMOR? -->
+      <label class="checkbox-row" style="color:var(--gold-accent);">
+        <input type="checkbox" id="chkHasArmor" onchange="toggleItemFormSections()"> Has Armor?
+      </label>
+      <div id="armorInputBlock" class="form-group hidden">
+        <label style="color:var(--gold-accent);">Armor Points</label>
+        <input id="itemInputArmorSave" type="number" class="form-input" value="0">
+      </div>
+
+      <!-- CHECKBOX 2: HAS WARD? -->
+      <label class="checkbox-row" style="color:var(--cyan-accent);">
+        <input type="checkbox" id="chkHasWard" onchange="toggleItemFormSections()"> Has Ward?
+      </label>
+      <div id="wardInputBlock" class="form-group hidden">
+        <label style="color:var(--cyan-accent);">Ward Points</label>
+        <input id="itemInputWardSave" type="number" class="form-input" value="0">
+      </div>
+
+      <!-- CHECKBOX 3: MODIFIES STATS? -->
+      <label class="checkbox-row" style="color:var(--crimson-primary);">
+        <input type="checkbox" id="chkModifiesStats" onchange="toggleItemFormSections()"> Modifies Stats?
+      </label>
+      <div id="statModBlock" class="form-group hidden">
+        <label style="color:var(--crimson-primary);">STAT MODIFIERS (+ or -)</label>
+        <div id="statModSteppersList" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <!-- CHECKBOX 4: HAS ATTACKS? -->
+      <label class="checkbox-row" style="color:var(--gold-accent);">
+        <input type="checkbox" id="chkHasAttacks" onchange="toggleItemFormSections()"> Has Attacks?
+      </label>
+      <div id="attacksInputBlock" class="form-group hidden">
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1;">
+            <label style="color:var(--gold-accent);">Attacks Count</label>
+            <input id="itemInputAttackCount" type="number" class="form-input" value="1">
+          </div>
+          <div style="flex:1;">
+            <label style="color:var(--gold-accent);">Damage per Attack</label>
+            <input id="itemInputAttackDamage" class="form-input" placeholder="e.g. 1d8+2, 10">
+          </div>
+        </div>
+      </div>
+
+      <!-- CHECKBOX 5: SPECIAL EFFECTS? -->
+      <label class="checkbox-row" style="color:var(--cyan-accent);">
+        <input type="checkbox" id="chkHasSpecialEffects" onchange="toggleItemFormSections()"> Special Effects?
+      </label>
+      <div id="specialEffectsInputBlock" class="form-group hidden">
+        <label style="color:var(--cyan-accent);">Special Effects Description (Freeform)</label>
+        <input id="itemInputSpecialEffects" class="form-input" placeholder="e.g. Ignores resistance, +2 stealth...">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeAddItemModal()">CANCEL</button>
+        <button id="addItemModalSaveBtn" class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="saveNewItem()">SAVE ITEM</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD ABILITY MODAL -->
+  <div id="addAbilityModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 id="addAbilityModalTitle">ADD ABILITY</h2>
+      <div class="form-group">
+        <label>Ability Name</label>
+        <input id="abilityInputName" class="form-input" placeholder="e.g. Fireball, Whirlwind, Holy Heal">
+      </div>
+
+      <div class="form-group">
+        <label style="color:var(--gold-accent);">Quick Stat Tag Buttons</label>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="insertAbilityTag('{STR}')">+ {STR}</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="insertAbilityTag('{INT}')">+ {INT}</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="insertAbilityTag('{END}')">+ {END}</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="insertAbilityTag('{SPI}')">+ {SPI}</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="insertAbilityTag('{FIN}')">+ {FIN}</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="insertAbilityTag('{CHA}')">+ {CHA}</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Description & Formula</label>
+        <textarea id="abilityInputDesc" class="form-input" rows="3" placeholder="e.g. Deal {STR}+10+1d10 damage to target" oninput="updateAbilityPreview()"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label style="color:var(--text-secondary);">EVALUATED PREVIEW (OVERVIEW)</label>
+        <div id="abilityPreviewBox" style="background:var(--bg-dark); padding:10px; border-radius:8px; font-weight:600; font-size:13px; color:var(--text-primary); min-height:40px;"></div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeAddAbilityModal()">CANCEL</button>
+        <button id="addAbilityModalSaveBtn" class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="saveNewAbility()">SAVE ABILITY</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD NOTE MODAL -->
+  <div id="addNoteModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 id="addNoteModalTitle">ADD NOTE</h2>
+      <div class="form-group">
+        <label>Note Title</label>
+        <input id="noteInputTitle" class="form-input" placeholder="e.g. Goblin King's Secret, Quest Log">
+      </div>
+
+      <div class="form-group">
+        <label>Tag / Category</label>
+        <input id="noteInputTag" class="form-input" placeholder="e.g. Quest, NPC, Lore, Secret">
+      </div>
+
+      <div class="form-group">
+        <label style="color:var(--gold-accent);">Suggested Tags</label>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="setNoteTag('Quest')">Quest</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="setNoteTag('NPC')">NPC</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="setNoteTag('Lore')">Lore</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="setNoteTag('Loot')">Loot</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="setNoteTag('Secret')">Secret</button>
+          <button class="prompt-btn" style="flex:none; padding:4px 8px; width:auto;" onclick="setNoteTag('Combat')">Combat</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Note Details & Content</label>
+        <textarea id="noteInputContent" class="form-input" rows="4" placeholder="Write your notes here..."></textarea>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeAddNoteModal()">CANCEL</button>
+        <button id="addNoteModalSaveBtn" class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="saveNewNote()">SAVE NOTE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Modal -->
+  <div id="deleteModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width:320px;">
+      <h3 style="color:var(--crimson-primary)">Delete Hero</h3>
+      <p style="font-size:13px; color:var(--text-secondary);" id="deleteConfirmText"></p>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeDeleteModal()">CANCEL</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--crimson-primary);" onclick="confirmDelete()">DELETE</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "rpg_homebrew_characters_v14";
+    let characters = [];
+    let activeCharId = null;
+    let editingCharId = null;
+    let editingItemId = null;
+    let deletingCharId = null;
+    let uploadedImageBase64 = null;
+    let currentSessionTab = "vitals";
+    let showBaseStatsMap = {};
+
+    const defaultStats = {
+      strength: 0,
+      intelligence: 0,
+      endurance: 0,
+      spirit: 0,
+      finesse: 0,
+      charisma: 0
+    };
+
+    let tempStats = { ...defaultStats };
+    let tempStatMods = { ...defaultStats };
+
+    function init() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        characters = JSON.parse(saved);
+      } else {
+        characters = [
+          {
+            id: "1",
+            name: "Ignis Firebrand",
+            race: "Dragonkin",
+            maxHp: 50,
+            currentHp: 50,
+            boostHp: 10,
+            maxBoostHp: 10,
+            boostHpTurns: 0,
+            boostHpResetOnNextRound: true,
+            currentArmor: null,
+            currentWard: null,
+            maxMp: 40,
+            currentMp: 40,
+            gold: 150,
+            imageUri: null,
+            strength: 5,
+            intelligence: 3,
+            endurance: 4,
+            spirit: 2,
+            finesse: 1,
+            charisma: 3,
+            inventory: [
+              { id: "i1", name: "Dragon Cuirass", category: "Armor", isEquipped: true, hasArmor: true, armorSave: 10, hasWard: true, wardSave: 5, hasStatModifiers: true, statModifiers: { strength: 2 } },
+              { id: "i2", name: "Flame Blade", category: "Weapon", isEquipped: true, hasArmor: false, armorSave: 0, hasWard: false, wardSave: 0, hasStatModifiers: false, statModifiers: {} },
+              { id: "i3", name: "Healing Elixir", category: "Consumable", isEquipped: false, hasArmor: false, armorSave: 0, hasWard: false, wardSave: 0, hasStatModifiers: false, statModifiers: {} }
+            ],
+            effects: [
+              { id: "e1", name: "Poisoned Blade", effectType: "HP_CHANGE_PER_ROUND", value: -3, damageType: "unsaveable", roundsRemaining: 3 },
+              { id: "e2", name: "Berserk Aura", effectType: "STAT_MODIFIER", targetStat: "strength", value: 3, roundsRemaining: 0 }
+            ]
+          },
+          {
+            id: "2",
+            name: "Gorgar Steel-Shield",
+            race: "Barbarian",
+            maxHp: 65,
+            currentHp: 65,
+            boostHp: 0,
+            currentArmor: null,
+            currentWard: null,
+            maxMp: 0,
+            gold: 45,
+            imageUri: null,
+            strength: 8,
+            intelligence: 0,
+            endurance: 6,
+            spirit: 1,
+            finesse: 2,
+            charisma: 1,
+            inventory: [
+              { id: "i4", name: "Tower Shield of Aegis", category: "Shield", isEquipped: true, hasArmor: true, armorSave: 8, hasWard: true, wardSave: 3, hasStatModifiers: true, statModifiers: { endurance: 3 } }
+            ],
+            effects: []
+          }
+        ];
+        saveData();
+      }
+      renderSelectScreen();
+      checkIosPrompt();
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
+    }
+
+    function getTotalArmor(c) {
+      if (!c || !c.inventory) return 0;
+      return c.inventory
+        .filter(i => i.isEquipped && (i.hasArmor || i.armorSave > 0))
+        .reduce((sum, i) => sum + (parseInt(i.armorSave) || 0), 0);
+    }
+
+    function getTotalWard(c) {
+      if (!c || !c.inventory) return 0;
+      return c.inventory
+        .filter(i => i.isEquipped && (i.hasWard || i.wardSave > 0))
+        .reduce((sum, i) => sum + (parseInt(i.wardSave) || 0), 0);
+    }
+
+    function getEquippedStatModifier(c, statKey) {
+      if (!c) return 0;
+      const kLower = statKey.toLowerCase();
+      // 1. From equipped gear
+      const gearSum = (c.inventory || [])
+        .filter(i => i.isEquipped && (i.hasStatModifiers || i.statModifiers))
+        .reduce((sum, i) => sum + ((i.statModifiers && i.statModifiers[kLower]) || 0), 0);
+
+      // 2. From active stat effects
+      const effectSum = (c.effects || [])
+        .filter(e => e.effectType === "STAT_MODIFIER" && e.targetStat && e.targetStat.toLowerCase() === kLower)
+        .reduce((sum, e) => sum + (parseInt(e.value) || 0), 0);
+
+      return gearSum + effectSum;
+    }
+
+    function getEffectiveMaxHp(c) {
+      if (!c) return 0;
+      const endMod = getEquippedStatModifier(c, 'endurance');
+      const totalEnd = (c.endurance || 0) + endMod;
+      return Math.max(0, totalEnd * 10);
+    }
+
+    function getEffectiveMaxMp(c) {
+      if (!c || c.hideMp) return 0;
+      const intMod = getEquippedStatModifier(c, 'intelligence');
+      const totalInt = (c.intelligence || 0) + intMod;
+      return Math.max(0, totalInt * 1);
+    }
+
+    function getEffectiveSpirit(c) {
+      if (!c) return 0;
+      const spiMod = getEquippedStatModifier(c, 'spirit');
+      const totalSpi = (c.spirit || 0) + spiMod;
+      return Math.max(0, totalSpi);
+    }
+
+    function adjustVitalsOnMaxChange(c, actionFn) {
+      if (!c) return;
+      const oldMaxHp = getEffectiveMaxHp(c);
+      const oldMaxMp = getEffectiveMaxMp(c);
+
+      actionFn();
+
+      const newMaxHp = getEffectiveMaxHp(c);
+      const newMaxMp = getEffectiveMaxMp(c);
+
+      const hpDelta = newMaxHp - oldMaxHp;
+      const mpDelta = newMaxMp - oldMaxMp;
+
+      c.currentHp = Math.max(0, Math.min(newMaxHp, c.currentHp + hpDelta));
+      c.currentMp = Math.max(0, Math.min(newMaxMp, c.currentMp + mpDelta));
+    }
+
+    let expiredTimer = null;
+
+    function showExpiredPopup(messages) {
+      if (expiredTimer) clearTimeout(expiredTimer);
+      document.getElementById('expiredPopupMsg').innerText = messages.join('\n');
+      document.getElementById('expiredPopup').classList.remove('hidden');
+      expiredTimer = setTimeout(() => {
+        dismissExpiredPopup();
+      }, 5000);
+    }
+
+    function dismissExpiredPopup() {
+      if (expiredTimer) clearTimeout(expiredTimer);
+      expiredTimer = null;
+      document.getElementById('expiredPopup').classList.add('hidden');
+    }
+
+    function resetNextRound() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      c.currentArmor = getTotalArmor(c);
+      c.currentWard = getTotalWard(c);
+
+      const maxHp = getEffectiveMaxHp(c);
+      const maxMp = getEffectiveMaxMp(c);
+      const spirit = getEffectiveSpirit(c);
+
+      const maxBoost = (c.maxBoostHp !== undefined && c.maxBoostHp !== null) ? c.maxBoostHp : (c.boostHp || 0);
+      let turns = c.boostHpTurns !== undefined ? c.boostHpTurns : 0;
+      const resetBoostOnNextRound = c.boostHpResetOnNextRound !== false;
+
+      const expiredList = [];
+
+      // Reset Boost HP if reset flag is true and Boost HP is active
+      if (maxBoost > 0 && resetBoostOnNextRound && (turns > 0 || (turns === 0 && c.boostHp > 0))) {
+        c.boostHp = maxBoost;
+      }
+
+      // Spirit MP Recharge on Next Round (1 Spirit = +1 MP/turn)
+      if (maxMp > 0 && spirit > 0) {
+        c.currentMp = Math.min(maxMp, c.currentMp + spirit);
+      }
+
+      // Process per-round HP/MP effects
+      if (c.effects && c.effects.length > 0) {
+        const nextEffects = [];
+        c.effects.forEach(e => {
+          if (e.effectType === "HP_CHANGE_PER_ROUND") {
+            const val = parseInt(e.value) || 0;
+            if (val > 0) {
+              c.currentHp = Math.max(0, Math.min(maxHp, c.currentHp + val));
+            } else if (val < 0) {
+              let rem = Math.abs(val);
+              const dmgType = e.damageType || "unsaveable";
+
+              if (dmgType === "physical") {
+                if (c.currentArmor > 0) {
+                  if (rem <= c.currentArmor) {
+                    c.currentArmor -= rem;
+                    rem = 0;
+                  } else {
+                    rem -= c.currentArmor;
+                    c.currentArmor = 0;
+                  }
+                }
+              } else if (dmgType === "magical") {
+                if (c.currentWard > 0) {
+                  if (rem <= c.currentWard) {
+                    c.currentWard -= rem;
+                    rem = 0;
+                  } else {
+                    rem -= c.currentWard;
+                    c.currentWard = 0;
+                  }
+                }
+              }
+
+              // Boost HP is affected FIRST before current HP!
+              if (rem > 0 && c.boostHp > 0) {
+                if (rem <= c.boostHp) {
+                  c.boostHp -= rem;
+                  rem = 0;
+                } else {
+                  rem -= c.boostHp;
+                  c.boostHp = 0;
+                }
+              }
+
+              if (rem > 0) {
+                c.currentHp = Math.max(0, c.currentHp - rem);
+              }
+            }
+          }
+          if (e.effectType === "MP_CHANGE_PER_ROUND" && maxMp > 0) {
+            c.currentMp = Math.max(0, Math.min(maxMp, c.currentMp + (parseInt(e.value) || 0)));
+          }
+
+          let r = parseInt(e.roundsRemaining) || 0;
+          if (r > 1) {
+            nextEffects.push({ ...e, roundsRemaining: r - 1 });
+          } else if (r === 1) {
+            expiredList.push(`Effect expired: ${e.name}`);
+          } else if (r === 0) {
+            nextEffects.push(e); // Unlimited
+          }
+        });
+        c.effects = nextEffects;
+      }
+
+      // Decrement Boost HP turns
+      if (turns > 1) {
+        c.boostHpTurns = turns - 1;
+      } else if (turns === 1) {
+        c.boostHpTurns = 0;
+        c.boostHp = 0;
+        c.maxBoostHp = 0;
+        expiredList.push("Boost HP duration has ended!");
+      }
+
+      if (expiredList.length > 0) {
+        showExpiredPopup(expiredList);
+      }
+
+      saveData();
+      renderUseScreen();
+    }
+
+    function handlePhotoUpload(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          uploadedImageBase64 = e.target.result;
+          document.getElementById('photoPreviewContent').innerHTML = `<img src="${uploadedImageBase64}">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function openGoldModal() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      document.getElementById('goldAmountInput').value = '';
+      updateGoldModalDisplay();
+      document.getElementById('goldModal').classList.remove('hidden');
+    }
+
+    function closeGoldModal() {
+      document.getElementById('goldModal').classList.add('hidden');
+    }
+
+    function updateGoldModalDisplay() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const gold = c.gold || 0;
+      document.getElementById('modalGoldBalance').innerText = `🪙 ${gold} Gold`;
+      document.getElementById('headerGoldText').innerText = gold;
+    }
+
+    function modifyGold(multiplier) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const inputVal = parseInt(document.getElementById('goldAmountInput').value);
+      if (isNaN(inputVal) || inputVal <= 0) return;
+
+      const change = inputVal * multiplier;
+      c.gold = Math.max(0, (c.gold || 0) + change);
+      saveData();
+      updateGoldModalDisplay();
+      document.getElementById('goldAmountInput').value = '';
+    }
+
+    function quickAddGold(delta) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      c.gold = Math.max(0, (c.gold || 0) + delta);
+      saveData();
+      updateGoldModalDisplay();
+    }
+
+    function renderSelectScreen() {
+      document.getElementById('selectScreen').classList.remove('hidden');
+      document.getElementById('useScreen').classList.add('hidden');
+      document.getElementById('backBtn').classList.add('hidden');
+      document.getElementById('headerAvatarBox').classList.add('hidden');
+      document.getElementById('sessionTabsBar').classList.add('hidden');
+      document.getElementById('headerGoldBtn').classList.add('hidden');
+      document.getElementById('headerEditBtn').classList.add('hidden');
+      document.getElementById('createFab').classList.remove('hidden');
+      document.getElementById('addItemFab').classList.add('hidden');
+      document.getElementById('appTitle').innerText = "HOMEBREW RPG";
+      document.getElementById('appSubtitle').innerText = "Character Selection";
+
+      const container = document.getElementById('characterList');
+      if (characters.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-secondary);">No heroes found. Tap '+ CREATE HERO' to begin!</div>`;
+        return;
+      }
+
+      container.innerHTML = characters.map(c => {
+        const statsList = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+        const maxHp = getEffectiveMaxHp(c);
+        const maxMp = getEffectiveMaxMp(c);
+
+        return `
+        <div class="char-card">
+          <div class="card-top">
+            <div class="avatar-circle">
+              ${c.imageUri ? `<img src="${c.imageUri}">` : c.name[0].toUpperCase()}
+            </div>
+            <div class="card-meta">
+              <h3>${c.name}</h3>
+              <p>${c.race} • 🪙 ${c.gold || 0}</p>
+            </div>
+            <button class="action-icon-btn edit-btn" title="Edit Hero" onclick="openEditModal('${c.id}')">✏️</button>
+            <button class="action-icon-btn delete-btn" title="Delete Hero" onclick="promptDelete('${c.id}')">🗑</button>
+          </div>
+
+          <div class="bars-container">
+            <div class="bar-group">
+              <div class="bar-header">
+                <span style="color:var(--green-hp);">HP</span>
+                <span>${c.currentHp} / ${maxHp} ${c.boostHp > 0 ? `<span class="boost-tag">+${c.boostHp} Boost</span>` : ''}</span>
+              </div>
+              <div class="bar-bg"><div class="bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}" style="width:${(c.currentHp / Math.max(1, maxHp)) * 100}%"></div></div>
+            </div>
+
+            ${maxMp > 0 ? `
+            <div class="bar-group">
+              <div class="bar-header">
+                <span style="color:var(--blue-mp);">MP</span>
+                <span>${c.currentMp} / ${maxMp}</span>
+              </div>
+              <div class="bar-bg"><div class="bar-fill fill-mp" style="width:${(c.currentMp / Math.max(1, maxMp)) * 100}%"></div></div>
+            </div>` : ''}
+          </div>
+
+          <div class="stats-badges">
+            ${statsList.map(k => {
+              const mod = getEquippedStatModifier(c, k);
+              const total = c[k] + mod;
+              const numColor = mod > 0 ? 'var(--green-hp)' : mod < 0 ? 'var(--crimson-primary)' : 'var(--gold-accent)';
+              const modText = mod > 0 ? `(+${mod})` : mod < 0 ? `(${mod})` : '';
+              return `
+              <div class="stat-badge">
+                <div class="lbl">${k.slice(0, 3).toUpperCase()}</div>
+                <div class="val" style="color:${numColor}">${total} ${modText ? `<span style="font-size:9px;">${modText}</span>` : ''}</div>
+              </div>`;
+            }).join('')}
+          </div>
+
+          <button class="use-btn" onclick="useCharacter('${c.id}')">▶ USE HERO</button>
+        </div>
+      `;
+      }).join('');
+    }
+
+    function useCharacter(id) {
+      activeCharId = id;
+      showBaseStatsMap = {};
+      const c = characters.find(item => item.id === id);
+      if (!c) return;
+
+      document.getElementById('selectScreen').classList.add('hidden');
+      document.getElementById('useScreen').classList.remove('hidden');
+      document.getElementById('backBtn').classList.remove('hidden');
+      document.getElementById('sessionTabsBar').classList.remove('hidden');
+      document.getElementById('headerGoldBtn').classList.remove('hidden');
+      document.getElementById('headerGoldText').innerText = c.gold || 0;
+      document.getElementById('headerEditBtn').classList.remove('hidden');
+      document.getElementById('createFab').classList.add('hidden');
+
+      if (c.imageUri) {
+        document.getElementById('headerAvatarBox').innerHTML = `<img src="${c.imageUri}">`;
+        document.getElementById('headerAvatarBox').classList.remove('hidden');
+      } else {
+        document.getElementById('headerAvatarBox').classList.add('hidden');
+      }
+
+      document.getElementById('appTitle').innerText = c.name;
+      document.getElementById('appSubtitle').innerText = `${c.race} • Active Session`;
+
+      switchSessionTab('vitals');
+    }
+
+    function editCurrentActiveChar() {
+      if (activeCharId) {
+        openEditModal(activeCharId);
+      }
+    }
+
+    function showSelectScreen() {
+      activeCharId = null;
+      document.getElementById('headerGoldBtn').classList.add('hidden');
+      renderSelectScreen();
+    }
+
+    function switchSessionTab(tab) {
+      currentSessionTab = tab;
+      const c = characters.find(item => item.id === activeCharId);
+
+      document.getElementById('tabVitals').classList.remove('active');
+      document.getElementById('tabAbilities').classList.remove('active');
+      document.getElementById('tabEquipment').classList.remove('active');
+      document.getElementById('tabInventory').classList.remove('active');
+      document.getElementById('tabNotes').classList.remove('active');
+
+      document.getElementById('vitalsTabContent').classList.add('hidden');
+      document.getElementById('abilitiesTabContent').classList.add('hidden');
+      document.getElementById('equipmentTabContent').classList.add('hidden');
+      document.getElementById('inventoryTabContent').classList.add('hidden');
+      document.getElementById('notesTabContent').classList.add('hidden');
+
+      document.getElementById('addItemFab').classList.add('hidden');
+      document.getElementById('addAbilityFab').classList.add('hidden');
+      document.getElementById('addNoteFab').classList.add('hidden');
+
+      if (tab === 'vitals') {
+        document.getElementById('tabVitals').classList.add('active');
+        document.getElementById('vitalsTabContent').classList.remove('hidden');
+        renderUseScreen();
+      } else if (tab === 'abilities') {
+        document.getElementById('tabAbilities').classList.add('active');
+        document.getElementById('abilitiesTabContent').classList.remove('hidden');
+        document.getElementById('addAbilityFab').classList.remove('hidden');
+        renderAbilitiesScreen();
+      } else if (tab === 'equipment') {
+        document.getElementById('tabEquipment').classList.add('active');
+        document.getElementById('equipmentTabContent').classList.remove('hidden');
+        document.getElementById('addItemFab').classList.remove('hidden');
+        document.getElementById('addItemFab').innerHTML = '<span>+</span> ADD EQUIPMENT';
+        renderEquipmentScreen();
+      } else if (tab === 'inventory') {
+        document.getElementById('tabInventory').classList.add('active');
+        document.getElementById('inventoryTabContent').classList.remove('hidden');
+        document.getElementById('addItemFab').classList.remove('hidden');
+        document.getElementById('addItemFab').innerHTML = '<span>+</span> ADD ITEM';
+        renderInventoryScreen();
+      } else if (tab === 'notes') {
+        document.getElementById('tabNotes').classList.add('active');
+        document.getElementById('notesTabContent').classList.remove('hidden');
+        document.getElementById('addNoteFab').classList.remove('hidden');
+        renderNotesScreen();
+      }
+    }
+
+    function toggleStatBaseDisplay(statKey) {
+      showBaseStatsMap[statKey] = !showBaseStatsMap[statKey];
+      renderUseScreen();
+    }
+
+    function renderUseScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const totalArmor = getTotalArmor(c);
+      const totalWard = getTotalWard(c);
+
+      const maxHp = getEffectiveMaxHp(c);
+      const maxMp = getEffectiveMaxMp(c);
+
+      const curArmor = (c.currentArmor !== null && c.currentArmor !== undefined) ? c.currentArmor : totalArmor;
+      const curWard = (c.currentWard !== null && c.currentWard !== undefined) ? c.currentWard : totalWard;
+
+      if (totalArmor > 0) {
+        document.getElementById('armorBarBlock').classList.remove('hidden');
+        document.getElementById('useArmorText').innerText = `${curArmor} / ${totalArmor}`;
+        document.getElementById('useArmorFill').style.width = `${(curArmor / totalArmor) * 100}%`;
+      } else {
+        document.getElementById('armorBarBlock').classList.add('hidden');
+      }
+
+      if (totalWard > 0) {
+        document.getElementById('wardBarBlock').classList.remove('hidden');
+        document.getElementById('useWardText').innerText = `${curWard} / ${totalWard}`;
+        document.getElementById('useWardFill').style.width = `${(curWard / totalWard) * 100}%`;
+      } else {
+        document.getElementById('wardBarBlock').classList.add('hidden');
+      }
+
+      const turnsTag = c.boostHpTurns > 0 ? ` (${c.boostHpTurns}t)` : (c.boostHpResetOnNextRound !== false ? ' (Reset)' : '');
+      const hpText = c.boostHp > 0 
+        ? `${c.currentHp} / ${maxHp} <span class="boost-tag">+${c.boostHp} Boost${turnsTag}</span>`
+        : `${c.currentHp} / ${maxHp}`;
+
+      document.getElementById('useHpText').innerHTML = hpText;
+      document.getElementById('useHpFill').style.width = `${(c.currentHp / Math.max(1, maxHp)) * 100}%`;
+      document.getElementById('useHpFill').className = `bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}`;
+
+      if (maxMp > 0) {
+        document.getElementById('useMpBlock').classList.remove('hidden');
+        document.getElementById('useMpText').innerText = `${c.currentMp} / ${maxMp}`;
+        document.getElementById('useMpFill').style.width = `${(c.currentMp / Math.max(1, maxMp)) * 100}%`;
+      } else {
+        document.getElementById('useMpBlock').classList.add('hidden');
+      }
+
+      const statsKeys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+      document.getElementById('statsGrid').innerHTML = statsKeys.map(k => {
+        const mod = getEquippedStatModifier(c, k);
+        const baseVal = c[k];
+        const totalVal = baseVal + mod;
+
+        const isShowingBase = !!showBaseStatsMap[k];
+        const numColor = mod > 0 ? 'var(--green-hp)' : mod < 0 ? 'var(--crimson-primary)' : 'var(--gold-accent)';
+        const modText = mod > 0 ? `(+${mod})` : mod < 0 ? `(${mod})` : '';
+
+        return `
+        <div class="stat-card-display" onclick="toggleStatBaseDisplay('${k}')">
+          <div style="font-size:10px; font-weight:700; color:${isShowingBase ? 'var(--gold-accent)' : 'var(--text-secondary)'}; text-transform:uppercase;">
+            ${k} ${isShowingBase ? '(BASE)' : ''}
+          </div>
+          <div style="font-size:24px; font-weight:bold; color:${isShowingBase ? 'var(--text-primary)' : numColor}; margin-top:4px;">
+            ${isShowingBase ? baseVal : totalVal}
+            ${(!isShowingBase && mod !== 0) ? `<span style="font-size:16px; color:${numColor};">${modText}</span>` : ''}
+          </div>
+          ${isShowingBase ? `<div style="font-size:9px; color:var(--text-secondary); margin-top:2px;">Tap to show total</div>` : ''}
+        </div>
+      `;
+      }).join('');
+
+      // Render Active Effects Section
+      const effects = c.effects || [];
+      document.getElementById('effectsTitle').innerText = `ACTIVE EFFECTS & BUFFS (${effects.length})`;
+      const effectsContainer = document.getElementById('effectsList');
+
+      if (effects.length === 0) {
+        effectsContainer.innerHTML = `<div style="font-size:12px; color:var(--text-secondary); padding:4px 0;">No active status effects or buffs applied.</div>`;
+      } else {
+        effectsContainer.innerHTML = effects.map(e => {
+          const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
+          let desc = "";
+          if (e.effectType === "STAT_MODIFIER") desc = `${(e.targetStat || '').toUpperCase()}: ${valStr}`;
+          else if (e.effectType === "HP_CHANGE_PER_ROUND") {
+            if (e.value < 0) {
+              const dt = (e.damageType || 'unsaveable').toUpperCase();
+              desc = `${valStr} ${dt} HP / round`;
+            } else {
+              desc = `${valStr} HP / round`;
+            }
+          }
+          else if (e.effectType === "MP_CHANGE_PER_ROUND") desc = `${valStr} MP / round`;
+
+          const r = parseInt(e.roundsRemaining) || 0;
+          const durStr = r === 0 ? "Unlimited" : `${r} Rounds left`;
+
+          return `
+          <div class="effect-item-row">
+            <div>
+              <div style="font-weight:bold; font-size:13px;">${e.name}</div>
+              <div style="font-size:11px; font-weight:600; color:${e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${desc}</div>
+              <div style="font-size:10px; color:var(--gold-accent);">Duration: ${durStr}</div>
+            </div>
+            <button class="action-icon-btn delete-btn" title="Remove Effect" onclick="removeEffect('${e.id}')">🗑</button>
+          </div>
+        `;
+        }).join('');
+      }
+    }
+
+    function openAddEffectModal() {
+      document.getElementById('effectInputName').value = '';
+      document.getElementById('effectInputType').value = 'STAT_MODIFIER';
+      document.getElementById('effectInputValue').value = '1';
+      document.getElementById('effectInputRounds').value = '0';
+      toggleEffectTargetFields();
+      document.getElementById('addEffectModal').classList.remove('hidden');
+    }
+
+    function closeAddEffectModal() {
+      document.getElementById('addEffectModal').classList.add('hidden');
+    }
+
+    function toggleEffectTargetFields() {
+      const type = document.getElementById('effectInputType').value;
+      const val = parseInt(document.getElementById('effectInputValue').value) || 0;
+      if (type === 'STAT_MODIFIER') {
+        document.getElementById('effectStatGroup').classList.remove('hidden');
+      } else {
+        document.getElementById('effectStatGroup').classList.add('hidden');
+      }
+
+      if (type === 'HP_CHANGE_PER_ROUND' && val < 0) {
+        document.getElementById('effectDamageTypeGroup').classList.remove('hidden');
+      } else {
+        document.getElementById('effectDamageTypeGroup').classList.add('hidden');
+      }
+    }
+
+    function saveNewEffect() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const name = document.getElementById('effectInputName').value.trim();
+      const effectType = document.getElementById('effectInputType').value;
+      const targetStat = document.getElementById('effectInputStat').value;
+      const value = parseInt(document.getElementById('effectInputValue').value) || 0;
+      const roundsRemaining = parseInt(document.getElementById('effectInputRounds').value) || 0;
+      const damageType = document.getElementById('effectInputDamageType').value;
+
+      if (!name) { alert("Please enter an effect name"); return; }
+
+      adjustVitalsOnMaxChange(c, () => {
+        if (!c.effects) c.effects = [];
+        c.effects.push({
+          id: Date.now().toString(),
+          name,
+          effectType,
+          targetStat: (effectType === 'STAT_MODIFIER') ? targetStat : null,
+          value,
+          roundsRemaining,
+          damageType: (effectType === 'HP_CHANGE_PER_ROUND' && value < 0) ? damageType : 'unsaveable'
+        });
+      });
+
+      saveData();
+      closeAddEffectModal();
+      renderUseScreen();
+    }
+
+    function removeEffect(effectId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.effects) return;
+      adjustVitalsOnMaxChange(c, () => {
+        c.effects = c.effects.filter(e => e.id !== effectId);
+      });
+      saveData();
+      renderUseScreen();
+    }
+
+    function openDamageModal() {
+      document.getElementById('damageAmountInput').value = '';
+      document.getElementById('damageModal').classList.remove('hidden');
+    }
+
+    function closeDamageModal() {
+      document.getElementById('damageModal').classList.add('hidden');
+    }
+
+    function confirmApplyDamage() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const amount = parseInt(document.getElementById('damageAmountInput').value);
+      if (isNaN(amount) || amount <= 0) { closeDamageModal(); return; }
+
+      const selectedType = document.querySelector('input[name="dmgType"]:checked').value;
+
+      const totalArmor = getTotalArmor(c);
+      const totalWard = getTotalWard(c);
+
+      let curArmor = (c.currentArmor !== null && c.currentArmor !== undefined) ? c.currentArmor : totalArmor;
+      let curWard = (c.currentWard !== null && c.currentWard !== undefined) ? c.currentWard : totalWard;
+      let rem = amount;
+
+      if (selectedType === 'physical') {
+        if (curArmor > 0) {
+          if (rem <= curArmor) {
+            curArmor -= rem;
+            rem = 0;
+          } else {
+            rem -= curArmor;
+            curArmor = 0;
+          }
+        }
+      } else if (selectedType === 'magical') {
+        if (curWard > 0) {
+          if (rem <= curWard) {
+            curWard -= rem;
+            rem = 0;
+          } else {
+            rem -= curWard;
+            curWard = 0;
+          }
+        }
+      }
+
+      if (rem > 0 && c.boostHp > 0) {
+        if (rem <= c.boostHp) {
+          c.boostHp -= rem;
+          rem = 0;
+        } else {
+          rem -= c.boostHp;
+          c.boostHp = 0;
+        }
+      }
+
+      if (rem > 0) {
+        c.currentHp = Math.max(0, c.currentHp - rem);
+      }
+
+      c.currentArmor = curArmor;
+      c.currentWard = curWard;
+
+      saveData();
+      closeDamageModal();
+      renderUseScreen();
+    }
+
+    /* ABILITIES TAB */
+    let editingAbilityId = null;
+
+    function formatAbilityDescription(c, rawDesc) {
+      if (!rawDesc) return '';
+      if (!c) return rawDesc;
+
+      const keys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+      let res = rawDesc;
+      keys.forEach(k => {
+        const total = (c[k] || 0) + getEquippedStatModifier(c, k);
+        const tagShort = k.slice(0, 3).toUpperCase();
+        const regexShort = new RegExp(`\\{${tagShort}\\}`, 'gi');
+        const regexLong = new RegExp(`\\{${k}\\}`, 'gi');
+        res = res.replace(regexShort, total).replace(regexLong, total);
+      });
+      return res;
+    }
+
+    const expandedCardIds = new Set();
+
+    function toggleCardExpansion(id) {
+      if (expandedCardIds.has(id)) {
+        expandedCardIds.delete(id);
+      } else {
+        expandedCardIds.add(id);
+      }
+      switchSessionTab(currentSessionTab);
+    }
+
+    function renderAbilitiesScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const container = document.getElementById('abilitiesList');
+      const abilities = c.abilities || [];
+
+      if (abilities.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">✨</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">No Abilities Added</div><div style="font-size:14px;">Tap '+ ADD ABILITY' to create spells, skills, or special attacks!</div></div>`;
+        return;
+      }
+
+      container.innerHTML = abilities.map(a => {
+        const evalDesc = formatAbilityDescription(c, a.description);
+        const showFormula = a.description && (a.description !== evalDesc);
+        const maxCharLimit = 130;
+        const isExpanded = expandedCardIds.has(a.id);
+        const isLong = evalDesc.length > maxCharLimit;
+        const displayText = (isLong && !isExpanded) ? (evalDesc.slice(0, maxCharLimit) + '...') : evalDesc;
+
+        return `
+          <div class="item-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-weight:bold; font-size:16px; color:var(--gold-accent);">${a.name}</span>
+              <div>
+                <button class="action-icon-btn edit-btn" title="Edit Ability" onclick="openEditAbilityModal('${a.id}')">✏️</button>
+                <button class="action-icon-btn delete-btn" title="Delete Ability" onclick="deleteAbility('${a.id}')">🗑</button>
+              </div>
+            </div>
+
+            ${evalDesc ? `
+              <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'};" ${isLong ? `onclick="toggleCardExpansion('${a.id}')"` : ''}>
+                <div style="font-size:14px; font-weight:500; color:var(--text-primary); white-space:pre-line;">${displayText}</div>
+                ${isLong ? `<div style="font-size:11px; font-weight:bold; color:var(--gold-accent); margin-top:4px;">${isExpanded ? '▲ Tap to collapse' : '▼ Tap to expand'}</div>` : ''}
+                ${showFormula ? `<div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Formula: ${a.description}</div>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function insertAbilityTag(tag) {
+      const textarea = document.getElementById('abilityInputDesc');
+      textarea.value += tag;
+      updateAbilityPreview();
+    }
+
+    function updateAbilityPreview() {
+      const c = characters.find(item => item.id === activeCharId);
+      const raw = document.getElementById('abilityInputDesc').value;
+      const previewBox = document.getElementById('abilityPreviewBox');
+      if (!raw.trim()) {
+        previewBox.innerText = 'Preview will appear here as you type...';
+        previewBox.style.color = 'var(--text-secondary)';
+      } else {
+        previewBox.innerText = formatAbilityDescription(c, raw);
+        previewBox.style.color = 'var(--text-primary)';
+      }
+    }
+
+    function openAddAbilityModal() {
+      editingAbilityId = null;
+      document.getElementById('addAbilityModalTitle').innerText = 'ADD ABILITY';
+      document.getElementById('addAbilityModalSaveBtn').innerText = 'SAVE ABILITY';
+      document.getElementById('abilityInputName').value = '';
+      document.getElementById('abilityInputDesc').value = '';
+      updateAbilityPreview();
+      document.getElementById('addAbilityModal').classList.remove('hidden');
+    }
+
+    function openEditAbilityModal(abilityId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.abilities) return;
+      const a = c.abilities.find(item => item.id === abilityId);
+      if (!a) return;
+
+      editingAbilityId = abilityId;
+      document.getElementById('addAbilityModalTitle').innerText = 'EDIT ABILITY';
+      document.getElementById('addAbilityModalSaveBtn').innerText = 'SAVE CHANGES';
+      document.getElementById('abilityInputName').value = a.name;
+      document.getElementById('abilityInputDesc').value = a.description;
+      updateAbilityPreview();
+      document.getElementById('addAbilityModal').classList.remove('hidden');
+    }
+
+    function closeAddAbilityModal() {
+      document.getElementById('addAbilityModal').classList.add('hidden');
+    }
+
+    function saveNewAbility() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const name = document.getElementById('abilityInputName').value.trim();
+      const description = document.getElementById('abilityInputDesc').value.trim();
+
+      if (!name) { alert("Please enter an ability name"); return; }
+
+      if (!c.abilities) c.abilities = [];
+
+      if (editingAbilityId) {
+        const a = c.abilities.find(item => item.id === editingAbilityId);
+        if (a) {
+          a.name = name;
+          a.description = description;
+        }
+      } else {
+        c.abilities.push({
+          id: Date.now().toString(),
+          name,
+          description
+        });
+      }
+
+      saveData();
+      closeAddAbilityModal();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function deleteAbility(abilityId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.abilities) return;
+      c.abilities = c.abilities.filter(a => a.id !== abilityId);
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    /* NOTES TAB */
+    let editingNoteId = null;
+    let showArchivedNotes = false;
+
+    function toggleShowArchivedNotes() {
+      showArchivedNotes = !showArchivedNotes;
+      renderNotesScreen();
+    }
+
+    function toggleArchiveNote(noteId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.notes) return;
+      const n = c.notes.find(item => item.id === noteId);
+      if (n) {
+        n.isArchived = !n.isArchived;
+      }
+      saveData();
+      renderNotesScreen();
+    }
+
+    function renderNotesScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const container = document.getElementById('notesList');
+      const notes = c.notes || [];
+      const archivedCount = notes.filter(n => n.isArchived).length;
+      const visibleNotes = notes.filter(n => !n.isArchived || showArchivedNotes);
+
+      let headerHtml = '';
+      if (archivedCount > 0) {
+        headerHtml = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <button class="prompt-btn" style="flex:none; width:auto; padding:4px 10px; font-size:11px; background:${showArchivedNotes ? 'rgba(212,175,55,0.2)' : 'var(--surface-variant)'}; color:${showArchivedNotes ? 'var(--gold-accent)' : 'var(--text-secondary)'}; border:1px solid ${showArchivedNotes ? 'var(--gold-accent)' : 'transparent'};" onclick="toggleShowArchivedNotes()">
+              ${showArchivedNotes ? '🙈 Hide Archived Notes (' + archivedCount + ')' : '👁️ Show Archived Notes (' + archivedCount + ')'}
+            </button>
+          </div>
+        `;
+      }
+
+      if (visibleNotes.length === 0) {
+        container.innerHTML = headerHtml + `
+          <div style="text-align:center; padding:40px; color:var(--text-secondary);">
+            ${notes.length === 0 ? "No notes created yet. Tap '+ ADD NOTE' to write down quests, secrets, or NPC info!" : "All notes are currently archived. Tap 'Show Archived Notes' to view them."}
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = headerHtml + visibleNotes.map(n => {
+        const maxCharLimit = 130;
+        const isExpanded = expandedCardIds.has(n.id);
+        const isLong = (n.content || '').length > maxCharLimit;
+        const displayText = (isLong && !isExpanded) ? (n.content.slice(0, maxCharLimit) + '...') : n.content;
+
+        return `
+          <div class="item-card" style="${n.isArchived ? 'opacity:0.65; border:1px dashed var(--surface-variant);' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-weight:bold; font-size:16px; color:${n.isArchived ? 'var(--text-secondary)' : 'var(--gold-accent)'};">${n.title}</span>
+                ${n.tag ? `<span style="font-size:10px; font-weight:bold; color:var(--cyan-accent); background:var(--surface-variant); padding:2px 6px; border-radius:4px;">${n.tag.toUpperCase()}</span>` : ''}
+                ${n.isArchived ? `<span style="font-size:9px; font-weight:bold; color:var(--crimson-primary); background:rgba(229,57,53,0.15); padding:2px 6px; border-radius:4px;">ARCHIVED</span>` : ''}
+              </div>
+              <div style="display:flex; gap:4px; align-items:center;">
+                ${isLong ? `<button class="action-icon-btn edit-btn" style="color:var(--gold-accent); font-weight:bold;" title="${isExpanded ? 'Collapse Note' : 'Expand Note'}" onclick="toggleCardExpansion('${n.id}')">${isExpanded ? '▲' : '▼'}</button>` : ''}
+                <button class="action-icon-btn edit-btn" title="${n.isArchived ? 'Unarchive Note' : 'Archive Note'}" onclick="toggleArchiveNote('${n.id}')">${n.isArchived ? '📥' : '📦'}</button>
+                <button class="action-icon-btn edit-btn" title="Edit Note" onclick="openEditNoteModal('${n.id}')">✏️</button>
+                <button class="action-icon-btn delete-btn" title="Delete Note" onclick="deleteNote('${n.id}')">🗑</button>
+              </div>
+            </div>
+
+            ${n.content ? `
+              <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'};" ${isLong ? `onclick="toggleCardExpansion('${n.id}')"` : ''}>
+                <div style="font-size:14px; font-weight:400; color:var(--text-primary); white-space:pre-line;">${displayText}</div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setNoteTag(tag) {
+      document.getElementById('noteInputTag').value = tag;
+    }
+
+    function openAddNoteModal() {
+      editingNoteId = null;
+      document.getElementById('addNoteModalTitle').innerText = 'ADD NOTE';
+      document.getElementById('addNoteModalSaveBtn').innerText = 'SAVE NOTE';
+      document.getElementById('noteInputTitle').value = '';
+      document.getElementById('noteInputTag').value = '';
+      document.getElementById('noteInputContent').value = '';
+      document.getElementById('addNoteModal').classList.remove('hidden');
+    }
+
+    function openEditNoteModal(noteId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.notes) return;
+      const n = c.notes.find(item => item.id === noteId);
+      if (!n) return;
+
+      editingNoteId = noteId;
+      document.getElementById('addNoteModalTitle').innerText = 'EDIT NOTE';
+      document.getElementById('addNoteModalSaveBtn').innerText = 'SAVE CHANGES';
+      document.getElementById('noteInputTitle').value = n.title;
+      document.getElementById('noteInputTag').value = n.tag || '';
+      document.getElementById('noteInputContent').value = n.content || '';
+      document.getElementById('addNoteModal').classList.remove('hidden');
+    }
+
+    function closeAddNoteModal() {
+      document.getElementById('addNoteModal').classList.add('hidden');
+    }
+
+    function saveNewNote() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const title = document.getElementById('noteInputTitle').value.trim();
+      const tag = document.getElementById('noteInputTag').value.trim();
+      const content = document.getElementById('noteInputContent').value.trim();
+
+      if (!title) { alert("Please enter a note title"); return; }
+
+      if (!c.notes) c.notes = [];
+
+      if (editingNoteId) {
+        const n = c.notes.find(item => item.id === editingNoteId);
+        if (n) {
+          n.title = title;
+          n.tag = tag;
+          n.content = content;
+        }
+      } else {
+        c.notes.push({
+          id: Date.now().toString(),
+          title,
+          tag,
+          content
+        });
+      }
+
+      saveData();
+      closeAddNoteModal();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function deleteNote(noteId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.notes) return;
+      c.notes = c.notes.filter(n => n.id !== noteId);
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    /* EQUIPMENT TAB */
+    function renderEquipmentScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const container = document.getElementById('equipmentList');
+      const equippedItems = (c.inventory || []).filter(i => i.isEquipped);
+
+      if (equippedItems.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">🛡️</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">No Equipped Items</div><div style="font-size:14px;">Equip items from your Inventory tab, or tap '+ ADD ITEM'!</div></div>`;
+        return;
+      }
+
+      container.innerHTML = equippedItems.map(item => `
+        <div class="item-card equipped">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-weight:bold; font-size:15px;">${item.name}</span>
+              <span style="font-size:10px; font-weight:bold; color:var(--gold-accent); background:var(--surface-variant); padding:2px 6px; border-radius:4px; margin-left:6px;">${item.category.toUpperCase()}</span>
+            </div>
+            <div>
+              <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
+              <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
+            ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
+            ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
+          </div>
+
+          ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
+          ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}
+
+          <button class="prompt-btn" style="background:rgba(229, 57, 53, 0.15); color:var(--crimson-primary);" onclick="toggleEquip('${item.id}')">
+            ✖ UNEQUIP (MOVE TO INVENTORY)
+          </button>
+        </div>
+      `).join('');
+    }
+
+    /* INVENTORY TAB */
+    function renderInventoryScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const container = document.getElementById('inventoryList');
+      const unequippedItems = (c.inventory || []).filter(i => !i.isEquipped);
+
+      if (unequippedItems.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">🎒</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">Inventory is Empty</div><div style="font-size:14px;">Unequip items from Equipment, or tap '+ ADD ITEM'!</div></div>`;
+        return;
+      }
+
+      container.innerHTML = unequippedItems.map(item => `
+        <div class="item-card">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-weight:bold; font-size:15px;">${item.name}</span>
+              <span style="font-size:10px; font-weight:bold; color:var(--text-secondary); background:var(--surface-variant); padding:2px 6px; border-radius:4px; margin-left:6px;">${item.category.toUpperCase()}</span>
+            </div>
+            <div>
+              <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
+              <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
+            ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
+            ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
+          </div>
+
+          ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
+          ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}
+
+          <button class="prompt-btn" style="background:rgba(76, 175, 80, 0.15); color:var(--green-hp);" onclick="toggleEquip('${item.id}')">
+            ✓ EQUIP (MOVE TO EQUIPMENT)
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function toggleEquip(itemId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.inventory) return;
+      adjustVitalsOnMaxChange(c, () => {
+        const item = c.inventory.find(i => i.id === itemId);
+        if (item) {
+          item.isEquipped = !item.isEquipped;
+          c.currentArmor = null;
+          c.currentWard = null;
+        }
+      });
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function deleteItem(itemId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.inventory) return;
+      adjustVitalsOnMaxChange(c, () => {
+        c.inventory = c.inventory.filter(i => i.id !== itemId);
+        c.currentArmor = null;
+        c.currentWard = null;
+      });
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function toggleItemFormSections() {
+      const hasArmor = document.getElementById('chkHasArmor').checked;
+      const hasWard = document.getElementById('chkHasWard').checked;
+      const modifiesStats = document.getElementById('chkModifiesStats').checked;
+      const hasAttacks = document.getElementById('chkHasAttacks').checked;
+      const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
+
+      if (hasArmor) document.getElementById('armorInputBlock').classList.remove('hidden');
+      else document.getElementById('armorInputBlock').classList.add('hidden');
+
+      if (hasWard) document.getElementById('wardInputBlock').classList.remove('hidden');
+      else document.getElementById('wardInputBlock').classList.add('hidden');
+
+      if (modifiesStats) {
+        document.getElementById('statModBlock').classList.remove('hidden');
+        renderStatModSteppers();
+      } else {
+        document.getElementById('statModBlock').classList.add('hidden');
+      }
+
+      if (hasAttacks) document.getElementById('attacksInputBlock').classList.remove('hidden');
+      else document.getElementById('attacksInputBlock').classList.add('hidden');
+
+      if (hasSpecialEffects) document.getElementById('specialEffectsInputBlock').classList.remove('hidden');
+      else document.getElementById('specialEffectsInputBlock').classList.add('hidden');
+    }
+
+    function renderStatModSteppers() {
+      const keys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+      document.getElementById('statModSteppersList').innerHTML = keys.map(k => `
+        <div class="stepper-row">
+          <div style="font-size:12px; font-weight:600; text-transform:capitalize;">${k}</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="stepper-btn" onclick="changeStatMod('${k}', -1)">-</button>
+            <span style="font-weight:bold; min-width:28px; text-align:center; color:${tempStatMods[k] > 0 ? 'var(--green-hp)' : tempStatMods[k] < 0 ? 'var(--crimson-primary)' : 'var(--text-secondary)'};">
+              ${tempStatMods[k] > 0 ? '+' + tempStatMods[k] : tempStatMods[k]}
+            </span>
+            <button class="stepper-btn" onclick="changeStatMod('${k}', 1)">+</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function changeStatMod(key, delta) {
+      tempStatMods[key] = (tempStatMods[key] || 0) + delta;
+      renderStatModSteppers();
+    }
+
+    function openAddItemModal() {
+      editingItemId = null;
+      tempStatMods = { ...defaultStats };
+      document.getElementById('addItemModalTitle').innerText = (currentSessionTab === 'equipment') ? 'ADD TO EQUIPMENT' : 'ADD TO INVENTORY';
+      document.getElementById('addItemModalSaveBtn').innerText = 'SAVE ITEM';
+      document.getElementById('itemInputName').value = '';
+      document.getElementById('itemInputCategory').value = '';
+      document.getElementById('itemInputEquipped').value = (currentSessionTab === 'equipment') ? 'true' : 'false';
+
+      document.getElementById('chkHasArmor').checked = false;
+      document.getElementById('chkHasWard').checked = false;
+      document.getElementById('chkModifiesStats').checked = false;
+      document.getElementById('chkHasAttacks').checked = false;
+      document.getElementById('chkHasSpecialEffects').checked = false;
+
+      document.getElementById('itemInputArmorSave').value = '0';
+      document.getElementById('itemInputWardSave').value = '0';
+      document.getElementById('itemInputAttackCount').value = '1';
+      document.getElementById('itemInputAttackDamage').value = '';
+      document.getElementById('itemInputSpecialEffects').value = '';
+
+      toggleItemFormSections();
+      document.getElementById('addItemModal').classList.remove('hidden');
+    }
+
+    function openEditItemModal(itemId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.inventory) return;
+      const item = c.inventory.find(i => i.id === itemId);
+      if (!item) return;
+
+      editingItemId = itemId;
+      tempStatMods = { ...defaultStats, ...(item.statModifiers || {}) };
+
+      document.getElementById('addItemModalTitle').innerText = 'EDIT ITEM';
+      document.getElementById('addItemModalSaveBtn').innerText = 'SAVE CHANGES';
+      document.getElementById('itemInputName').value = item.name;
+      document.getElementById('itemInputCategory').value = item.category || 'Weapon';
+      document.getElementById('itemInputEquipped').value = item.isEquipped ? 'true' : 'false';
+
+      document.getElementById('chkHasArmor').checked = !!item.hasArmor || (item.armorSave > 0);
+      document.getElementById('itemInputArmorSave').value = item.armorSave || 0;
+
+      document.getElementById('chkHasWard').checked = !!item.hasWard || (item.wardSave > 0);
+      document.getElementById('itemInputWardSave').value = item.wardSave || 0;
+
+      document.getElementById('chkModifiesStats').checked = !!item.hasStatModifiers || (Object.values(item.statModifiers || {}).some(v => v !== 0));
+
+      document.getElementById('chkHasAttacks').checked = !!item.hasAttacks;
+      document.getElementById('itemInputAttackCount').value = item.attackCount || 1;
+      document.getElementById('itemInputAttackDamage').value = item.attackDamage || '';
+
+      document.getElementById('chkHasSpecialEffects').checked = !!item.hasSpecialEffects;
+      document.getElementById('itemInputSpecialEffects').value = item.specialEffectsText || '';
+
+      toggleItemFormSections();
+      document.getElementById('addItemModal').classList.remove('hidden');
+    }
+
+    function closeAddItemModal() {
+      document.getElementById('addItemModal').classList.add('hidden');
+    }
+
+    function saveNewItem() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const name = document.getElementById('itemInputName').value.trim();
+      const category = document.getElementById('itemInputCategory').value.trim() || 'Misc';
+      const isEquipped = document.getElementById('itemInputEquipped').value === 'true';
+
+      const rawArmorSave = parseInt(document.getElementById('itemInputArmorSave').value) || 0;
+      const hasArmor = document.getElementById('chkHasArmor').checked || rawArmorSave > 0;
+      const armorSave = hasArmor ? rawArmorSave : 0;
+
+      const rawWardSave = parseInt(document.getElementById('itemInputWardSave').value) || 0;
+      const hasWard = document.getElementById('chkHasWard').checked || rawWardSave > 0;
+      const wardSave = hasWard ? rawWardSave : 0;
+
+      const hasStatModifiers = document.getElementById('chkModifiesStats').checked;
+      const statModifiers = {};
+      if (hasStatModifiers) {
+        Object.entries(tempStatMods).forEach(([k, v]) => {
+          if (v !== 0) statModifiers[k] = v;
+        });
+      }
+
+      const hasAttacks = document.getElementById('chkHasAttacks').checked;
+      const attackCount = hasAttacks ? (parseInt(document.getElementById('itemInputAttackCount').value) || 1) : 1;
+      const attackDamage = hasAttacks ? document.getElementById('itemInputAttackDamage').value.trim() : '';
+
+      const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
+      const specialEffectsText = hasSpecialEffects ? document.getElementById('itemInputSpecialEffects').value.trim() : '';
+
+      if (!name) { alert("Please enter an item name"); return; }
+
+      adjustVitalsOnMaxChange(c, () => {
+        if (!c.inventory) c.inventory = [];
+
+        if (editingItemId) {
+          const item = c.inventory.find(i => i.id === editingItemId);
+          if (item) {
+            item.name = name;
+            item.category = category;
+            item.isEquipped = isEquipped;
+            item.hasArmor = hasArmor;
+            item.armorSave = armorSave;
+            item.hasWard = hasWard;
+            item.wardSave = wardSave;
+            item.hasStatModifiers = hasStatModifiers;
+            item.statModifiers = statModifiers;
+            item.hasAttacks = hasAttacks;
+            item.attackCount = attackCount;
+            item.attackDamage = attackDamage;
+            item.hasSpecialEffects = hasSpecialEffects;
+            item.specialEffectsText = specialEffectsText;
+          }
+        } else {
+          c.inventory.unshift({
+            id: Date.now().toString(),
+            name,
+            category,
+            isEquipped,
+            hasArmor,
+            armorSave,
+            hasWard,
+            wardSave,
+            hasStatModifiers,
+            statModifiers,
+            hasAttacks,
+            attackCount,
+            attackDamage,
+            hasSpecialEffects,
+            specialEffectsText
+          });
+        }
+
+        c.currentArmor = null;
+        c.currentWard = null;
+      });
+
+      saveData();
+      closeAddItemModal();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function promptHeal() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const input = prompt("Enter heal amount to restore:");
+      const heal = parseInt(input);
+      if (isNaN(heal) || heal <= 0) return;
+
+      const maxHp = getEffectiveMaxHp(c);
+      c.currentHp = Math.min(maxHp, c.currentHp + heal);
+
+      saveData();
+      renderUseScreen();
+    }
+
+    function promptBoostHp() {
+      openBoostHpModal();
+    }
+
+    function openBoostHpModal() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      document.getElementById('boostHpAmountInput').value = c.boostHp > 0 ? c.boostHp : '10';
+      document.getElementById('boostHpTurnsInput').value = c.boostHpTurns || '0';
+      document.getElementById('boostHpResetChk').checked = c.boostHpResetOnNextRound !== false;
+      document.getElementById('boostHpModal').classList.remove('hidden');
+    }
+
+    function closeBoostHpModal() {
+      document.getElementById('boostHpModal').classList.add('hidden');
+    }
+
+    function confirmApplyBoostHp() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const amount = parseInt(document.getElementById('boostHpAmountInput').value);
+      const turns = parseInt(document.getElementById('boostHpTurnsInput').value) || 0;
+      const resetOnNextRound = document.getElementById('boostHpResetChk').checked;
+
+      if (isNaN(amount) || amount <= 0) {
+        closeBoostHpModal();
+        return;
+      }
+
+      c.boostHp = amount;
+      c.maxBoostHp = amount;
+      c.boostHpTurns = turns;
+      c.boostHpResetOnNextRound = resetOnNextRound;
+
+      saveData();
+      closeBoostHpModal();
+      renderUseScreen();
+    }
+
+    function promptSpendMp() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const input = prompt("Enter MP amount to spend:");
+      const mp = parseInt(input);
+      if (isNaN(mp) || mp <= 0) return;
+
+      c.currentMp = Math.max(0, c.currentMp - mp);
+
+      saveData();
+      renderUseScreen();
+    }
+
+    function promptRecoverMp() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const input = prompt("Enter MP amount to recover:");
+      const mp = parseInt(input);
+      if (isNaN(mp) || mp <= 0) return;
+
+      const maxMp = getEffectiveMaxMp(c);
+      c.currentMp = Math.min(maxMp, c.currentMp + mp);
+
+      saveData();
+      renderUseScreen();
+    }
+
+    /* Creation & Editing Modal */
+    function openCreateModal() {
+      editingCharId = null;
+      tempStats = { ...defaultStats };
+      uploadedImageBase64 = null;
+      document.getElementById('modalTitle').innerText = 'CREATE NEW HERO';
+      document.getElementById('modalSaveBtn').innerText = 'SAVE HERO';
+      document.getElementById('photoPreviewContent').innerHTML = `📷`;
+      document.getElementById('inputName').value = '';
+      document.getElementById('inputRace').value = '';
+      const hideMpCb = document.getElementById('inputHideMp');
+      if (hideMpCb) hideMpCb.checked = false;
+      renderModalStats();
+      document.getElementById('createModal').classList.remove('hidden');
+    }
+
+    function openEditModal(id) {
+      const c = characters.find(item => item.id === id);
+      if (!c) return;
+
+      editingCharId = id;
+      tempStats = {
+        strength: c.strength || 0,
+        intelligence: c.intelligence || 0,
+        endurance: c.endurance || 0,
+        spirit: c.spirit || 0,
+        finesse: c.finesse || 0,
+        charisma: c.charisma || 0
+      };
+      uploadedImageBase64 = c.imageUri || null;
+
+      document.getElementById('modalTitle').innerText = 'EDIT HERO';
+      document.getElementById('modalSaveBtn').innerText = 'SAVE CHANGES';
+      document.getElementById('photoPreviewContent').innerHTML = uploadedImageBase64 ? `<img src="${uploadedImageBase64}">` : `📷`;
+      document.getElementById('inputName').value = c.name;
+      document.getElementById('inputRace').value = c.race;
+      const hideMpCb = document.getElementById('inputHideMp');
+      if (hideMpCb) hideMpCb.checked = !!c.hideMp;
+
+      renderModalStats();
+      document.getElementById('createModal').classList.remove('hidden');
+    }
+
+    function closeCreateModal() {
+      document.getElementById('createModal').classList.add('hidden');
+    }
+
+    function renderModalStats() {
+      const keys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+      document.getElementById('modalStatsList').innerHTML = keys.map(k => `
+        <div class="stepper-row">
+          <div>
+            <div style="font-size:12px; font-weight:600; text-transform:capitalize;">${k}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="stepper-btn" onclick="changeStat('${k}', -1)">-</button>
+            <span style="font-weight:bold; min-width:20px; text-align:center; color:var(--gold-accent);">${tempStats[k]}</span>
+            <button class="stepper-btn" onclick="changeStat('${k}', 1)">+</button>
+          </div>
+        </div>
+      `).join('');
+      updateModalDerivedPreview();
+    }
+
+    function updateModalDerivedPreview() {
+      const isHideMp = document.getElementById('inputHideMp')?.checked || false;
+      const hp = (tempStats.endurance || 0) * 10;
+      const mp = (tempStats.intelligence || 0) * 1;
+      const spi = (tempStats.spirit || 0);
+
+      const hpEl = document.getElementById('modalPreviewHp');
+      const mpEl = document.getElementById('modalPreviewMp');
+      const spiEl = document.getElementById('modalPreviewMpRecharge');
+
+      if (hpEl) hpEl.innerText = hp;
+      if (mpEl) {
+        mpEl.innerText = isHideMp ? "OFF" : mp;
+        mpEl.style.color = isHideMp ? "var(--text-secondary)" : "var(--blue-mp)";
+      }
+      if (spiEl) {
+        spiEl.innerText = isHideMp ? "OFF" : `+${spi}/turn`;
+        spiEl.style.color = isHideMp ? "var(--text-secondary)" : "var(--gold-accent)";
+      }
+    }
+
+    function changeStat(key, delta) {
+      tempStats[key] = Math.max(0, Math.min(99, tempStats[key] + delta));
+      renderModalStats();
+    }
+
+    function saveNewCharacter() {
+      const name = document.getElementById('inputName').value.trim();
+      const race = document.getElementById('inputRace').value.trim();
+      const hideMp = document.getElementById('inputHideMp').checked;
+      const maxHp = (tempStats.endurance || 0) * 10;
+      const maxMp = (tempStats.intelligence || 0) * 1;
+
+      if (!name) { alert("Please enter a character name"); return; }
+      if (!race) { alert("Please enter a race"); return; }
+
+      if (editingCharId) {
+        const c = characters.find(item => item.id === editingCharId);
+        if (c) {
+          adjustVitalsOnMaxChange(c, () => {
+            c.name = name;
+            c.race = race;
+            c.hideMp = hideMp;
+            c.maxHp = maxHp;
+            c.maxMp = maxMp;
+            c.imageUri = uploadedImageBase64;
+            Object.assign(c, tempStats);
+          });
+        }
+      } else {
+        const newChar = {
+          id: Date.now().toString(),
+          name,
+          race,
+          hideMp,
+          maxHp,
+          currentHp: maxHp,
+          boostHp: 0,
+          currentArmor: null,
+          currentWard: null,
+          maxMp,
+          currentMp: maxMp,
+          imageUri: uploadedImageBase64,
+          inventory: [],
+          effects: [],
+          ...tempStats
+        };
+        characters.unshift(newChar);
+      }
+
+      saveData();
+      closeCreateModal();
+
+      if (activeCharId) {
+        const c = characters.find(item => item.id === activeCharId);
+        if (c) {
+          document.getElementById('appTitle').innerText = c.name;
+          document.getElementById('appSubtitle').innerText = `${c.race} • Active Session`;
+          if (c.imageUri) {
+            document.getElementById('headerAvatarBox').innerHTML = `<img src="${c.imageUri}">`;
+          }
+        }
+        renderUseScreen();
+      } else {
+        renderSelectScreen();
+      }
+    }
+
+    /* Delete Modal */
+    function promptDelete(id) {
+      deletingCharId = id;
+      const c = characters.find(item => item.id === id);
+      document.getElementById('deleteConfirmText').innerText = `Are you sure you want to delete ${c ? c.name : 'this character'}?`;
+      document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      deletingCharId = null;
+      document.getElementById('deleteModal').classList.add('hidden');
+    }
+
+    function confirmDelete() {
+      if (deletingCharId) {
+        characters = characters.filter(c => c.id !== deletingCharId);
+        saveData();
+        closeDeleteModal();
+        renderSelectScreen();
+      }
+    }
+
+    function checkIosPrompt() {
+      const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+      const dismissed = localStorage.getItem('rpg_ios_banner_dismissed');
+      if (isIos && !isStandalone && !dismissed) {
+        const banner = document.getElementById('iosInstallBanner');
+        if (banner) banner.classList.remove('hidden');
+      }
+    }
+
+    function dismissIosBanner() {
+      localStorage.setItem('rpg_ios_banner_dismissed', 'true');
+      const banner = document.getElementById('iosInstallBanner');
+      if (banner) banner.classList.add('hidden');
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('PWA Service Worker registered successfully:', reg.scope))
+          .catch(err => console.log('PWA Service Worker registration failed:', err));
+      });
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

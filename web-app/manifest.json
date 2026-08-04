@@ -1,0 +1,18 @@
+{
+  "name": "Homebrew RPG Companion",
+  "short_name": "RPG Companion",
+  "description": "Tabletop RPG Companion App for managing Hero stats, vitals, abilities, equipment, inventory, and notes.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121218",
+  "theme_color": "#121218",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
