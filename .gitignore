@@ -1,0 +1,52 @@
+# Built artifacts and Gradle
+.gradle/
+build/
+app/build/
+*/build/
+*.apk
+*.ap_
+*.dex
+*.class
+*.aar
+
+# Local configuration files
+local.properties
+
+# Signing files
+*.keystore
+*.jks
+*.pepk
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+.idea/modules.xml
+.idea/workspace.xml
+.idea/libraries/
+.idea/caches/
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# Kotlin / JVM
+.kotlin/
+
+# VS Code / Eclipse / Other IDEs
+.vscode/
+.classpath
+.project
+.settings/
+bin/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Downloaded tools
+platform-tools-latest-windows/
+platform-tools-latest-windows.zip
