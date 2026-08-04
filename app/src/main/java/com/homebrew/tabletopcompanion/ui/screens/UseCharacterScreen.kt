@@ -448,6 +448,69 @@ fun UseCharacterScreen(
         onCharacterUpdated(updated)
     }
 
+    fun moveAbility(abilityId: String, direction: Int) {
+        val list = activeCharacter.abilities.toMutableList()
+        val index = list.indexOfFirst { it.id == abilityId }
+        if (index >= 0) {
+            if (direction < 0 && index > 0) {
+                val temp = list[index]
+                list[index] = list[index - 1]
+                list[index - 1] = temp
+            } else if (direction > 0 && index < list.size - 1) {
+                val temp = list[index]
+                list[index] = list[index + 1]
+                list[index + 1] = temp
+            }
+            val updated = activeCharacter.copy(abilities = list)
+            activeCharacter = updated
+            onCharacterUpdated(updated)
+        }
+    }
+
+    fun moveNote(noteId: String, direction: Int) {
+        val list = activeCharacter.notes.toMutableList()
+        val index = list.indexOfFirst { it.id == noteId }
+        if (index >= 0) {
+            if (direction < 0 && index > 0) {
+                val temp = list[index]
+                list[index] = list[index - 1]
+                list[index - 1] = temp
+            } else if (direction > 0 && index < list.size - 1) {
+                val temp = list[index]
+                list[index] = list[index + 1]
+                list[index + 1] = temp
+            }
+            val updated = activeCharacter.copy(notes = list)
+            activeCharacter = updated
+            onCharacterUpdated(updated)
+        }
+    }
+
+    fun moveInventoryItem(itemId: String, direction: Int, isEquippedOnly: Boolean) {
+        val list = activeCharacter.inventory.toMutableList()
+        val indices = list.mapIndexedNotNull { i, item -> if (item.isEquipped == isEquippedOnly) i else null }
+        val targetIdxInIndices = indices.indexOfFirst { list[it].id == itemId }
+
+        if (targetIdxInIndices >= 0) {
+            if (direction < 0 && targetIdxInIndices > 0) {
+                val idx1 = indices[targetIdxInIndices]
+                val idx2 = indices[targetIdxInIndices - 1]
+                val temp = list[idx1]
+                list[idx1] = list[idx2]
+                list[idx2] = temp
+            } else if (direction > 0 && targetIdxInIndices < indices.size - 1) {
+                val idx1 = indices[targetIdxInIndices]
+                val idx2 = indices[targetIdxInIndices + 1]
+                val temp = list[idx1]
+                list[idx1] = list[idx2]
+                list[idx2] = temp
+            }
+            applyCharacterUpdateWithVitalsDelta { char ->
+                char.copy(inventory = list)
+            }
+        }
+    }
+
     val equippedItems = activeCharacter.inventory.filter { it.isEquipped }
     val unequippedItems = activeCharacter.inventory.filter { !it.isEquipped }
 
@@ -1046,7 +1109,9 @@ fun UseCharacterScreen(
                                     ability = ability,
                                     evaluatedDescription = activeCharacter.formatAbilityDescription(ability.description),
                                     onEdit = { abilityToEdit = ability },
-                                    onDelete = { deleteAbility(ability.id) }
+                                    onDelete = { deleteAbility(ability.id) },
+                                    onMoveUp = { moveAbility(ability.id, -1) },
+                                    onMoveDown = { moveAbility(ability.id, 1) }
                                 )
                             }
                         }
@@ -1098,7 +1163,9 @@ fun UseCharacterScreen(
                                     item = item,
                                     onEdit = { itemToEdit = item },
                                     onToggleEquip = { toggleEquipItem(item.id) },
-                                    onDelete = { deleteItem(item.id) }
+                                    onDelete = { deleteItem(item.id) },
+                                    onMoveUp = { moveInventoryItem(item.id, -1, true) },
+                                    onMoveDown = { moveInventoryItem(item.id, 1, true) }
                                 )
                             }
                         }
@@ -1150,7 +1217,9 @@ fun UseCharacterScreen(
                                     item = item,
                                     onEdit = { itemToEdit = item },
                                     onToggleEquip = { toggleEquipItem(item.id) },
-                                    onDelete = { deleteItem(item.id) }
+                                    onDelete = { deleteItem(item.id) },
+                                    onMoveUp = { moveInventoryItem(item.id, -1, false) },
+                                    onMoveDown = { moveInventoryItem(item.id, 1, false) }
                                 )
                             }
                         }
@@ -1230,7 +1299,9 @@ fun UseCharacterScreen(
                                         note = note,
                                         onEdit = { noteToEdit = note },
                                         onToggleArchive = { toggleArchiveNote(note.id) },
-                                        onDelete = { deleteNote(note.id) }
+                                        onDelete = { deleteNote(note.id) },
+                                        onMoveUp = { moveNote(note.id, -1) },
+                                        onMoveDown = { moveNote(note.id, 1) }
                                     )
                                 }
                             }
@@ -1814,7 +1885,9 @@ fun AbilityCard(
     ability: CharacterAbility,
     evaluatedDescription: String,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     val maxCharLimit = 130
@@ -1849,6 +1922,12 @@ fun AbilityCard(
                 )
 
                 Row {
+                    IconButton(onClick = onMoveUp, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = onMoveDown, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Ability", tint = GoldAccent, modifier = Modifier.size(18.dp))
                     }
@@ -1972,7 +2051,9 @@ fun EquipmentItemCard(
     item: EquipmentItem,
     onEdit: () -> Unit,
     onToggleEquip: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -2017,6 +2098,12 @@ fun EquipmentItemCard(
                 }
 
                 Row {
+                    IconButton(onClick = onMoveUp, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = onMoveDown, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Item", tint = GoldAccent, modifier = Modifier.size(18.dp))
                     }
@@ -2160,7 +2247,9 @@ fun NoteCard(
     note: CharacterNote,
     onEdit: () -> Unit,
     onToggleArchive: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     val maxCharLimit = 130
@@ -2241,11 +2330,17 @@ fun NoteCard(
                             )
                         }
                     }
+                    IconButton(onClick = onMoveUp, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(onClick = onMoveDown, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
                     IconButton(onClick = onToggleArchive, modifier = Modifier.size(32.dp)) {
                         Icon(
                             imageVector = if (note.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
-                            contentDescription = if (note.isArchived) "Unarchive Note" else "Archive Note",
-                            tint = if (note.isArchived) CyanAccent else GoldAccent,
+                            contentDescription = if (note.isArchived) "Unarchive" else "Archive",
+                            tint = GoldAccent,
                             modifier = Modifier.size(18.dp)
                         )
                     }

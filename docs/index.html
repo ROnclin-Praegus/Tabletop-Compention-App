@@ -1587,12 +1587,19 @@
       document.getElementById('appSubtitle').innerText = "Character Selection";
 
       const container = document.getElementById('characterList');
+      const headerHTML = `
+        <div style="display:flex; justify-content:space-between; margin-bottom: 12px;">
+           <button class="prompt-btn" style="width:auto; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
+           <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)">
+        </div>
+      `;
+
       if (characters.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-secondary);">No heroes found. Tap '+ CREATE HERO' to begin!</div>`;
+        container.innerHTML = headerHTML + `<div style="text-align:center; padding:40px; color:var(--text-secondary);">No heroes found. Tap '+ CREATE HERO' to begin!</div>`;
         return;
       }
 
-      container.innerHTML = characters.map(c => {
+      container.innerHTML = headerHTML + characters.map(c => {
         const statsList = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
         const maxHp = getEffectiveMaxHp(c);
         const maxMp = getEffectiveMaxMp(c);
@@ -1607,6 +1614,8 @@
               <h3>${c.name}</h3>
               <p>${c.race} • 🪙 ${c.gold || 0}</p>
             </div>
+            <button class="action-icon-btn edit-btn" title="Export Hero" onclick="exportCharacter('${c.id}')">📤</button>
+            <button class="action-icon-btn edit-btn" title="Duplicate Hero" onclick="duplicateCharacter('${c.id}')">📋</button>
             <button class="action-icon-btn edit-btn" title="Edit Hero" onclick="openEditModal('${c.id}')">✏️</button>
             <button class="action-icon-btn delete-btn" title="Delete Hero" onclick="promptDelete('${c.id}')">🗑</button>
           </div>
@@ -2047,6 +2056,8 @@
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-weight:bold; font-size:16px; color:var(--gold-accent);">${a.name}</span>
               <div>
+                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('abilities', '${a.id}', 'up')">🔼</button>
+                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('abilities', '${a.id}', 'down')">🔽</button>
                 <button class="action-icon-btn edit-btn" title="Edit Ability" onclick="openEditAbilityModal('${a.id}')">✏️</button>
                 <button class="action-icon-btn delete-btn" title="Delete Ability" onclick="deleteAbility('${a.id}')">🗑</button>
               </div>
@@ -2214,6 +2225,8 @@
                 ${n.isArchived ? `<span style="font-size:9px; font-weight:bold; color:var(--crimson-primary); background:rgba(229,57,53,0.15); padding:2px 6px; border-radius:4px;">ARCHIVED</span>` : ''}
               </div>
               <div style="display:flex; gap:4px; align-items:center;">
+                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('notes', '${n.id}', 'up')">🔼</button>
+                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('notes', '${n.id}', 'down')">🔽</button>
                 ${isLong ? `<button class="action-icon-btn edit-btn" style="color:var(--gold-accent); font-weight:bold;" title="${isExpanded ? 'Collapse Note' : 'Expand Note'}" onclick="toggleCardExpansion('${n.id}')">${isExpanded ? '▲' : '▼'}</button>` : ''}
                 <button class="action-icon-btn edit-btn" title="${n.isArchived ? 'Unarchive Note' : 'Archive Note'}" onclick="toggleArchiveNote('${n.id}')">${n.isArchived ? '📥' : '📦'}</button>
                 <button class="action-icon-btn edit-btn" title="Edit Note" onclick="openEditNoteModal('${n.id}')">✏️</button>
@@ -2326,6 +2339,8 @@
               <span style="font-size:10px; font-weight:bold; color:var(--gold-accent); background:var(--surface-variant); padding:2px 6px; border-radius:4px; margin-left:6px;">${item.category.toUpperCase()}</span>
             </div>
             <div>
+              <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', true)">🔼</button>
+              <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', true)">🔽</button>
               <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
               <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
             </div>
@@ -2368,6 +2383,8 @@
               <span style="font-size:10px; font-weight:bold; color:var(--text-secondary); background:var(--surface-variant); padding:2px 6px; border-radius:4px; margin-left:6px;">${item.category.toUpperCase()}</span>
             </div>
             <div>
+              <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', false)">🔼</button>
+              <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', false)">🔽</button>
               <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
               <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
             </div>
@@ -2843,6 +2860,86 @@
     }
 
     /* Delete Modal */
+    function moveItem(arrayName, id, direction, isEquippedOnly = null) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c[arrayName]) return;
+      
+      let list = c[arrayName];
+      let indices = [];
+      if (isEquippedOnly !== null) {
+        list.forEach((item, index) => {
+          if (item.isEquipped === isEquippedOnly) indices.push(index);
+        });
+      } else {
+        indices = list.map((_, i) => i);
+      }
+      
+      const targetIdxInIndices = indices.findIndex(idx => list[idx].id === id);
+      if (targetIdxInIndices < 0) return;
+      
+      if (direction === 'up' && targetIdxInIndices > 0) {
+        const idx1 = indices[targetIdxInIndices];
+        const idx2 = indices[targetIdxInIndices - 1];
+        const temp = list[idx1];
+        list[idx1] = list[idx2];
+        list[idx2] = temp;
+      } else if (direction === 'down' && targetIdxInIndices < indices.length - 1) {
+        const idx1 = indices[targetIdxInIndices];
+        const idx2 = indices[targetIdxInIndices + 1];
+        const temp = list[idx1];
+        list[idx1] = list[idx2];
+        list[idx2] = temp;
+      } else {
+        return;
+      }
+      
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+    
+    function duplicateCharacter(id) {
+      const c = characters.find(item => item.id === id);
+      if (!c) return;
+      const clone = JSON.parse(JSON.stringify(c));
+      clone.id = Date.now().toString();
+      clone.name = clone.name + " (Copy)";
+      characters.push(clone);
+      saveData();
+      renderCharacterList();
+    }
+    
+    function exportCharacter(id) {
+      const c = characters.find(item => item.id === id);
+      if (!c) return;
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(c));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", c.name + ".json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
+    
+    function importCharacter(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedChar = JSON.parse(e.target.result);
+          if (!importedChar.name || !importedChar.id) throw new Error("Invalid format");
+          importedChar.id = Date.now().toString();
+          characters.push(importedChar);
+          saveData();
+          renderCharacterList();
+        } catch(err) {
+          alert("Invalid character file.");
+        }
+        event.target.value = '';
+      }
+      reader.readAsText(file);
+    }
+
     function promptDelete(id) {
       deletingCharId = id;
       const c = characters.find(item => item.id === id);
