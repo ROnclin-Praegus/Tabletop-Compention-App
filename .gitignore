@@ -9,6 +9,14 @@ app/build/
 *.class
 *.aar
 
+# Local logs and temporary debug files
+*.log
+*_err.txt
+build_err.txt
+*.tmp
+*.bak
+.tmp/
+
 # Local configuration files
 local.properties
 
@@ -34,6 +42,10 @@ out/
 
 # Kotlin / JVM
 .kotlin/
+
+# Web App / Node (if applicable)
+node_modules/
+.npm/
 
 # VS Code / Eclipse / Other IDEs
 .vscode/
