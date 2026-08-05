@@ -62,3 +62,7 @@ Desktop.ini
 # Downloaded tools
 platform-tools-latest-windows/
 platform-tools-latest-windows.zip
+/jdk-17.0.12+7/
+/jdk17.zip
+/out.txt
+/out_debug.txt
