@@ -33,6 +33,8 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.homebrew.tabletopcompanion.model.Character
 import com.homebrew.tabletopcompanion.ui.theme.*
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,11 +51,16 @@ fun CreateCharacterDialog(
         mutableStateOf<Uri?>(characterToEdit?.imageUri?.let { Uri.parse(it) })
     }
 
-    // Image Picker Launcher
+    val context = LocalContext.current
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (e: Exception) {
+                // Ignore if it fails
+            }
             selectedImageUri = uri
         }
     }
@@ -129,7 +136,7 @@ fun CreateCharacterDialog(
                                 .clip(CircleShape)
                                 .background(DarkSurfaceVariant)
                                 .border(2.dp, GoldAccent, CircleShape)
-                                .clickable { imagePickerLauncher.launch("image/*") },
+                                .clickable { imagePickerLauncher.launch(arrayOf("image/*")) },
                             contentAlignment = Alignment.Center
                         ) {
                             if (selectedImageUri != null) {
@@ -151,7 +158,7 @@ fun CreateCharacterDialog(
 
                         Column {
                             Button(
-                                onClick = { imagePickerLauncher.launch("image/*") },
+                                onClick = { imagePickerLauncher.launch(arrayOf("image/*")) },
                                 colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant, contentColor = TextPrimary),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
@@ -344,7 +351,9 @@ fun CreateCharacterDialog(
                                 finesse = fin,
                                 charisma = cha,
                                 inventory = characterToEdit?.inventory ?: emptyList(),
-                                effects = characterToEdit?.effects ?: emptyList()
+                                effects = characterToEdit?.effects ?: emptyList(),
+                                abilities = characterToEdit?.abilities ?: emptyList(),
+                                notes = characterToEdit?.notes ?: emptyList()
                             )
 
                             val newMaxHp = tempChar.getEffectiveMaxHp()

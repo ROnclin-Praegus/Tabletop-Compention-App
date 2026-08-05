@@ -46,12 +46,17 @@ class MainActivity : ComponentActivity() {
                     var updateInfoState by remember { mutableStateOf<UpdateInfo?>(null) }
 
                     fun runUpdateCheck(manual: Boolean) {
+                        val versionName = try {
+                            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unknown"
+                        } catch (e: Exception) {
+                            "Unknown"
+                        }
                         scope.launch {
-                            val info = GitHubUpdateChecker.checkForUpdates("1.0")
+                            val info = GitHubUpdateChecker.checkForUpdates(versionName)
                             if (info != null && info.isNewer) {
                                 updateInfoState = info
                             } else if (manual) {
-                                Toast.makeText(context, "App is up to date! (v1.0)", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "App is up to date! (v$versionName)", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }

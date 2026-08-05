@@ -118,9 +118,14 @@ fun CharacterSelectScreen(
                             color = GoldAccent
                         )
                     }
+                    val versionName = try {
+                        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "Unknown"
+                    } catch (e: Exception) {
+                        "Unknown"
+                    }
                     TextButton(onClick = onCheckForUpdates) {
                         Text(
-                            text = "v1.0 🔄",
+                            text = "v$versionName 🔄",
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                             color = GoldAccent
