@@ -104,9 +104,15 @@ class MainActivity : ComponentActivity() {
                     }
 
                     updateInfoState?.let { info ->
+                        val currentAppVersion = try {
+                            packageManager.getPackageInfo(packageName, 0).versionName ?: "Unknown"
+                        } catch (e: Exception) {
+                            "Unknown"
+                        }
+                        
                         UpdateAvailableDialog(
                             updateInfo = info,
-                            currentVersion = "v1.0",
+                            currentVersion = "v$currentAppVersion",
                             onDismiss = { updateInfoState = null }
                         )
                     }

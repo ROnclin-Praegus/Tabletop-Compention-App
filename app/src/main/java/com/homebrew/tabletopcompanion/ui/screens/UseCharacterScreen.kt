@@ -25,6 +25,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.homebrew.tabletopcompanion.model.Character
 import com.homebrew.tabletopcompanion.model.CharacterAbility
@@ -64,6 +68,9 @@ fun UseCharacterScreen(
     var showAddNoteDialog by remember { mutableStateOf(false) }
     var showArchivedNotes by remember { mutableStateOf(false) }
     var showGoldDialog by remember { mutableStateOf(false) }
+    var showLevelUpDialog by remember { mutableStateOf(false) }
+    var showLevelUpAnimation by remember { mutableStateOf(false) }
+    var previousLevelForAnimation by remember { mutableIntStateOf(activeCharacter.level) }
     var itemToEdit by remember { mutableStateOf<EquipmentItem?>(null) }
     var abilityToEdit by remember { mutableStateOf<CharacterAbility?>(null) }
     var noteToEdit by remember { mutableStateOf<CharacterNote?>(null) }
@@ -557,6 +564,29 @@ fun UseCharacterScreen(
                         }
                     },
                     actions = {
+                        // Level Button
+                        Button(
+                            onClick = { showLevelUpDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = GoldAccent.copy(alpha = 0.2f),
+                                contentColor = GoldAccent
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Text("LVL", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${activeCharacter.level}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = GoldAccent
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
                         // Gold Button (between name and edit button)
                         Button(
                             onClick = { showGoldDialog = true },
@@ -1530,6 +1560,121 @@ fun UseCharacterScreen(
             },
             containerColor = DarkSurface
         )
+    }
+
+    // LEVEL UP DIALOG
+    if (showLevelUpDialog) {
+        AlertDialog(
+            onDismissRequest = { showLevelUpDialog = false },
+            title = { Text("Level Up?", fontWeight = FontWeight.Bold, color = GoldAccent) },
+            text = { Text("Did you level up to level ${activeCharacter.level + 1}?", color = TextPrimary) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        previousLevelForAnimation = activeCharacter.level
+                        val updatedChar = activeCharacter.copy(level = activeCharacter.level + 1)
+                        activeCharacter = updatedChar
+                        onCharacterUpdated(updatedChar)
+                        showLevelUpDialog = false
+                        showLevelUpAnimation = true
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                ) {
+                    Text("YES!", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLevelUpDialog = false }) {
+                    Text("NO", color = TextSecondary)
+                }
+            },
+            containerColor = DarkSurface
+        )
+    }
+
+    // LEVEL UP ANIMATION
+    if (showLevelUpAnimation) {
+        Dialog(
+            onDismissRequest = { showLevelUpAnimation = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable { showLevelUpAnimation = false },
+                contentAlignment = Alignment.Center
+            ) {
+                var animationPhase by remember { mutableIntStateOf(0) }
+                var glitchX by remember { mutableFloatStateOf(0f) }
+                var glitchY by remember { mutableFloatStateOf(0f) }
+                var isGlitchFlicker by remember { mutableStateOf(false) }
+
+                LaunchedEffect(animationPhase) {
+                    if (animationPhase == 1) {
+                        while (true) {
+                            glitchX = (-15..15).random().toFloat()
+                            glitchY = (-10..10).random().toFloat()
+                            isGlitchFlicker = Math.random() > 0.5
+                            kotlinx.coroutines.delay((30..100).random().toLong())
+                        }
+                    } else {
+                        glitchX = 0f
+                        glitchY = 0f
+                        isGlitchFlicker = false
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(500) // Phase 0: Show old level normally
+                    animationPhase = 1 // Phase 1: Glitch
+                    kotlinx.coroutines.delay(1200) // Glitch duration
+                    animationPhase = 2 // Phase 2: Pop in new level
+                    kotlinx.coroutines.delay(2000)
+                    showLevelUpAnimation = false
+                }
+
+                if (animationPhase < 2) {
+                    val isGlitching = animationPhase == 1
+                    val displayedLevel = if (isGlitchFlicker) activeCharacter.level else previousLevelForAnimation
+                    val textStr = if (isGlitchFlicker && Math.random() > 0.7) "L3V#L $displayedLevel" else "LEVEL $displayedLevel"
+
+                    Box(contentAlignment = Alignment.Center) {
+                        if (isGlitching) {
+                            Text(
+                                text = textStr,
+                                color = Color.Cyan.copy(alpha = 0.7f),
+                                fontSize = 48.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.offset(x = glitchX.dp, y = glitchY.dp)
+                            )
+                            Text(
+                                text = textStr,
+                                color = Color.Magenta.copy(alpha = 0.7f),
+                                fontSize = 48.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.offset(x = (-glitchX).dp, y = (-glitchY).dp)
+                            )
+                        }
+                        Text(
+                            text = textStr,
+                            color = Color.White,
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            modifier = Modifier.offset(x = if (isGlitching) (glitchX / 2).dp else 0.dp)
+                        )
+                    }
+                } else {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "LEVEL ${activeCharacter.level}",
+                            color = Color.White,
+                            fontSize = 48.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
+        }
     }
 
     // EDIT CHARACTER DIALOG

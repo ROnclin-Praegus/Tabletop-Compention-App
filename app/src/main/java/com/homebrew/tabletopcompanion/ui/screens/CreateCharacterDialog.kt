@@ -45,6 +45,7 @@ fun CreateCharacterDialog(
 ) {
     var name by remember { mutableStateOf(characterToEdit?.name ?: "") }
     var race by remember { mutableStateOf(characterToEdit?.race ?: "") }
+    var level by remember { mutableIntStateOf(characterToEdit?.level ?: 1) }
     var hideMp by remember { mutableStateOf(characterToEdit?.hideMp ?: false) }
 
     var selectedImageUri by remember {
@@ -210,6 +211,25 @@ fun CreateCharacterDialog(
                         )
                     )
 
+                    OutlinedTextField(
+                        value = level.toString(),
+                        onValueChange = { str ->
+                            if (str.isEmpty()) {
+                                level = 1
+                            } else {
+                                str.toIntOrNull()?.let { level = it }
+                            }
+                        },
+                        label = { Text("Level") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GoldAccent,
+                            unfocusedBorderColor = TextSecondary
+                        )
+                    )
+
                     // DISABLE MP CHECKBOX (Under Race field)
                     Surface(
                         color = DarkSurfaceVariant,
@@ -334,6 +354,7 @@ fun CreateCharacterDialog(
                                 id = characterToEdit?.id ?: java.util.UUID.randomUUID().toString(),
                                 name = name.trim(),
                                 race = race.trim(),
+                                level = level,
                                 maxHp = hp,
                                 currentHp = characterToEdit?.currentHp ?: hp,
                                 boostHp = characterToEdit?.boostHp ?: 0,

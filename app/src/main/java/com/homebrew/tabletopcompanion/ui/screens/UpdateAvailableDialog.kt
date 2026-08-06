@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun UpdateAvailableDialog(
     updateInfo: UpdateInfo,
-    currentVersion: String = "v1.0",
+    currentVersion: String,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
