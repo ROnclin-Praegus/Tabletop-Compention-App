@@ -6,6 +6,7 @@ data class Character(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val race: String,
+    var level: Int = 1,
     val maxHp: Int,
     var currentHp: Int = maxHp,
     var boostHp: Int = 0,
