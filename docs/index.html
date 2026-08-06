@@ -647,6 +647,32 @@
     }
 
     .hidden { display: none !important; }
+    /* Level Up Glitch */
+    @keyframes glitch-anim {
+      0% { transform: translate(0, 0); }
+      10% { transform: translate(-10px, 8px); }
+      20% { transform: translate(10px, -8px); }
+      30% { transform: translate(-8px, -4px); }
+      40% { transform: translate(8px, 4px); }
+      50% { transform: translate(-10px, 8px); }
+      60% { transform: translate(10px, -8px); }
+      70% { transform: translate(-8px, -4px); }
+      80% { transform: translate(8px, 4px); }
+      90% { transform: translate(-10px, 8px); }
+      100% { transform: translate(0, 0); }
+    }
+    .glitch-cyan {
+      position: absolute; color: rgba(0, 255, 255, 0.7);
+      animation: glitch-anim 0.2s infinite linear; z-index: 100;
+    }
+    .glitch-magenta {
+      position: absolute; color: rgba(255, 0, 255, 0.7);
+      animation: glitch-anim 0.2s infinite reverse linear; z-index: 99;
+    }
+    .glitch-white {
+      position: absolute; color: white;
+      animation: glitch-anim 0.4s infinite linear; z-index: 101;
+    }
   </style>
 </head>
 <body>
@@ -681,6 +707,9 @@
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
+        <button id="headerLvlBtn" class="gold-header-btn hidden" title="Level Up" onclick="openLevelUpModal()" style="color:var(--text-primary); font-weight:bold;">
+          LVL <span id="headerLvlText">1</span>
+        </button>
         <button id="headerGoldBtn" class="gold-header-btn hidden" title="Manage Gold" onclick="openGoldModal()">
           <span>🪙</span> <span id="headerGoldText">0</span>
         </button>
@@ -832,7 +861,29 @@
     </button>
   </div>
 
-  <!-- Manage Gold Modal -->
+    <!-- Level Up Modal -->
+    <div id="levelUpModal" class="modal-overlay hidden" onclick="closeLevelUpModal()">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <h2 style="color:var(--gold-accent); margin-bottom:15px; font-family:var(--font-heading);">Level Up?</h2>
+        <p id="levelUpText" style="margin-bottom:20px; font-size:16px;">Did you level up to level 2?</p>
+        <div style="display:flex; gap:10px;">
+          <button class="form-btn" style="background:var(--surface-variant);" onclick="closeLevelUpModal()">NO</button>
+          <button class="form-btn" style="background:var(--gold-accent); color:var(--bg-dark);" onclick="confirmLevelUp()">YES!</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Level Up Glitch Animation Overlay -->
+    <div id="glitchOverlay" class="modal-overlay hidden" style="z-index:9999; background:rgba(0,0,0,0.9); display:flex; justify-content:center; align-items:center;">
+      <div id="glitchContainer" style="position:relative; width:100%; height:100px; display:flex; justify-content:center; align-items:center; font-size:64px; font-weight:900;">
+        <div id="glitchCyan" class="glitch-cyan">LEVEL 1</div>
+        <div id="glitchMagenta" class="glitch-magenta">LEVEL 1</div>
+        <div id="glitchWhite" class="glitch-white">LEVEL 1</div>
+      </div>
+      <div id="glitchSettled" class="hidden" style="font-size:64px; font-weight:900; color:white;">LEVEL 2</div>
+    </div>
+
+    <!-- Gold Modal -->
   <div id="goldModal" class="modal-overlay hidden">
     <div class="modal-card" style="max-width:360px;">
       <h2 style="color:var(--gold-accent)">🪙 MANAGE GOLD</h2>
@@ -1014,9 +1065,14 @@
         <label>Name</label>
         <input id="inputName" class="form-input" placeholder="e.g. Ignis Firebrand">
       </div>
-      <div class="form-group">
-        <label>Race</label>
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:bold; font-size:12px; margin-bottom:6px; color:var(--gold-accent);">RACE</div>
         <input id="inputRace" class="form-input" placeholder="e.g. Dragonkin">
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:bold; font-size:12px; margin-bottom:6px; color:var(--gold-accent);">LEVEL</div>
+        <input type="number" id="inputLevel" class="form-input" placeholder="e.g. 1" min="1" value="1">
       </div>
 
       <!-- Disable MP Checkbox (Under Race field) -->
@@ -1263,6 +1319,7 @@
             id: "1",
             name: "Ignis Firebrand",
             race: "Dragonkin",
+            level: 1,
             maxHp: 50,
             currentHp: 50,
             boostHp: 10,
@@ -1295,6 +1352,7 @@
             id: "2",
             name: "Gorgar Steel-Shield",
             race: "Barbarian",
+            level: 1,
             maxHp: 65,
             currentHp: 65,
             boostHp: 0,
@@ -1579,6 +1637,7 @@
       document.getElementById('backBtn').classList.add('hidden');
       document.getElementById('headerAvatarBox').classList.add('hidden');
       document.getElementById('sessionTabsBar').classList.add('hidden');
+      document.getElementById('headerLvlBtn').classList.add('hidden');
       document.getElementById('headerGoldBtn').classList.add('hidden');
       document.getElementById('headerEditBtn').classList.add('hidden');
       document.getElementById('createFab').classList.remove('hidden');
@@ -1669,6 +1728,8 @@
       document.getElementById('useScreen').classList.remove('hidden');
       document.getElementById('backBtn').classList.remove('hidden');
       document.getElementById('sessionTabsBar').classList.remove('hidden');
+      document.getElementById('headerLvlBtn').classList.remove('hidden');
+      document.getElementById('headerLvlText').innerText = c.level || 1;
       document.getElementById('headerGoldBtn').classList.remove('hidden');
       document.getElementById('headerGoldText').innerText = c.gold || 0;
       document.getElementById('headerEditBtn').classList.remove('hidden');
@@ -1695,6 +1756,7 @@
 
     function showSelectScreen() {
       activeCharId = null;
+      document.getElementById('headerLvlBtn').classList.add('hidden');
       document.getElementById('headerGoldBtn').classList.add('hidden');
       renderSelectScreen();
     }
@@ -2717,6 +2779,7 @@
       document.getElementById('photoPreviewContent').innerHTML = `📷`;
       document.getElementById('inputName').value = '';
       document.getElementById('inputRace').value = '';
+      document.getElementById('inputLevel').value = '1';
       const hideMpCb = document.getElementById('inputHideMp');
       if (hideMpCb) hideMpCb.checked = false;
       renderModalStats();
@@ -2743,6 +2806,7 @@
       document.getElementById('photoPreviewContent').innerHTML = uploadedImageBase64 ? `<img src="${uploadedImageBase64}">` : `📷`;
       document.getElementById('inputName').value = c.name;
       document.getElementById('inputRace').value = c.race;
+      document.getElementById('inputLevel').value = c.level || 1;
       const hideMpCb = document.getElementById('inputHideMp');
       if (hideMpCb) hideMpCb.checked = !!c.hideMp;
 
@@ -2800,6 +2864,7 @@
     function saveNewCharacter() {
       const name = document.getElementById('inputName').value.trim();
       const race = document.getElementById('inputRace').value.trim();
+      const level = parseInt(document.getElementById('inputLevel').value) || 1;
       const hideMp = document.getElementById('inputHideMp').checked;
       const maxHp = (tempStats.endurance || 0) * 10;
       const maxMp = (tempStats.intelligence || 0) * 1;
@@ -2813,6 +2878,7 @@
           adjustVitalsOnMaxChange(c, () => {
             c.name = name;
             c.race = race;
+            c.level = level;
             c.hideMp = hideMp;
             c.maxHp = maxHp;
             c.maxMp = maxMp;
@@ -2825,6 +2891,7 @@
           id: Date.now().toString(),
           name,
           race,
+          level,
           hideMp,
           maxHp,
           currentHp: maxHp,
@@ -2986,6 +3053,68 @@
     }
 
     window.onload = init;
+    /* Level Up Logic */
+    function openLevelUpModal() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const currentLevel = c.level || 1;
+      document.getElementById('levelUpText').innerText = `Did you level up to level ${currentLevel + 1}?`;
+      document.getElementById('levelUpModal').classList.remove('hidden');
+    }
+
+    function closeLevelUpModal() {
+      document.getElementById('levelUpModal').classList.add('hidden');
+    }
+
+    function confirmLevelUp() {
+      closeLevelUpModal();
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      
+      const oldLevel = c.level || 1;
+      const newLevel = oldLevel + 1;
+      c.level = newLevel;
+      saveData();
+      
+      document.getElementById('headerLvlText').innerText = newLevel;
+      
+      // Play Animation
+      const overlay = document.getElementById('glitchOverlay');
+      const container = document.getElementById('glitchContainer');
+      const settled = document.getElementById('glitchSettled');
+      const cyan = document.getElementById('glitchCyan');
+      const mag = document.getElementById('glitchMagenta');
+      const wht = document.getElementById('glitchWhite');
+      
+      overlay.classList.remove('hidden');
+      container.classList.remove('hidden');
+      settled.classList.add('hidden');
+      
+      const txtOld = `LEVEL ${oldLevel}`;
+      const txtNew = `LEVEL ${newLevel}`;
+      
+      cyan.innerText = txtOld;
+      mag.innerText = txtOld;
+      wht.innerText = txtOld;
+      
+      let glitchInterval = setInterval(() => {
+        const txt = Math.random() > 0.5 ? txtNew : (Math.random() > 0.5 ? `L3V#L ${newLevel}` : txtOld);
+        cyan.innerText = txt;
+        mag.innerText = txt;
+        wht.innerText = txt;
+      }, 80);
+      
+      setTimeout(() => {
+        clearInterval(glitchInterval);
+        container.classList.add('hidden');
+        settled.innerText = txtNew;
+        settled.classList.remove('hidden');
+        
+        setTimeout(() => {
+          overlay.classList.add('hidden');
+        }, 2000);
+      }, 1200);
+    }
   </script>
 </body>
 </html>
