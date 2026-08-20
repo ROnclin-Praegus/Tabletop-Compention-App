@@ -526,7 +526,10 @@ fun UseCharacterScreen(
             Column {
                 TopAppBar(
                     title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { showEditCharacterDialog = true }
+                        ) {
                             if (!activeCharacter.imageUri.isNullOrBlank()) {
                                 Box(
                                     modifier = Modifier
@@ -551,7 +554,7 @@ fun UseCharacterScreen(
                                     color = TextPrimary
                                 )
                                 Text(
-                                    text = "${activeCharacter.race} • Active Session",
+                                    text = activeCharacter.race,
                                     fontSize = 12.sp,
                                     color = GoldAccent
                                 )
@@ -610,9 +613,7 @@ fun UseCharacterScreen(
 
                         Spacer(modifier = Modifier.width(4.dp))
 
-                        IconButton(onClick = { showEditCharacterDialog = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit Hero", tint = GoldAccent)
-                        }
+                        // Removed edit button as title is now clickable
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface)
                 )
