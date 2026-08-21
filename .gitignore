@@ -66,3 +66,11 @@ platform-tools-latest-windows.zip
 /jdk17.zip
 /out.txt
 /out_debug.txt
+
+# Temporary scripts and assets
+AppIcons(1)/
+CropImage.java
+crop_image.py
+modify.py
+icon_cropped.png
+err.txt
