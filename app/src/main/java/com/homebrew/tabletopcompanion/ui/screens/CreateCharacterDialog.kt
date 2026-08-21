@@ -186,6 +186,7 @@ fun CreateCharacterDialog(
                     )
 
                     OutlinedTextField(
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         value = name,
                         onValueChange = { name = it; errorMessage = null },
                         label = { Text("Character Name") },
@@ -199,6 +200,7 @@ fun CreateCharacterDialog(
                     )
 
                     OutlinedTextField(
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         value = race,
                         onValueChange = { race = it; errorMessage = null },
                         label = { Text("Race") },
@@ -221,7 +223,7 @@ fun CreateCharacterDialog(
                             }
                         },
                         label = { Text("Level") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(

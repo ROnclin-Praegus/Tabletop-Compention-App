@@ -72,6 +72,7 @@ fun AddNoteDialog(
                 ) {
                     // Note Title
                     OutlinedTextField(
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         value = title,
                         onValueChange = { title = it; errorMessage = null },
                         label = { Text("Note Title") },
@@ -86,6 +87,7 @@ fun AddNoteDialog(
 
                     // Note Tag
                     OutlinedTextField(
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         value = tag,
                         onValueChange = { tag = it },
                         label = { Text("Tag / Category") },
@@ -135,6 +137,7 @@ fun AddNoteDialog(
                     OutlinedTextField(
                         value = content,
                         onValueChange = { content = it },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences),
                         label = { Text("Note Details & Content") },
                         placeholder = { Text("Write your notes here...") },
                         minLines = 4,
