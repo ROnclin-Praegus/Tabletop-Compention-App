@@ -935,13 +935,13 @@
         <label>Damage Type</label>
         <div style="display:flex; flex-direction:column; gap:6px;">
           <label class="damage-option">
-            <input type="radio" name="dmgType" value="physical" checked> 🛡️ Physical (Absorbed by Armor first)
+            <input autocapitalize="sentences" type="radio" name="dmgType" value="physical" checked> 🛡️ Physical (Absorbed by Armor first)
           </label>
           <label class="damage-option">
-            <input type="radio" name="dmgType" value="magical"> ✨ Magical (Absorbed by Ward Save first)
+            <input autocapitalize="sentences" type="radio" name="dmgType" value="magical"> ✨ Magical (Absorbed by Ward Save first)
           </label>
           <label class="damage-option" style="color:var(--crimson-primary);">
-            <input type="radio" name="dmgType" value="unsaveable"> 💥 Unsaveable (Bypasses Armor/Ward, Direct on HP)
+            <input autocapitalize="sentences" type="radio" name="dmgType" value="unsaveable"> 💥 Unsaveable (Bypasses Armor/Ward, Direct on HP)
           </label>
         </div>
       </div>
@@ -992,7 +992,7 @@
       
       <div class="form-group">
         <label>Effect Name</label>
-        <input id="effectInputName" class="form-input" placeholder="e.g. Poison, Berserk, Mage Shield">
+        <input autocapitalize="sentences" id="effectInputName" class="form-input" placeholder="e.g. Poison, Berserk, Mage Shield">
       </div>
 
       <div class="form-group">
@@ -1063,11 +1063,11 @@
 
       <div class="form-group">
         <label>Name</label>
-        <input id="inputName" class="form-input" placeholder="e.g. Ignis Firebrand">
+        <input autocapitalize="sentences" id="inputName" class="form-input" placeholder="e.g. Ignis Firebrand">
       </div>
       <div style="margin-bottom:12px;">
         <div style="font-weight:bold; font-size:12px; margin-bottom:6px; color:var(--gold-accent);">RACE</div>
-        <input id="inputRace" class="form-input" placeholder="e.g. Dragonkin">
+        <input autocapitalize="sentences" id="inputRace" class="form-input" placeholder="e.g. Dragonkin">
       </div>
 
       <div style="margin-bottom:12px;">
@@ -1121,14 +1121,14 @@
       <h2 id="addItemModalTitle">ADD ITEM</h2>
       <div class="form-group">
         <label>Item Name</label>
-        <input id="itemInputName" class="form-input" placeholder="e.g. Dragon Armor, Flame Sword">
+        <input autocapitalize="sentences" id="itemInputName" class="form-input" placeholder="e.g. Dragon Armor, Flame Sword">
       </div>
       <div class="form-group">
         <label>Category / Type (Freeform)</label>
-        <input id="itemInputCategory" class="form-input" placeholder="e.g. Weapon, Armor, Shield, Potion, Scroll...">
+        <input autocapitalize="sentences" id="itemInputCategory" class="form-input" placeholder="e.g. Weapon, Armor, Shield, Potion, Scroll...">
       </div>
 
-      <div class="form-group">
+      <div class="form-group" id="itemEquippedBlock">
         <label>Equipped Status</label>
         <select id="itemInputEquipped" class="form-input">
           <option value="true">Equipped (Goes to Equipment)</option>
@@ -1177,18 +1177,27 @@
           </div>
           <div style="flex:1;">
             <label style="color:var(--gold-accent);">Damage per Attack</label>
-            <input id="itemInputAttackDamage" class="form-input" placeholder="e.g. 1d8+2, 10">
+            <input autocapitalize="sentences" id="itemInputAttackDamage" class="form-input" placeholder="e.g. 1d8+2, 10">
           </div>
         </div>
       </div>
 
+      
+      <!-- CHECKBOX 6: IS CONSUMABLE? -->
+      <label class="checkbox-row" style="color:var(--blue-mp);">
+        <input type="checkbox" id="chkIsConsumable" onchange="toggleItemFormSections()"> Is Consumable?
+      </label>
+      <div id="consumableInputBlock" class="form-group hidden">
+        <label style="color:var(--blue-mp);">Consumable Amount</label>
+        <input id="itemInputConsumableAmount" type="number" class="form-input" value="1">
+      </div>
       <!-- CHECKBOX 5: SPECIAL EFFECTS? -->
       <label class="checkbox-row" style="color:var(--cyan-accent);">
         <input type="checkbox" id="chkHasSpecialEffects" onchange="toggleItemFormSections()"> Special Effects?
       </label>
       <div id="specialEffectsInputBlock" class="form-group hidden">
         <label style="color:var(--cyan-accent);">Special Effects Description (Freeform)</label>
-        <input id="itemInputSpecialEffects" class="form-input" placeholder="e.g. Ignores resistance, +2 stealth...">
+        <input autocapitalize="sentences" id="itemInputSpecialEffects" class="form-input" placeholder="e.g. Ignores resistance, +2 stealth...">
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
@@ -1204,7 +1213,7 @@
       <h2 id="addAbilityModalTitle">ADD ABILITY</h2>
       <div class="form-group">
         <label>Ability Name</label>
-        <input id="abilityInputName" class="form-input" placeholder="e.g. Fireball, Whirlwind, Holy Heal">
+        <input autocapitalize="sentences" id="abilityInputName" class="form-input" placeholder="e.g. Fireball, Whirlwind, Holy Heal">
       </div>
 
       <div class="form-group">
@@ -1242,12 +1251,12 @@
       <h2 id="addNoteModalTitle">ADD NOTE</h2>
       <div class="form-group">
         <label>Note Title</label>
-        <input id="noteInputTitle" class="form-input" placeholder="e.g. Goblin King's Secret, Quest Log">
+        <input autocapitalize="sentences" id="noteInputTitle" class="form-input" placeholder="e.g. Goblin King's Secret, Quest Log">
       </div>
 
       <div class="form-group">
         <label>Tag / Category</label>
-        <input id="noteInputTag" class="form-input" placeholder="e.g. Quest, NPC, Lore, Secret">
+        <input autocapitalize="sentences" id="noteInputTag" class="form-input" placeholder="e.g. Quest, NPC, Lore, Secret">
       </div>
 
       <div class="form-group">
@@ -2384,88 +2393,211 @@
     function renderEquipmentScreen() {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
-
       const container = document.getElementById('equipmentList');
       const equippedItems = (c.inventory || []).filter(i => i.isEquipped);
-
       if (equippedItems.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">🛡️</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">No Equipped Items</div><div style="font-size:14px;">Equip items from your Inventory tab, or tap '+ ADD ITEM'!</div></div>`;
         return;
       }
-
-      container.innerHTML = equippedItems.map(item => `
-        <div class="item-card equipped">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <span style="font-weight:bold; font-size:15px;">${item.name}</span>
-              <span style="font-size:10px; font-weight:bold; color:var(--gold-accent); background:var(--surface-variant); padding:2px 6px; border-radius:4px; margin-left:6px;">${item.category.toUpperCase()}</span>
-            </div>
-            <div>
-              <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', true)">🔼</button>
-              <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', true)">🔽</button>
-              <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
-              <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
-            </div>
-          </div>
-
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
-            ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
-            ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
-          </div>
-
-          ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
-          ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}
-
-          <button class="prompt-btn" style="background:rgba(229, 57, 53, 0.15); color:var(--crimson-primary);" onclick="toggleEquip('${item.id}')">
-            ✖ UNEQUIP (MOVE TO INVENTORY)
-          </button>
-        </div>
-      `).join('');
+      const grouped = {};
+      equippedItems.forEach(item => {
+        const cat = item.category || 'Misc';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(item);
+      });
+      const categories = c.equipmentCategoryOrder || Object.keys(grouped).sort();
+      c.equipmentCategoryOrder = categories; // save it back
+      
+      let htmlStr = '';
+      categories.forEach((cat, catIdx) => {
+        const items = grouped[cat];
+        if (!items || items.length === 0) return;
+        
+        const isCollapsed = c.equipmentCategoryCollapsed && c.equipmentCategoryCollapsed[cat];
+        
+        htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
+        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('equipment', '${cat}')">`;
+        htmlStr += `  <div style="font-weight:bold; color:var(--gold-accent);">`;
+        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${cat.toUpperCase()} (${items.length})`;
+        htmlStr += `  </div>`;
+        htmlStr += `  <div style="display:flex; gap:8px;" onclick="event.stopPropagation()">`;
+        if (catIdx > 0) {
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', '${cat}', 'up')">🔼</button>`;
+        }
+        if (catIdx < categories.length - 1) {
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', '${cat}', 'down')">🔽</button>`;
+        }
+        htmlStr += `  </div>`;
+        htmlStr += `</div>`;
+        
+        if (!isCollapsed) {
+          htmlStr += `<div class="category-items" style="margin-top:8px;">`;
+          items.forEach(item => {
+            htmlStr += `
+            <div class="item-card equipped">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <span style="font-weight:bold; font-size:15px;">${item.name}</span>
+                </div>
+                <div>
+                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', true)">🔼</button>
+                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', true)">🔽</button>
+                  <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
+                  <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
+                </div>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
+                ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
+                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
+              </div>
+              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
+              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}
+              <button class="prompt-btn" style="background:rgba(229, 57, 53, 0.15); color:var(--crimson-primary);" onclick="toggleEquip('${item.id}')">✖ UNEQUIP (MOVE TO INVENTORY)</button>
+            </div>`;
+          });
+          htmlStr += `</div>`;
+        }
+        htmlStr += `</div>`;
+      });
+      container.innerHTML = htmlStr;
     }
 
     /* INVENTORY TAB */
     function renderInventoryScreen() {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
-
       const container = document.getElementById('inventoryList');
       const unequippedItems = (c.inventory || []).filter(i => !i.isEquipped);
-
       if (unequippedItems.length === 0) {
         container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">🎒</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">Inventory is Empty</div><div style="font-size:14px;">Unequip items from Equipment, or tap '+ ADD ITEM'!</div></div>`;
         return;
       }
+      const grouped = {};
+      unequippedItems.forEach(item => {
+        const cat = item.category || 'Misc';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(item);
+      });
+      const categories = c.inventoryCategoryOrder || Object.keys(grouped).sort();
+      c.inventoryCategoryOrder = categories; 
+      
+      let htmlStr = '';
+      categories.forEach((cat, catIdx) => {
+        const items = grouped[cat];
+        if (!items || items.length === 0) return;
+        
+        const isCollapsed = c.inventoryCategoryCollapsed && c.inventoryCategoryCollapsed[cat];
+        
+        htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
+        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('inventory', '${cat}')">`;
+        htmlStr += `  <div style="font-weight:bold; color:var(--text-secondary);">`;
+        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${cat.toUpperCase()} (${items.length})`;
+        htmlStr += `  </div>`;
+        htmlStr += `  <div style="display:flex; gap:8px;" onclick="event.stopPropagation()">`;
+        if (catIdx > 0) {
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', '${cat}', 'up')">🔼</button>`;
+        }
+        if (catIdx < categories.length - 1) {
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', '${cat}', 'down')">🔽</button>`;
+        }
+        htmlStr += `  </div>`;
+        htmlStr += `</div>`;
+        
+        if (!isCollapsed) {
+          htmlStr += `<div class="category-items" style="margin-top:8px;">`;
+          items.forEach(item => {
+            htmlStr += `
+            <div class="item-card">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <span style="font-weight:bold; font-size:15px;">${item.name}</span>
+                </div>
+                <div>
+                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', false)">🔼</button>
+                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', false)">🔽</button>
+                  <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
+                  <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
+                </div>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
+                ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
+                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
+              </div>
+              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
+              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}`;
+              
+              if (item.isConsumable) {
+                htmlStr += `<div style="display:flex; align-items:center; gap:8px; margin-top:8px;">`;
+                htmlStr += `  <button class="prompt-btn" style="width:auto; padding:4px 12px; background:var(--surface-variant);" onclick="adjustConsumable('${item.id}', -1)">-</button>`;
+                htmlStr += `  <span style="font-weight:bold;">${item.consumableAmount}</span>`;
+                htmlStr += `  <button class="prompt-btn" style="width:auto; padding:4px 12px; background:var(--surface-variant);" onclick="adjustConsumable('${item.id}', 1)">+</button>`;
+                htmlStr += `</div>`;
+              } else {
+                htmlStr += `<button class="prompt-btn" style="background:rgba(76, 175, 80, 0.15); color:var(--green-hp);" onclick="toggleEquip('${item.id}')">✓ EQUIP (MOVE TO EQUIPMENT)</button>`;
+              }
+            htmlStr += `</div>`;
+          });
+          htmlStr += `</div>`;
+        }
+        htmlStr += `</div>`;
+      });
+      container.innerHTML = htmlStr;
+    }
 
-      container.innerHTML = unequippedItems.map(item => `
-        <div class="item-card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <span style="font-weight:bold; font-size:15px;">${item.name}</span>
-              <span style="font-size:10px; font-weight:bold; color:var(--text-secondary); background:var(--surface-variant); padding:2px 6px; border-radius:4px; margin-left:6px;">${item.category.toUpperCase()}</span>
-            </div>
-            <div>
-              <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', false)">🔼</button>
-              <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', false)">🔽</button>
-              <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
-              <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
-            </div>
-          </div>
+    
+    function moveCategory(type, catName, direction) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      let orderList = (type === 'equipment') ? c.equipmentCategoryOrder : c.inventoryCategoryOrder;
+      if (!orderList) return;
+      const idx = orderList.indexOf(catName);
+      if (idx < 0) return;
+      
+      if (direction === 'up' && idx > 0) {
+        const temp = orderList[idx];
+        orderList[idx] = orderList[idx - 1];
+        orderList[idx - 1] = temp;
+      } else if (direction === 'down' && idx < orderList.length - 1) {
+        const temp = orderList[idx];
+        orderList[idx] = orderList[idx + 1];
+        orderList[idx + 1] = temp;
+      }
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
 
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
-            ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
-            ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
-          </div>
-
-          ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
-          ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}
-
-          <button class="prompt-btn" style="background:rgba(76, 175, 80, 0.15); color:var(--green-hp);" onclick="toggleEquip('${item.id}')">
-            ✓ EQUIP (MOVE TO EQUIPMENT)
-          </button>
-        </div>
-      `).join('');
+    function toggleCategoryCollapse(type, catName) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      if (type === 'equipment') {
+        if (!c.equipmentCategoryCollapsed) c.equipmentCategoryCollapsed = {};
+        c.equipmentCategoryCollapsed[catName] = !c.equipmentCategoryCollapsed[catName];
+      } else {
+        if (!c.inventoryCategoryCollapsed) c.inventoryCategoryCollapsed = {};
+        c.inventoryCategoryCollapsed[catName] = !c.inventoryCategoryCollapsed[catName];
+      }
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+    
+    function adjustConsumable(itemId, amount) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.inventory) return;
+      const item = c.inventory.find(i => i.id === itemId);
+      if (item && item.isConsumable) {
+        item.consumableAmount += amount;
+        if (item.consumableAmount <= 0) {
+            item.consumableAmount = 0;
+            if (confirm(`Consumable depleted! Do you want to delete ${item.name}?`)) {
+                deleteItem(item.id);
+                return;
+            }
+        }
+        saveData();
+        switchSessionTab(currentSessionTab);
+      }
     }
 
     function toggleEquip(itemId) {
@@ -2501,6 +2633,7 @@
       const modifiesStats = document.getElementById('chkModifiesStats').checked;
       const hasAttacks = document.getElementById('chkHasAttacks').checked;
       const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
+      const isConsumable = document.getElementById('chkIsConsumable').checked;
 
       if (hasArmor) document.getElementById('armorInputBlock').classList.remove('hidden');
       else document.getElementById('armorInputBlock').classList.add('hidden');
@@ -2520,6 +2653,15 @@
 
       if (hasSpecialEffects) document.getElementById('specialEffectsInputBlock').classList.remove('hidden');
       else document.getElementById('specialEffectsInputBlock').classList.add('hidden');
+
+      if (isConsumable) {
+        document.getElementById('consumableInputBlock').classList.remove('hidden');
+        document.getElementById('itemEquippedBlock').classList.add('hidden');
+        document.getElementById('itemInputEquipped').value = 'false';
+      } else {
+        document.getElementById('consumableInputBlock').classList.add('hidden');
+        document.getElementById('itemEquippedBlock').classList.remove('hidden');
+      }
     }
 
     function renderStatModSteppers() {
@@ -2545,24 +2687,30 @@
 
     function openAddItemModal() {
       editingItemId = null;
-      tempStatMods = { ...defaultStats };
-      document.getElementById('addItemModalTitle').innerText = (currentSessionTab === 'equipment') ? 'ADD TO EQUIPMENT' : 'ADD TO INVENTORY';
-      document.getElementById('addItemModalSaveBtn').innerText = 'SAVE ITEM';
+      document.getElementById('addItemModalTitle').innerText = 'ADD ITEM';
+      
       document.getElementById('itemInputName').value = '';
       document.getElementById('itemInputCategory').value = '';
-      document.getElementById('itemInputEquipped').value = (currentSessionTab === 'equipment') ? 'true' : 'false';
+      document.getElementById('itemInputEquipped').value = 'true';
 
       document.getElementById('chkHasArmor').checked = false;
-      document.getElementById('chkHasWard').checked = false;
-      document.getElementById('chkModifiesStats').checked = false;
-      document.getElementById('chkHasAttacks').checked = false;
-      document.getElementById('chkHasSpecialEffects').checked = false;
-
       document.getElementById('itemInputArmorSave').value = '0';
+
+      document.getElementById('chkHasWard').checked = false;
       document.getElementById('itemInputWardSave').value = '0';
+
+      document.getElementById('chkModifiesStats').checked = false;
+      tempStatMods = {};
+
+      document.getElementById('chkHasAttacks').checked = false;
       document.getElementById('itemInputAttackCount').value = '1';
       document.getElementById('itemInputAttackDamage').value = '';
+
+      document.getElementById('chkHasSpecialEffects').checked = false;
       document.getElementById('itemInputSpecialEffects').value = '';
+
+      document.getElementById('chkIsConsumable').checked = false;
+      document.getElementById('itemInputConsumableAmount').value = '1';
 
       toggleItemFormSections();
       document.getElementById('addItemModal').classList.remove('hidden');
@@ -2574,29 +2722,34 @@
       const item = c.inventory.find(i => i.id === itemId);
       if (!item) return;
 
-      editingItemId = itemId;
-      tempStatMods = { ...defaultStats, ...(item.statModifiers || {}) };
-
+      editingItemId = item.id;
       document.getElementById('addItemModalTitle').innerText = 'EDIT ITEM';
-      document.getElementById('addItemModalSaveBtn').innerText = 'SAVE CHANGES';
-      document.getElementById('itemInputName').value = item.name;
-      document.getElementById('itemInputCategory').value = item.category || 'Weapon';
+      
+      document.getElementById('itemInputName').value = item.name || '';
+      document.getElementById('itemInputCategory').value = item.category || '';
       document.getElementById('itemInputEquipped').value = item.isEquipped ? 'true' : 'false';
 
-      document.getElementById('chkHasArmor').checked = !!item.hasArmor || (item.armorSave > 0);
+      document.getElementById('chkHasArmor').checked = item.hasArmor || false;
       document.getElementById('itemInputArmorSave').value = item.armorSave || 0;
 
-      document.getElementById('chkHasWard').checked = !!item.hasWard || (item.wardSave > 0);
+      document.getElementById('chkHasWard').checked = item.hasWard || false;
       document.getElementById('itemInputWardSave').value = item.wardSave || 0;
 
-      document.getElementById('chkModifiesStats').checked = !!item.hasStatModifiers || (Object.values(item.statModifiers || {}).some(v => v !== 0));
+      document.getElementById('chkModifiesStats').checked = item.hasStatModifiers || false;
+      tempStatMods = {};
+      if (item.statModifiers) {
+        Object.assign(tempStatMods, item.statModifiers);
+      }
 
-      document.getElementById('chkHasAttacks').checked = !!item.hasAttacks;
+      document.getElementById('chkHasAttacks').checked = item.hasAttacks || false;
       document.getElementById('itemInputAttackCount').value = item.attackCount || 1;
       document.getElementById('itemInputAttackDamage').value = item.attackDamage || '';
 
-      document.getElementById('chkHasSpecialEffects').checked = !!item.hasSpecialEffects;
+      document.getElementById('chkHasSpecialEffects').checked = item.hasSpecialEffects || false;
       document.getElementById('itemInputSpecialEffects').value = item.specialEffectsText || '';
+
+      document.getElementById('chkIsConsumable').checked = item.isConsumable || false;
+      document.getElementById('itemInputConsumableAmount').value = item.consumableAmount || 1;
 
       toggleItemFormSections();
       document.getElementById('addItemModal').classList.remove('hidden');
@@ -2637,6 +2790,9 @@
       const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
       const specialEffectsText = hasSpecialEffects ? document.getElementById('itemInputSpecialEffects').value.trim() : '';
 
+      const isConsumable = document.getElementById('chkIsConsumable').checked;
+      const consumableAmount = isConsumable ? (parseInt(document.getElementById('itemInputConsumableAmount').value) || 1) : 0;
+
       if (!name) { alert("Please enter an item name"); return; }
 
       adjustVitalsOnMaxChange(c, () => {
@@ -2648,20 +2804,28 @@
             item.name = name;
             item.category = category;
             item.isEquipped = isEquipped;
+            
             item.hasArmor = hasArmor;
             item.armorSave = armorSave;
+            
             item.hasWard = hasWard;
             item.wardSave = wardSave;
+            
             item.hasStatModifiers = hasStatModifiers;
             item.statModifiers = statModifiers;
+            
             item.hasAttacks = hasAttacks;
             item.attackCount = attackCount;
             item.attackDamage = attackDamage;
+            
             item.hasSpecialEffects = hasSpecialEffects;
             item.specialEffectsText = specialEffectsText;
+
+            item.isConsumable = isConsumable;
+            item.consumableAmount = consumableAmount;
           }
         } else {
-          c.inventory.unshift({
+          const newItem = {
             id: Date.now().toString(),
             name,
             category,
@@ -2676,10 +2840,21 @@
             attackCount,
             attackDamage,
             hasSpecialEffects,
-            specialEffectsText
-          });
+            specialEffectsText,
+            isConsumable,
+            consumableAmount
+          };
+          c.inventory.push(newItem);
+          
+          if (isEquipped) {
+            if (!c.equipmentCategoryOrder) c.equipmentCategoryOrder = [];
+            if (!c.equipmentCategoryOrder.includes(category)) c.equipmentCategoryOrder.push(category);
+          } else {
+            if (!c.inventoryCategoryOrder) c.inventoryCategoryOrder = [];
+            if (!c.inventoryCategoryOrder.includes(category)) c.inventoryCategoryOrder.push(category);
+          }
         }
-
+        
         c.currentArmor = null;
         c.currentWard = null;
       });
@@ -2933,13 +3108,17 @@
       
       let list = c[arrayName];
       let indices = [];
-      if (isEquippedOnly !== null) {
-        list.forEach((item, index) => {
-          if (item.isEquipped === isEquippedOnly) indices.push(index);
-        });
-      } else {
-        indices = list.map((_, i) => i);
-      }
+      const itemToMove = list.find(i => i.id === id);
+      if (!itemToMove) return;
+      const category = itemToMove.category;
+      
+      list.forEach((item, index) => {
+        if (isEquippedOnly !== null) {
+          if (item.isEquipped === isEquippedOnly && item.category === category) indices.push(index);
+        } else {
+          if (item.category === category) indices.push(index);
+        }
+      });
       
       const targetIdxInIndices = indices.findIndex(idx => list[idx].id === id);
       if (targetIdxInIndices < 0) return;

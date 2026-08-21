@@ -84,6 +84,7 @@ fun AddEffectDialog(
                 ) {
                     // Effect Name
                     OutlinedTextField(
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         value = name,
                         onValueChange = { name = it; errorMessage = null },
                         label = { Text("Effect Name") },
@@ -279,7 +280,7 @@ fun AddEffectDialog(
                         onValueChange = { roundsText = it.filter { c -> c.isDigit() } },
                         label = { Text("Rounds (0 = Permanent / Unlimited)") },
                         placeholder = { Text("0 for unlimited, or 1, 2, 3...") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(

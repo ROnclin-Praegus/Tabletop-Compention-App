@@ -18,5 +18,7 @@ data class EquipmentItem(
     val attackDamage: String = "",
     val hasSpecialEffects: Boolean = false,
     val specialEffectsText: String = "",
-    val customProperties: Map<String, String> = emptyMap()
+    val customProperties: Map<String, String> = emptyMap(),
+    val isConsumable: Boolean = false,
+    val consumableAmount: Int = 1
 )

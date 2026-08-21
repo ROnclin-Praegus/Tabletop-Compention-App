@@ -62,6 +62,8 @@ fun UseCharacterScreen(
     // Dialog states
     var pendingAdjustmentType by remember { mutableStateOf<AdjustmentType?>(null) }
     var showAddEquipmentDialog by remember { mutableStateOf(false) }
+    var collapsedEquippedCategories by remember { mutableStateOf(setOf<String>()) }
+    var collapsedUnequippedCategories by remember { mutableStateOf(setOf<String>()) }
     var showEditCharacterDialog by remember { mutableStateOf(false) }
     var showAddEffectDialog by remember { mutableStateOf(false) }
     var showAddAbilityDialog by remember { mutableStateOf(false) }
@@ -495,7 +497,8 @@ fun UseCharacterScreen(
 
     fun moveInventoryItem(itemId: String, direction: Int, isEquippedOnly: Boolean) {
         val list = activeCharacter.inventory.toMutableList()
-        val indices = list.mapIndexedNotNull { i, item -> if (item.isEquipped == isEquippedOnly) i else null }
+        val itemCategory = list.find { it.id == itemId }?.category ?: return
+        val indices = list.mapIndexedNotNull { i, item -> if (item.isEquipped == isEquippedOnly && item.category == itemCategory) i else null }
         val targetIdxInIndices = indices.indexOfFirst { list[it].id == itemId }
 
         if (targetIdxInIndices >= 0) {
@@ -511,6 +514,43 @@ fun UseCharacterScreen(
                 val temp = list[idx1]
                 list[idx1] = list[idx2]
                 list[idx2] = temp
+            }
+            applyCharacterUpdateWithVitalsDelta { char ->
+                char.copy(inventory = list)
+            }
+        }
+    }
+
+    fun moveInventoryCategory(category: String, direction: Int, isEquippedOnly: Boolean) {
+        val list = activeCharacter.inventory.toMutableList()
+        val categories = list.filter { it.isEquipped == isEquippedOnly }.map { it.category }.distinct()
+        val catIndex = categories.indexOf(category)
+        
+        if (catIndex >= 0) {
+            val newOrder = categories.toMutableList()
+            if (direction < 0 && catIndex > 0) {
+                val other = newOrder[catIndex - 1]
+                newOrder[catIndex - 1] = category
+                newOrder[catIndex] = other
+            } else if (direction > 0 && catIndex < categories.size - 1) {
+                val other = newOrder[catIndex + 1]
+                newOrder[catIndex + 1] = category
+                newOrder[catIndex] = other
+            } else {
+                return
+            }
+            
+            val oldItems = list.filter { it.isEquipped == isEquippedOnly }
+            val reorderedItems = mutableListOf<EquipmentItem>()
+            for (cat in newOrder) {
+                reorderedItems.addAll(oldItems.filter { it.category == cat })
+            }
+            
+            var reorderIdx = 0
+            for (i in list.indices) {
+                if (list[i].isEquipped == isEquippedOnly) {
+                    list[i] = reorderedItems[reorderIdx++]
+                }
             }
             applyCharacterUpdateWithVitalsDelta { char ->
                 char.copy(inventory = list)
@@ -1189,15 +1229,38 @@ fun UseCharacterScreen(
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            items(equippedItems, key = { it.id }) { item ->
-                                EquipmentItemCard(
-                                    item = item,
-                                    onEdit = { itemToEdit = item },
-                                    onToggleEquip = { toggleEquipItem(item.id) },
-                                    onDelete = { deleteItem(item.id) },
-                                    onMoveUp = { moveInventoryItem(item.id, -1, true) },
-                                    onMoveDown = { moveInventoryItem(item.id, 1, true) }
-                                )
+                            val groupedEquipped = equippedItems.groupBy { it.category }
+                            for (category in groupedEquipped.keys) {
+                                val isCollapsed = collapsedEquippedCategories.contains(category)
+                                item(key = "header_equip_$category") {
+                                    CategoryHeader(
+                                        categoryName = category,
+                                        isExpanded = !isCollapsed,
+                                        onToggleExpand = {
+                                            collapsedEquippedCategories = if (isCollapsed) {
+                                                collapsedEquippedCategories - category
+                                            } else {
+                                                collapsedEquippedCategories + category
+                                            }
+                                        },
+                                        onMoveUp = { moveInventoryCategory(category, -1, true) },
+                                        onMoveDown = { moveInventoryCategory(category, 1, true) }
+                                    )
+                                }
+                                if (!isCollapsed) {
+                                    val itemsInCategory = groupedEquipped[category]!!
+                                    items(itemsInCategory, key = { it.id }) { item ->
+                                        EquipmentItemCard(
+                                            item = item,
+                                            onEdit = { itemToEdit = item },
+                                            onToggleEquip = { toggleEquipItem(item.id) },
+                                            onDelete = { deleteItem(item.id) },
+                                            onMoveUp = { moveInventoryItem(item.id, -1, true) },
+                                            onMoveDown = { moveInventoryItem(item.id, 1, true) },
+                                            onUpdateConsumable = { amount -> updateItem(item.copy(consumableAmount = amount)) }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1243,15 +1306,38 @@ fun UseCharacterScreen(
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            items(unequippedItems, key = { it.id }) { item ->
-                                EquipmentItemCard(
-                                    item = item,
-                                    onEdit = { itemToEdit = item },
-                                    onToggleEquip = { toggleEquipItem(item.id) },
-                                    onDelete = { deleteItem(item.id) },
-                                    onMoveUp = { moveInventoryItem(item.id, -1, false) },
-                                    onMoveDown = { moveInventoryItem(item.id, 1, false) }
-                                )
+                            val groupedUnequipped = unequippedItems.groupBy { it.category }
+                            for (category in groupedUnequipped.keys) {
+                                val isCollapsed = collapsedUnequippedCategories.contains(category)
+                                item(key = "header_inv_$category") {
+                                    CategoryHeader(
+                                        categoryName = category,
+                                        isExpanded = !isCollapsed,
+                                        onToggleExpand = {
+                                            collapsedUnequippedCategories = if (isCollapsed) {
+                                                collapsedUnequippedCategories - category
+                                            } else {
+                                                collapsedUnequippedCategories + category
+                                            }
+                                        },
+                                        onMoveUp = { moveInventoryCategory(category, -1, false) },
+                                        onMoveDown = { moveInventoryCategory(category, 1, false) }
+                                    )
+                                }
+                                if (!isCollapsed) {
+                                    val itemsInCategory = groupedUnequipped[category]!!
+                                    items(itemsInCategory, key = { it.id }) { item ->
+                                        EquipmentItemCard(
+                                            item = item,
+                                            onEdit = { itemToEdit = item },
+                                            onToggleEquip = { toggleEquipItem(item.id) },
+                                            onDelete = { deleteItem(item.id) },
+                                            onMoveUp = { moveInventoryItem(item.id, -1, false) },
+                                            onMoveDown = { moveInventoryItem(item.id, 1, false) },
+                                            onUpdateConsumable = { amount -> updateItem(item.copy(consumableAmount = amount)) }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1454,7 +1540,7 @@ fun UseCharacterScreen(
                         label = { Text("Gold Amount") },
                         placeholder = { Text("Enter amount e.g. 50") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = GoldAccent,
                             unfocusedBorderColor = TextSecondary
@@ -1782,7 +1868,7 @@ fun UseCharacterScreen(
                         onValueChange = { damageAmountInput = it.filter { c -> c.isDigit() } },
                         label = { Text("Damage Amount") },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = CrimsonPrimary,
                             unfocusedBorderColor = TextSecondary
@@ -1837,7 +1923,7 @@ fun UseCharacterScreen(
                             onValueChange = { amountInput = it.filter { c -> c.isDigit() } },
                             label = { Text("Boost HP Amount") },
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = GoldAccent,
                                 unfocusedBorderColor = TextSecondary
@@ -1851,7 +1937,7 @@ fun UseCharacterScreen(
                             label = { Text("Duration in Turns (0 = Unlimited)") },
                             placeholder = { Text("0 for unlimited, or 1, 2, 3...") },
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = GoldAccent,
                                 unfocusedBorderColor = TextSecondary
@@ -1935,7 +2021,7 @@ fun UseCharacterScreen(
                             onValueChange = { amountInput = it.filter { c -> c.isDigit() } },
                             label = { Text("Amount") },
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = actionColor,
                                 unfocusedBorderColor = TextSecondary
@@ -2191,6 +2277,49 @@ fun EffectItemRow(
     }
 }
 
+@Composable
+fun CategoryHeader(
+    categoryName: String,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggleExpand)
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                contentDescription = if (isExpanded) "Collapse" else "Expand",
+                tint = GoldAccent,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = categoryName.uppercase(),
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 18.sp,
+                color = GoldAccent
+            )
+        }
+        Row {
+            IconButton(onClick = onMoveUp, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Category Up", tint = TextSecondary, modifier = Modifier.size(20.dp))
+            }
+            IconButton(onClick = onMoveDown, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Category Down", tint = TextSecondary, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+    androidx.compose.material3.HorizontalDivider(color = GoldAccent.copy(alpha = 0.3f), thickness = 1.dp)
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EquipmentItemCard(
@@ -2199,8 +2328,28 @@ fun EquipmentItemCard(
     onToggleEquip: () -> Unit,
     onDelete: () -> Unit,
     onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    onMoveDown: () -> Unit,
+    onUpdateConsumable: (Int) -> Unit = {}
 ) {
+    var showDeletePrompt by remember { mutableStateOf(false) }
+
+    if (showDeletePrompt) {
+        AlertDialog(
+            onDismissRequest = { showDeletePrompt = false },
+            title = { Text("Delete Consumable?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text("Amount reached 0. Do you want to delete ${item.name} from your inventory?") },
+            confirmButton = {
+                Button(
+                    onClick = { showDeletePrompt = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary, contentColor = TextPrimary)
+                ) { Text("DELETE", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePrompt = false }) { Text("CANCEL", color = TextSecondary) }
+            },
+            containerColor = DarkSurface
+        )
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -2362,27 +2511,66 @@ fun EquipmentItemCard(
                 }
             }
 
-            // Equip / Unequip Action Button
-            Button(
-                onClick = onToggleEquip,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (item.isEquipped) CrimsonPrimary.copy(alpha = 0.2f) else GreenHp.copy(alpha = 0.2f),
-                    contentColor = if (item.isEquipped) CrimsonPrimary else GreenHp
-                ),
-                border = androidx.compose.foundation.BorderStroke(1.dp, if (item.isEquipped) CrimsonPrimary else GreenHp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = if (item.isEquipped) Icons.Default.RemoveCircleOutline else Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = if (item.isEquipped) "UNEQUIP (MOVE TO INVENTORY)" else "EQUIP (MOVE TO EQUIPMENT)",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp
-                )
+            // Equip / Unequip / Consumable Action Button
+            if (!item.isEquipped && item.isConsumable) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Amount: ${item.consumableAmount}", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Row {
+                        Button(
+                            onClick = { 
+                                val newAmount = item.consumableAmount - 1
+                                if (newAmount <= 0) {
+                                    onUpdateConsumable(0)
+                                    showDeletePrompt = true
+                                } else {
+                                    onUpdateConsumable(newAmount)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary.copy(alpha = 0.2f), contentColor = CrimsonPrimary),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, CrimsonPrimary),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { onUpdateConsumable(item.consumableAmount + 1) },
+                            colors = ButtonDefaults.buttonColors(containerColor = GreenHp.copy(alpha = 0.2f), contentColor = GreenHp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, GreenHp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            } else {
+                Button(
+                    onClick = onToggleEquip,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (item.isEquipped) CrimsonPrimary.copy(alpha = 0.2f) else GreenHp.copy(alpha = 0.2f),
+                        contentColor = if (item.isEquipped) CrimsonPrimary else GreenHp
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, if (item.isEquipped) CrimsonPrimary else GreenHp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = if (item.isEquipped) Icons.Default.RemoveCircleOutline else Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (item.isEquipped) "UNEQUIP (MOVE TO INVENTORY)" else "EQUIP (MOVE TO EQUIPMENT)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                }
             }
         }
     }

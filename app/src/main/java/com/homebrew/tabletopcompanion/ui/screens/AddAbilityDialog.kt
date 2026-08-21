@@ -75,6 +75,7 @@ fun AddAbilityDialog(
                 ) {
                     // Ability Name
                     OutlinedTextField(
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         value = name,
                         onValueChange = { name = it; errorMessage = null },
                         label = { Text("Ability Name") },
@@ -122,6 +123,7 @@ fun AddAbilityDialog(
 
                     // Ability Description
                     OutlinedTextField(
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         value = description,
                         onValueChange = { description = it },
                         label = { Text("Description & Formula") },

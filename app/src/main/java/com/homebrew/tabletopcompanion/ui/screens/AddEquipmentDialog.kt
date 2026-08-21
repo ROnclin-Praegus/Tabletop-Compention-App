@@ -35,6 +35,8 @@ fun AddEquipmentDialog(
     var name by remember { mutableStateOf(itemToEdit?.name ?: "") }
     var category by remember { mutableStateOf(itemToEdit?.category ?: "Weapon") }
     var isEquipped by remember { mutableStateOf(itemToEdit?.isEquipped ?: initialIsEquipped) }
+    var isConsumable by remember { mutableStateOf(itemToEdit?.isConsumable ?: false) }
+    var consumableAmount by remember { mutableIntStateOf(itemToEdit?.consumableAmount ?: 1) }
 
     // Checkboxes
     var hasArmor by remember { mutableStateOf(itemToEdit?.let { it.hasArmor || it.armorSave > 0 } ?: false) }
@@ -107,6 +109,7 @@ fun AddEquipmentDialog(
                 ) {
                     // Item Name
                     OutlinedTextField(
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         value = name,
                         onValueChange = { name = it; errorMessage = null },
                         label = { Text("Item Name") },
@@ -121,6 +124,7 @@ fun AddEquipmentDialog(
 
                     // Category Selection (Freeform text field)
                     OutlinedTextField(
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                         value = category,
                         onValueChange = { category = it },
                         label = { Text("Category / Type (Freeform)") },
@@ -146,6 +150,39 @@ fun AddEquipmentDialog(
                             colors = SwitchDefaults.colors(checkedThumbColor = GoldAccent, checkedTrackColor = GoldAccent.copy(alpha = 0.4f))
                         )
                     }
+                    
+                    if (!isEquipped) {
+                        Divider(color = DarkSurfaceVariant, thickness = 1.dp)
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Checkbox(
+                                checked = isConsumable,
+                                onCheckedChange = { isConsumable = it },
+                                colors = CheckboxDefaults.colors(checkedColor = GoldAccent)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Is Consumable?", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GoldAccent)
+                        }
+                        
+                        if (isConsumable) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().padding(start = 12.dp)
+                            ) {
+                                Text("Amount:", color = TextSecondary, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                                IconButton(onClick = { if (consumableAmount > 1) consumableAmount-- }) {
+                                    Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = TextPrimary)
+                                }
+                                Text("$consumableAmount", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                                IconButton(onClick = { consumableAmount++ }) {
+                                    Icon(Icons.Default.Add, contentDescription = "Increase", tint = TextPrimary)
+                                }
+                            }
+                        }
+                    }
 
                     Divider(color = DarkSurfaceVariant, thickness = 1.dp)
 
@@ -169,7 +206,7 @@ fun AddEquipmentDialog(
                             onValueChange = { armorSaveText = it.filter { c -> c.isDigit() } },
                             label = { Text("Armor Points") },
                             placeholder = { Text("e.g. 5, 10") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -199,7 +236,7 @@ fun AddEquipmentDialog(
                             onValueChange = { wardSaveText = it.filter { c -> c.isDigit() } },
                             label = { Text("Ward Points") },
                             placeholder = { Text("e.g. 3, 5") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -263,7 +300,7 @@ fun AddEquipmentDialog(
                                 onValueChange = { attackCountText = it.filter { c -> c.isDigit() } },
                                 label = { Text("Attacks Count") },
                                 placeholder = { Text("e.g. 1, 2") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                                 singleLine = true,
                                 modifier = Modifier.weight(1f),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -272,6 +309,7 @@ fun AddEquipmentDialog(
                                 )
                             )
                             OutlinedTextField(
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                                 value = attackDamageText,
                                 onValueChange = { attackDamageText = it },
                                 label = { Text("Damage per Attack") },
@@ -302,6 +340,7 @@ fun AddEquipmentDialog(
 
                     if (hasSpecialEffects) {
                         OutlinedTextField(
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             value = specialEffectsText,
                             onValueChange = { specialEffectsText = it },
                             label = { Text("Special Effects Description (Freeform)") },
@@ -373,7 +412,9 @@ fun AddEquipmentDialog(
                                 attackCount = atkCount,
                                 attackDamage = atkDmg,
                                 hasSpecialEffects = hasSpecialEffects,
-                                specialEffectsText = specEffects
+                                specialEffectsText = specEffects,
+                                isConsumable = if (!isEquipped) isConsumable else false,
+                                consumableAmount = if (!isEquipped && isConsumable) consumableAmount else 1
                             )
                             onItemSaved(item)
                         },
