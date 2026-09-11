@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -41,8 +43,8 @@ import com.homebrew.tabletopcompanion.ui.theme.*
 
 enum class AdjustmentType {
     DAMAGE_PROMPT,
-    HEAL_HP,
-    BOOST_HP,
+    HEAL,
+    BOOST,
     SPEND_MP,
     RECOVER_MP
 }
@@ -55,6 +57,7 @@ fun UseCharacterScreen(
     onCharacterUpdated: (Character) -> Unit
 ) {
     var activeCharacter by remember { mutableStateOf(character) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // Active Tab state: 0 = Vitals, 1 = Abilities, 2 = Equipment, 3 = Inventory, 4 = Notes
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -104,6 +107,14 @@ fun UseCharacterScreen(
         var newBoostHp = activeCharacter.boostHp
         var newMaxBoostHp = activeCharacter.maxBoostHp
         var newBoostHpTurns = activeCharacter.boostHpTurns
+        
+        var newBoostArmor = activeCharacter.boostArmor
+        var newMaxBoostArmor = activeCharacter.maxBoostArmor
+        var newBoostArmorTurns = activeCharacter.boostArmorTurns
+        
+        var newBoostWard = activeCharacter.boostWard
+        var newMaxBoostWard = activeCharacter.maxBoostWard
+        var newBoostWardTurns = activeCharacter.boostWardTurns
 
         val expiredList = mutableListOf<String>()
 
@@ -198,6 +209,22 @@ fun UseCharacterScreen(
             newMaxBoostHp = 0
             expiredList.add("Boost HP duration has ended!")
         }
+        if (newBoostArmorTurns > 1) {
+            newBoostArmorTurns -= 1
+        } else if (newBoostArmorTurns == 1) {
+            newBoostArmorTurns = 0
+            newBoostArmor = 0
+            newMaxBoostArmor = 0
+            expiredList.add("Armor Boost duration has ended!")
+        }
+        if (newBoostWardTurns > 1) {
+            newBoostWardTurns -= 1
+        } else if (newBoostWardTurns == 1) {
+            newBoostWardTurns = 0
+            newBoostWard = 0
+            newMaxBoostWard = 0
+            expiredList.add("Ward Save Boost duration has ended!")
+        }
 
         if (expiredList.isNotEmpty()) {
             activeExpiredNotification = expiredList.joinToString("\n")
@@ -209,6 +236,12 @@ fun UseCharacterScreen(
             boostHp = newBoostHp,
             maxBoostHp = newMaxBoostHp,
             boostHpTurns = newBoostHpTurns,
+            boostArmor = newBoostArmor,
+            maxBoostArmor = newMaxBoostArmor,
+            boostArmorTurns = newBoostArmorTurns,
+            boostWard = newBoostWard,
+            maxBoostWard = newMaxBoostWard,
+            boostWardTurns = newBoostWardTurns,
             currentArmor = newArmor,
             currentWard = newWard,
             effects = updatedEffects
@@ -223,11 +256,22 @@ fun UseCharacterScreen(
         var newArmor = currentArmor
         var newWard = currentWard
         var newBoostHp = activeCharacter.boostHp
+        var newBoostArmor = activeCharacter.boostArmor
+        var newBoostWard = activeCharacter.boostWard
         var newCurrentHp = activeCharacter.currentHp
 
         when (type) {
             DamageType.PHYSICAL -> {
-                if (newArmor > 0) {
+                if (remainingDamage > 0 && newBoostArmor > 0) {
+                    if (remainingDamage <= newBoostArmor) {
+                        newBoostArmor -= remainingDamage
+                        remainingDamage = 0
+                    } else {
+                        remainingDamage -= newBoostArmor
+                        newBoostArmor = 0
+                    }
+                }
+                if (remainingDamage > 0 && newArmor > 0) {
                     if (remainingDamage <= newArmor) {
                         newArmor -= remainingDamage
                         remainingDamage = 0
@@ -238,7 +282,16 @@ fun UseCharacterScreen(
                 }
             }
             DamageType.MAGICAL -> {
-                if (newWard > 0) {
+                if (remainingDamage > 0 && newBoostWard > 0) {
+                    if (remainingDamage <= newBoostWard) {
+                        newBoostWard -= remainingDamage
+                        remainingDamage = 0
+                    } else {
+                        remainingDamage -= newBoostWard
+                        newBoostWard = 0
+                    }
+                }
+                if (remainingDamage > 0 && newWard > 0) {
                     if (remainingDamage <= newWard) {
                         newWard -= remainingDamage
                         remainingDamage = 0
@@ -272,6 +325,8 @@ fun UseCharacterScreen(
         val updated = activeCharacter.copy(
             currentHp = newCurrentHp,
             boostHp = newBoostHp,
+            boostArmor = newBoostArmor,
+            boostWard = newBoostWard,
             currentArmor = newArmor,
             currentWard = newWard
         )
@@ -279,23 +334,53 @@ fun UseCharacterScreen(
         onCharacterUpdated(updated)
     }
 
-    fun applyHeal(amount: Int) {
+    fun applyHeal(target: String, amount: Int) {
         if (amount <= 0) return
-        val maxHp = activeCharacter.getEffectiveMaxHp()
-        val newCurrentHp = (activeCharacter.currentHp + amount).coerceAtMost(maxHp)
-        val updated = activeCharacter.copy(currentHp = newCurrentHp)
+        var updated = activeCharacter
+        when (target) {
+            "HP" -> {
+                val maxHp = activeCharacter.getEffectiveMaxHp()
+                val newCurrentHp = (activeCharacter.currentHp + amount).coerceAtMost(maxHp)
+                updated = updated.copy(currentHp = newCurrentHp)
+            }
+            "Armor" -> {
+                val maxArmor = activeCharacter.getTotalArmor()
+                val newArmor = (activeCharacter.getEffectiveCurrentArmor() + amount).coerceAtMost(maxArmor)
+                updated = updated.copy(currentArmor = newArmor)
+            }
+            "Ward Save" -> {
+                val maxWard = activeCharacter.getTotalWard()
+                val newWard = (activeCharacter.getEffectiveCurrentWard() + amount).coerceAtMost(maxWard)
+                updated = updated.copy(currentWard = newWard)
+            }
+        }
         activeCharacter = updated
         onCharacterUpdated(updated)
     }
 
-    fun applyBoostHp(amount: Int, turns: Int = 0, resetOnNextRound: Boolean = true) {
+    fun applyBoost(target: String, amount: Int, turns: Int = 0, resetOnNextRound: Boolean = true) {
         if (amount <= 0) return
-        val updated = activeCharacter.copy(
-            boostHp = amount,
-            maxBoostHp = amount,
-            boostHpTurns = turns,
-            boostHpResetOnNextRound = resetOnNextRound
-        )
+        var updated = activeCharacter
+        when (target) {
+            "HP" -> {
+                updated = updated.copy(
+                    boostHp = amount, maxBoostHp = amount,
+                    boostHpTurns = turns, boostHpResetOnNextRound = resetOnNextRound
+                )
+            }
+            "Armor" -> {
+                updated = updated.copy(
+                    boostArmor = amount, maxBoostArmor = amount,
+                    boostArmorTurns = turns, boostArmorResetOnNextRound = resetOnNextRound
+                )
+            }
+            "Ward Save" -> {
+                updated = updated.copy(
+                    boostWard = amount, maxBoostWard = amount,
+                    boostWardTurns = turns, boostWardResetOnNextRound = resetOnNextRound
+                )
+            }
+        }
         activeCharacter = updated
         onCharacterUpdated(updated)
     }
@@ -767,6 +852,31 @@ fun UseCharacterScreen(
                                                 fontSize = 15.sp,
                                                 color = GoldAccent
                                             )
+                                            if (activeCharacter.boostArmor > 0) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Surface(
+                                                    color = GoldAccent.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
+                                                    modifier = Modifier.pointerInput(Unit) {
+                                                        detectTapGestures(
+                                                            onDoubleTap = {
+                                                                applyBoost("Armor", 0)
+                                                                android.widget.Toast.makeText(context, "Armor Boost Removed", android.widget.Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        )
+                                                    }
+                                                ) {
+                                                    val turnsTag = if (activeCharacter.boostArmorTurns > 0) " (${activeCharacter.boostArmorTurns}t)" else if (activeCharacter.boostArmorResetOnNextRound) " (Reset)" else ""
+                                                    Text(
+                                                        text = "+${activeCharacter.boostArmor} Boost$turnsTag",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = GoldAccent,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
                                         LinearProgressIndicator(
@@ -803,6 +913,31 @@ fun UseCharacterScreen(
                                                 fontSize = 15.sp,
                                                 color = CyanAccent
                                             )
+                                            if (activeCharacter.boostWard > 0) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Surface(
+                                                    color = CyanAccent.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent),
+                                                    modifier = Modifier.pointerInput(Unit) {
+                                                        detectTapGestures(
+                                                            onDoubleTap = {
+                                                                applyBoost("Ward Save", 0)
+                                                                android.widget.Toast.makeText(context, "Ward Save Boost Removed", android.widget.Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        )
+                                                    }
+                                                ) {
+                                                    val turnsTag = if (activeCharacter.boostWardTurns > 0) " (${activeCharacter.boostWardTurns}t)" else if (activeCharacter.boostWardResetOnNextRound) " (Reset)" else ""
+                                                    Text(
+                                                        text = "+${activeCharacter.boostWard} Boost$turnsTag",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = CyanAccent,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
                                         LinearProgressIndicator(
@@ -844,7 +979,15 @@ fun UseCharacterScreen(
                                                 Surface(
                                                     color = GoldAccent.copy(alpha = 0.2f),
                                                     shape = RoundedCornerShape(4.dp),
-                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent)
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
+                                                    modifier = Modifier.pointerInput(Unit) {
+                                                        detectTapGestures(
+                                                            onDoubleTap = {
+                                                                applyBoost("HP", 0)
+                                                                android.widget.Toast.makeText(context, "HP Boost Removed", android.widget.Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        )
+                                                    }
                                                 ) {
                                                     val turnsTag = if (activeCharacter.boostHpTurns > 0) " (${activeCharacter.boostHpTurns}t)" else if (activeCharacter.boostHpResetOnNextRound) " (Reset)" else ""
                                                     Text(
@@ -887,7 +1030,7 @@ fun UseCharacterScreen(
                                         }
 
                                         Button(
-                                            onClick = { pendingAdjustmentType = AdjustmentType.HEAL_HP },
+                                            onClick = { pendingAdjustmentType = AdjustmentType.HEAL },
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
                                             contentPadding = PaddingValues(8.dp)
@@ -898,7 +1041,7 @@ fun UseCharacterScreen(
                                         }
 
                                         Button(
-                                            onClick = { pendingAdjustmentType = AdjustmentType.BOOST_HP },
+                                            onClick = { pendingAdjustmentType = AdjustmentType.BOOST },
                                             modifier = Modifier.weight(1.2f),
                                             colors = ButtonDefaults.buttonColors(containerColor = GoldAccent.copy(alpha = 0.2f)),
                                             border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
@@ -1921,7 +2064,7 @@ fun UseCharacterScreen(
     if (pendingAdjustmentType != null && pendingAdjustmentType != AdjustmentType.DAMAGE_PROMPT) {
         val type = pendingAdjustmentType!!
 
-        if (type == AdjustmentType.BOOST_HP) {
+        if (type == AdjustmentType.BOOST) {
             var amountInput by remember { mutableStateOf("") }
             var turnsInput by remember { mutableStateOf("0") }
             var resetOnNextRound by remember { mutableStateOf(true) }
@@ -1986,7 +2129,7 @@ fun UseCharacterScreen(
                         onClick = {
                             val amount = amountInput.toIntOrNull() ?: 0
                             val turns = turnsInput.toIntOrNull() ?: 0
-                            applyBoostHp(amount, turns, resetOnNextRound)
+                            applyBoost("HP", amount, turns, resetOnNextRound)
                             pendingAdjustmentType = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
@@ -2003,14 +2146,14 @@ fun UseCharacterScreen(
             )
         } else {
             val title = when (type) {
-                AdjustmentType.HEAL_HP -> "Heal HP"
+                AdjustmentType.HEAL -> "Heal HP"
                 AdjustmentType.SPEND_MP -> "Use MP"
                 AdjustmentType.RECOVER_MP -> "Recover MP"
                 else -> ""
             }
 
             val actionColor = when (type) {
-                AdjustmentType.HEAL_HP -> GreenHp
+                AdjustmentType.HEAL -> GreenHp
                 AdjustmentType.SPEND_MP -> TextSecondary
                 AdjustmentType.RECOVER_MP -> BlueMp
                 else -> GoldAccent
@@ -2025,7 +2168,7 @@ fun UseCharacterScreen(
                     Column {
                         Text(
                             text = when (type) {
-                                AdjustmentType.HEAL_HP -> "Enter heal amount to restore HP (up to max HP):"
+                                AdjustmentType.HEAL -> "Enter heal amount to restore HP (up to max HP):"
                                 AdjustmentType.SPEND_MP -> "Enter MP amount to spend:"
                                 AdjustmentType.RECOVER_MP -> "Enter MP amount to recover:"
                                 else -> ""
@@ -2054,7 +2197,7 @@ fun UseCharacterScreen(
                         onClick = {
                             val amount = amountInput.toIntOrNull() ?: 0
                             when (type) {
-                                AdjustmentType.HEAL_HP -> applyHeal(amount)
+                                AdjustmentType.HEAL -> applyHeal("HP", amount)
                                 AdjustmentType.SPEND_MP -> applySpendMp(amount)
                                 AdjustmentType.RECOVER_MP -> applyRecoverMp(amount)
                                 else -> {}

@@ -787,7 +787,7 @@
             <div style="display:flex; gap:6px; margin-top:10px;">
               <button class="prompt-btn" style="color:var(--crimson-primary);" onclick="openDamageModal()">- DAMAGE</button>
               <button class="prompt-btn" style="color:var(--green-hp);" onclick="promptHeal()">+ HEAL</button>
-              <button class="prompt-btn" style="color:var(--gold-accent); border: 1px solid var(--gold-accent);" onclick="promptBoostHp()">+ BOOST HP</button>
+              <button class="prompt-btn" style="color:var(--gold-accent); border: 1px solid var(--gold-accent);" onclick="promptBoost()">+ BOOST HP</button>
             </div>
           </div>
 
@@ -962,29 +962,77 @@
     </div>
   </div>
 
-  <!-- Boost HP Modal -->
-  <div id="boostHpModal" class="modal-overlay hidden">
+  <!-- Boost Modal -->
+  <div id="boostModal" class="modal-overlay hidden">
     <div class="modal-card">
-      <h2 style="color:var(--gold-accent)">ADD BOOST HP</h2>
-      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Boost HP absorbs damage first before HP!</p>
+      <h2 style="color:var(--gold-accent)">ADD BOOST</h2>
+      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Boost absorbs damage first before base value!</p>
 
       <div class="form-group">
-        <label>Boost HP Amount</label>
-        <input id="boostHpAmountInput" type="number" class="form-input" value="10" placeholder="e.g. 10">
+        <label>Select Target</label>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="boostTarget" value="HP" checked> HP
+          </label>
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="boostTarget" value="Armor"> Armor
+          </label>
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="boostTarget" value="Ward Save"> Ward Save
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Boost Amount</label>
+        <input id="boostAmountInput" type="number" class="form-input" value="10" placeholder="e.g. 10">
       </div>
 
       <div class="form-group">
         <label>Duration in Turns (0 = Unlimited / Permanent)</label>
-        <input id="boostHpTurnsInput" type="number" class="form-input" value="0" placeholder="0 = Unlimited, or 1, 2, 3...">
+        <input id="boostTurnsInput" type="number" class="form-input" value="0" placeholder="0 = Unlimited, or 1, 2, 3...">
       </div>
 
       <label class="checkbox-row" style="color:var(--gold-accent); margin-top:8px;">
-        <input type="checkbox" id="boostHpResetChk" checked> Reset to Max Amount on Next Round
+        <input type="checkbox" id="boostResetChk" checked> Reset to Max Amount on Next Round
       </label>
 
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
-        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeBoostHpModal()">CANCEL</button>
-        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="confirmApplyBoostHp()">APPLY BOOST</button>
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeBoostModal()">CANCEL</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="confirmApplyBoost()">APPLY BOOST</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Heal Modal -->
+  <div id="healModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 style="color:var(--green-hp)">RESTORE VITALS</h2>
+      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Restore HP, Armor or Ward Save.</p>
+
+      <div class="form-group">
+        <label>Select Target</label>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="healTarget" value="HP" checked> HP
+          </label>
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="healTarget" value="Armor"> Armor
+          </label>
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="healTarget" value="Ward Save"> Ward Save
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Heal Amount</label>
+        <input id="healAmountInput" type="number" class="form-input" placeholder="e.g. 10">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeHealModal()">CANCEL</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--green-hp); color:var(--bg-dark);" onclick="confirmApplyHeal()">RESTORE</button>
       </div>
     </div>
   </div>
@@ -1492,1424 +1540,120 @@
       const maxMp = getEffectiveMaxMp(c);
       const spirit = getEffectiveSpirit(c);
 
-      const maxBoost = (c.maxBoostHp !== undefined && c.maxBoostHp !== null) ? c.maxBoostHp : (c.boostHp || 0);
-      let turns = c.boostHpTurns !== undefined ? c.boostHpTurns : 0;
-      const resetBoostOnNextRound = c.boostHpResetOnNextRound !== false;
+      const maxBoostHp = (c.maxBoostHp !== undefined && c.maxBoostHp !== null) ? c.maxBoostHp : (c.boostHp || 0);
+      let turnsHp = c.boostHpTurns !== undefined ? c.boostHpTurns : 0;
+      const resetHp = c.boostHpResetOnNextRound !== false;
 
-      const expiredList = [];
-
-      // Reset Boost HP if reset flag is true and Boost HP is active
-      if (maxBoost > 0 && resetBoostOnNextRound && (turns > 0 || (turns === 0 && c.boostHp > 0))) {
-        c.boostHp = maxBoost;
+      if (maxBoostHp > 0 && resetHp && (turnsHp > 0 || (turnsHp === 0 && c.boostHp > 0))) {
+        c.boostHp = maxBoostHp;
       }
 
-      // Spirit MP Recharge on Next Round (1 Spirit = +1 MP/turn)
-      if (maxMp > 0 && spirit > 0) {
-        c.currentMp = Math.min(maxMp, c.currentMp + spirit);
-      }
-
-      // Process per-round HP/MP effects
-      if (c.effects && c.effects.length > 0) {
-        const nextEffects = [];
-        c.effects.forEach(e => {
-          if (e.effectType === "HP_CHANGE_PER_ROUND") {
-            const val = parseInt(e.value) || 0;
-            if (val > 0) {
-              c.currentHp = Math.max(0, Math.min(maxHp, c.currentHp + val));
-            } else if (val < 0) {
-              let rem = Math.abs(val);
-              const dmgType = e.damageType || "unsaveable";
-
-              if (dmgType === "physical") {
-                if (c.currentArmor > 0) {
-                  if (rem <= c.currentArmor) {
-                    c.currentArmor -= rem;
-                    rem = 0;
-                  } else {
-                    rem -= c.currentArmor;
-                    c.currentArmor = 0;
-                  }
-                }
-              } else if (dmgType === "magical") {
-                if (c.currentWard > 0) {
-                  if (rem <= c.currentWard) {
-                    c.currentWard -= rem;
-                    rem = 0;
-                  } else {
-                    rem -= c.currentWard;
-                    c.currentWard = 0;
-                  }
-                }
-              }
-
-              // Boost HP is affected FIRST before current HP!
-              if (rem > 0 && c.boostHp > 0) {
-                if (rem <= c.boostHp) {
-                  c.boostHp -= rem;
-                  rem = 0;
-                } else {
-                  rem -= c.boostHp;
-                  c.boostHp = 0;
-                }
-              }
-
-              if (rem > 0) {
-                c.currentHp = Math.max(0, c.currentHp - rem);
-              }
-            }
-          }
-          if (e.effectType === "MP_CHANGE_PER_ROUND" && maxMp > 0) {
-            c.currentMp = Math.max(0, Math.min(maxMp, c.currentMp + (parseInt(e.value) || 0)));
-          }
-
-          let r = parseInt(e.roundsRemaining) || 0;
-          if (r > 1) {
-            nextEffects.push({ ...e, roundsRemaining: r - 1 });
-          } else if (r === 1) {
-            expiredList.push(`Effect expired: ${e.name}`);
-          } else if (r === 0) {
-            nextEffects.push(e); // Unlimited
-          }
-        });
-        c.effects = nextEffects;
-      }
-
-      // Decrement Boost HP turns
-      if (turns > 1) {
-        c.boostHpTurns = turns - 1;
-      } else if (turns === 1) {
+      if (turnsHp > 1) {
+        c.boostHpTurns = turnsHp - 1;
+      } else if (turnsHp === 1) {
         c.boostHpTurns = 0;
         c.boostHp = 0;
         c.maxBoostHp = 0;
-        expiredList.push("Boost HP duration has ended!");
       }
-
-      if (expiredList.length > 0) {
-        showExpiredPopup(expiredList);
-      }
-
-      saveData();
-      renderUseScreen();
-    }
-
-    function handlePhotoUpload(input) {
-      if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          uploadedImageBase64 = e.target.result;
-          document.getElementById('photoPreviewContent').innerHTML = `<img src="${uploadedImageBase64}">`;
-        };
-        reader.readAsDataURL(input.files[0]);
-      }
-    }
-
-    function openGoldModal() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      document.getElementById('goldAmountInput').value = '';
-      updateGoldModalDisplay();
-      document.getElementById('goldModal').classList.remove('hidden');
-    }
-
-    function closeGoldModal() {
-      document.getElementById('goldModal').classList.add('hidden');
-    }
-
-    function updateGoldModalDisplay() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      const gold = c.gold || 0;
-      document.getElementById('modalGoldBalance').innerText = `🪙 ${gold} Gold`;
-      document.getElementById('headerGoldText').innerText = gold;
-    }
-
-    function modifyGold(multiplier) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      const inputVal = parseInt(document.getElementById('goldAmountInput').value);
-      if (isNaN(inputVal) || inputVal <= 0) return;
-
-      const change = inputVal * multiplier;
-      c.gold = Math.max(0, (c.gold || 0) + change);
-      saveData();
-      updateGoldModalDisplay();
-      document.getElementById('goldAmountInput').value = '';
-    }
-
-    function quickAddGold(delta) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      c.gold = Math.max(0, (c.gold || 0) + delta);
-      saveData();
-      updateGoldModalDisplay();
-    }
-
-    function renderSelectScreen() {
-      document.getElementById('selectScreen').classList.remove('hidden');
-      document.getElementById('useScreen').classList.add('hidden');
-      document.getElementById('backBtn').classList.add('hidden');
-      document.getElementById('headerRefreshBtn').classList.remove('hidden');
-      document.getElementById('headerAvatarBox').classList.add('hidden');
-      document.getElementById('sessionTabsBar').classList.add('hidden');
-      document.getElementById('headerLvlBtn').classList.add('hidden');
-      document.getElementById('headerGoldBtn').classList.add('hidden');
-      document.getElementById('headerEditBtn').classList.add('hidden');
-      document.getElementById('createFab').classList.remove('hidden');
-      document.getElementById('appTitle').innerText = "HOMEBREW RPG";
-      document.getElementById('appSubtitle').innerText = "Character Selection";
-
-      const container = document.getElementById('characterList');
-      const headerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom: 12px;">
-           <button class="prompt-btn" style="width:auto; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
-           <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)">
-        </div>
-      `;
-
-      if (characters.length === 0) {
-        container.innerHTML = headerHTML + `<div style="text-align:center; padding:40px; color:var(--text-secondary);">No heroes found. Tap '+ CREATE HERO' to begin!</div>`;
-        return;
-      }
-
-      container.innerHTML = headerHTML + characters.map(c => {
-        const statsList = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
-        const maxHp = getEffectiveMaxHp(c);
-        const maxMp = getEffectiveMaxMp(c);
-
-        return `
-        <div class="char-card">
-          <div class="card-top">
-            <div class="avatar-circle">
-              ${c.imageUri ? `<img src="${c.imageUri}">` : c.name[0].toUpperCase()}
-            </div>
-            <div class="card-meta">
-              <h3>${c.name}</h3>
-              <p>${c.race} • 🪙 ${c.gold || 0}</p>
-            </div>
-            <button class="action-icon-btn edit-btn" title="Export Hero" onclick="exportCharacter('${c.id}')">📤</button>
-            <button class="action-icon-btn edit-btn" title="Duplicate Hero" onclick="duplicateCharacter('${c.id}')">📋</button>
-            <button class="action-icon-btn edit-btn" title="Edit Hero" onclick="openEditModal('${c.id}')">✏️</button>
-            <button class="action-icon-btn delete-btn" title="Delete Hero" onclick="promptDelete('${c.id}')">🗑</button>
-          </div>
-
-          <div class="bars-container">
-            <div class="bar-group">
-              <div class="bar-header">
-                <span style="color:var(--green-hp);">HP</span>
-                <span>${c.currentHp} / ${maxHp} ${c.boostHp > 0 ? `<span class="boost-tag">+${c.boostHp} Boost</span>` : ''}</span>
-              </div>
-              <div class="bar-bg"><div class="bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}" style="width:${(c.currentHp / Math.max(1, maxHp)) * 100}%"></div></div>
-            </div>
-
-            ${maxMp > 0 ? `
-            <div class="bar-group">
-              <div class="bar-header">
-                <span style="color:var(--blue-mp);">MP</span>
-                <span>${c.currentMp} / ${maxMp}</span>
-              </div>
-              <div class="bar-bg"><div class="bar-fill fill-mp" style="width:${(c.currentMp / Math.max(1, maxMp)) * 100}%"></div></div>
-            </div>` : ''}
-          </div>
-
-          <div class="stats-badges">
-            ${statsList.map(k => {
-              const mod = getEquippedStatModifier(c, k);
-              const total = c[k] + mod;
-              const numColor = mod > 0 ? 'var(--green-hp)' : mod < 0 ? 'var(--crimson-primary)' : 'var(--gold-accent)';
-              const modText = mod > 0 ? `(+${mod})` : mod < 0 ? `(${mod})` : '';
-              return `
-              <div class="stat-badge">
-                <div class="lbl">${k.slice(0, 3).toUpperCase()}</div>
-                <div class="val" style="color:${numColor}">${total} ${modText ? `<span style="font-size:9px;">${modText}</span>` : ''}</div>
-              </div>`;
-            }).join('')}
-          </div>
-
-          <button class="use-btn" onclick="useCharacter('${c.id}')">▶ USE HERO</button>
-        </div>
-      `;
-      }).join('');
-    }
-
-    function useCharacter(id) {
-      activeCharId = id;
-      showBaseStatsMap = {};
-      const c = characters.find(item => item.id === id);
-      if (!c) return;
-
-      document.getElementById('selectScreen').classList.add('hidden');
-      document.getElementById('useScreen').classList.remove('hidden');
-      document.getElementById('backBtn').classList.remove('hidden');
-      document.getElementById('headerRefreshBtn').classList.add('hidden');
-      document.getElementById('sessionTabsBar').classList.remove('hidden');
-      document.getElementById('headerLvlBtn').classList.remove('hidden');
-      document.getElementById('headerLvlText').innerText = c.level || 1;
-      document.getElementById('headerGoldBtn').classList.remove('hidden');
-      document.getElementById('headerGoldText').innerText = c.gold || 0;
-      document.getElementById('headerEditBtn').classList.remove('hidden');
-      document.getElementById('createFab').classList.add('hidden');
-
-      if (c.imageUri) {
-        document.getElementById('headerAvatarBox').innerHTML = `<img src="${c.imageUri}">`;
-        document.getElementById('headerAvatarBox').classList.remove('hidden');
-      } else {
-        document.getElementById('headerAvatarBox').classList.add('hidden');
-      }
-
-      document.getElementById('appTitle').innerText = c.name;
-      document.getElementById('appSubtitle').innerText = `${c.race} • Active Session`;
-
-      switchSessionTab('vitals');
-    }
-
-    function editCurrentActiveChar() {
-      if (activeCharId) {
-        openEditModal(activeCharId);
-      }
-    }
-
-    function showSelectScreen() {
-      activeCharId = null;
-      document.getElementById('headerLvlBtn').classList.add('hidden');
-      document.getElementById('headerGoldBtn').classList.add('hidden');
-      renderSelectScreen();
-    }
-
-    function switchSessionTab(tab) {
-      currentSessionTab = tab;
-      const c = characters.find(item => item.id === activeCharId);
-
-      document.getElementById('tabVitals').classList.remove('active');
-      document.getElementById('tabAbilities').classList.remove('active');
-      document.getElementById('tabEquipment').classList.remove('active');
-      document.getElementById('tabInventory').classList.remove('active');
-      document.getElementById('tabNotes').classList.remove('active');
-
-      document.getElementById('vitalsTabContent').classList.add('hidden');
-      document.getElementById('abilitiesTabContent').classList.add('hidden');
-      document.getElementById('equipmentTabContent').classList.add('hidden');
-      document.getElementById('inventoryTabContent').classList.add('hidden');
-      document.getElementById('notesTabContent').classList.add('hidden');
-
-      if (tab === 'vitals') {
-        document.getElementById('tabVitals').classList.add('active');
-        document.getElementById('vitalsTabContent').classList.remove('hidden');
-        renderUseScreen();
-      } else if (tab === 'abilities') {
-        document.getElementById('tabAbilities').classList.add('active');
-        document.getElementById('abilitiesTabContent').classList.remove('hidden');
-        renderAbilitiesScreen();
-      } else if (tab === 'equipment') {
-        document.getElementById('tabEquipment').classList.add('active');
-        document.getElementById('equipmentTabContent').classList.remove('hidden');
-        renderEquipmentScreen();
-      } else if (tab === 'inventory') {
-        document.getElementById('tabInventory').classList.add('active');
-        document.getElementById('inventoryTabContent').classList.remove('hidden');
-        renderInventoryScreen();
-      } else if (tab === 'notes') {
-        document.getElementById('tabNotes').classList.add('active');
-        document.getElementById('notesTabContent').classList.remove('hidden');
-        renderNotesScreen();
-      }
-    }
-
-    function toggleStatBaseDisplay(statKey) {
-      showBaseStatsMap[statKey] = !showBaseStatsMap[statKey];
-      renderUseScreen();
-    }
-
-    function renderUseScreen() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-
-      const totalArmor = getTotalArmor(c);
-      const totalWard = getTotalWard(c);
-
-      const maxHp = getEffectiveMaxHp(c);
-      const maxMp = getEffectiveMaxMp(c);
-
-      const curArmor = (c.currentArmor !== null && c.currentArmor !== undefined) ? c.currentArmor : totalArmor;
-      const curWard = (c.currentWard !== null && c.currentWard !== undefined) ? c.currentWard : totalWard;
-
-      if (totalArmor > 0) {
-        document.getElementById('armorBarBlock').classList.remove('hidden');
-        document.getElementById('useArmorText').innerText = `${curArmor} / ${totalArmor}`;
-        document.getElementById('useArmorFill').style.width = `${(curArmor / totalArmor) * 100}%`;
-      } else {
-        document.getElementById('armorBarBlock').classList.add('hidden');
-      }
-
-      if (totalWard > 0) {
-        document.getElementById('wardBarBlock').classList.remove('hidden');
-        document.getElementById('useWardText').innerText = `${curWard} / ${totalWard}`;
-        document.getElementById('useWardFill').style.width = `${(curWard / totalWard) * 100}%`;
-      } else {
-        document.getElementById('wardBarBlock').classList.add('hidden');
-      }
-
-      const turnsTag = c.boostHpTurns > 0 ? ` (${c.boostHpTurns}t)` : (c.boostHpResetOnNextRound !== false ? ' (Reset)' : '');
-      const hpText = c.boostHp > 0 
-        ? `${c.currentHp} / ${maxHp} <span class="boost-tag">+${c.boostHp} Boost${turnsTag}</span>`
-        : `${c.currentHp} / ${maxHp}`;
-
-      document.getElementById('useHpText').innerHTML = hpText;
-      document.getElementById('useHpFill').style.width = `${(c.currentHp / Math.max(1, maxHp)) * 100}%`;
-      document.getElementById('useHpFill').className = `bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}`;
-
-      if (maxMp > 0) {
-        document.getElementById('useMpBlock').classList.remove('hidden');
-        document.getElementById('useMpText').innerText = `${c.currentMp} / ${maxMp}`;
-        document.getElementById('useMpFill').style.width = `${(c.currentMp / Math.max(1, maxMp)) * 100}%`;
-      } else {
-        document.getElementById('useMpBlock').classList.add('hidden');
-      }
-
-      const statsKeys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
-      document.getElementById('statsGrid').innerHTML = statsKeys.map(k => {
-        const mod = getEquippedStatModifier(c, k);
-        const baseVal = c[k];
-        const totalVal = baseVal + mod;
-
-        const isShowingBase = !!showBaseStatsMap[k];
-        const numColor = mod > 0 ? 'var(--green-hp)' : mod < 0 ? 'var(--crimson-primary)' : 'var(--gold-accent)';
-        const modText = mod > 0 ? `(+${mod})` : mod < 0 ? `(${mod})` : '';
-
-        return `
-        <div class="stat-card-display" onclick="toggleStatBaseDisplay('${k}')">
-          <div style="font-size:10px; font-weight:700; color:${isShowingBase ? 'var(--gold-accent)' : 'var(--text-secondary)'}; text-transform:uppercase;">
-            ${k} ${isShowingBase ? '(BASE)' : ''}
-          </div>
-          <div style="font-size:24px; font-weight:bold; color:${isShowingBase ? 'var(--text-primary)' : numColor}; margin-top:4px;">
-            ${isShowingBase ? baseVal : totalVal}
-            ${(!isShowingBase && mod !== 0) ? `<span style="font-size:16px; color:${numColor};">${modText}</span>` : ''}
-          </div>
-          ${isShowingBase ? `<div style="font-size:9px; color:var(--text-secondary); margin-top:2px;">Tap to show total</div>` : ''}
-        </div>
-      `;
-      }).join('');
-
-      // Render Active Effects Section
-      const effects = c.effects || [];
-      document.getElementById('effectsTitle').innerText = `ACTIVE EFFECTS & BUFFS (${effects.length})`;
-      const effectsContainer = document.getElementById('effectsList');
-
-      if (effects.length === 0) {
-        effectsContainer.innerHTML = `<div style="font-size:12px; color:var(--text-secondary); padding:4px 0;">No active status effects or buffs applied.</div>`;
-      } else {
-        effectsContainer.innerHTML = effects.map(e => {
-          const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
-          let desc = "";
-          if (e.effectType === "STAT_MODIFIER") desc = `${(e.targetStat || '').toUpperCase()}: ${valStr}`;
-          else if (e.effectType === "HP_CHANGE_PER_ROUND") {
-            if (e.value < 0) {
-              const dt = (e.damageType || 'unsaveable').toUpperCase();
-              desc = `${valStr} ${dt} HP / round`;
-            } else {
-              desc = `${valStr} HP / round`;
-            }
-          }
-          else if (e.effectType === "MP_CHANGE_PER_ROUND") desc = `${valStr} MP / round`;
-
-          const r = parseInt(e.roundsRemaining) || 0;
-          const durStr = r === 0 ? "Unlimited" : `${r} Rounds left`;
-
-          return `
-          <div class="effect-item-row">
-            <div>
-              <div style="font-weight:bold; font-size:13px;">${e.name}</div>
-              <div style="font-size:11px; font-weight:600; color:${e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${desc}</div>
-              <div style="font-size:10px; color:var(--gold-accent);">Duration: ${durStr}</div>
-            </div>
-            <button class="action-icon-btn delete-btn" title="Remove Effect" onclick="removeEffect('${e.id}')">🗑</button>
-          </div>
-        `;
-        }).join('');
-      }
-    }
-
-    function openAddEffectModal() {
-      document.getElementById('effectInputName').value = '';
-      document.getElementById('effectInputType').value = 'STAT_MODIFIER';
-      document.getElementById('effectInputValue').value = '1';
-      document.getElementById('effectInputRounds').value = '0';
-      toggleEffectTargetFields();
-      document.getElementById('addEffectModal').classList.remove('hidden');
-    }
-
-    function closeAddEffectModal() {
-      document.getElementById('addEffectModal').classList.add('hidden');
-    }
-
-    function toggleEffectTargetFields() {
-      const type = document.getElementById('effectInputType').value;
-      const val = parseInt(document.getElementById('effectInputValue').value) || 0;
-      if (type === 'STAT_MODIFIER') {
-        document.getElementById('effectStatGroup').classList.remove('hidden');
-      } else {
-        document.getElementById('effectStatGroup').classList.add('hidden');
-      }
-
-      if (type === 'HP_CHANGE_PER_ROUND' && val < 0) {
-        document.getElementById('effectDamageTypeGroup').classList.remove('hidden');
-      } else {
-        document.getElementById('effectDamageTypeGroup').classList.add('hidden');
-      }
-    }
-
-    function saveNewEffect() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-
-      const name = document.getElementById('effectInputName').value.trim();
-      const effectType = document.getElementById('effectInputType').value;
-      const targetStat = document.getElementById('effectInputStat').value;
-      const value = parseInt(document.getElementById('effectInputValue').value) || 0;
-      const roundsRemaining = parseInt(document.getElementById('effectInputRounds').value) || 0;
-      const damageType = document.getElementById('effectInputDamageType').value;
-
-      if (!name) { alert("Please enter an effect name"); return; }
-
-      adjustVitalsOnMaxChange(c, () => {
-        if (!c.effects) c.effects = [];
-        c.effects.push({
-          id: Date.now().toString(),
-          name,
-          effectType,
-          targetStat: (effectType === 'STAT_MODIFIER') ? targetStat : null,
-          value,
-          roundsRemaining,
-          damageType: (effectType === 'HP_CHANGE_PER_ROUND' && value < 0) ? damageType : 'unsaveable'
-        });
-      });
-
-      saveData();
-      closeAddEffectModal();
-      renderUseScreen();
-    }
-
-    function removeEffect(effectId) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.effects) return;
-      adjustVitalsOnMaxChange(c, () => {
-        c.effects = c.effects.filter(e => e.id !== effectId);
-      });
-      saveData();
-      renderUseScreen();
-    }
-
-    function openDamageModal() {
-      document.getElementById('damageAmountInput').value = '';
-      document.getElementById('damageModal').classList.remove('hidden');
-    }
-
-    function closeDamageModal() {
-      document.getElementById('damageModal').classList.add('hidden');
-    }
-
-    function confirmApplyDamage() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-
-      const amount = parseInt(document.getElementById('damageAmountInput').value);
-      if (isNaN(amount) || amount <= 0) { closeDamageModal(); return; }
-
-      const selectedType = document.querySelector('input[name="dmgType"]:checked').value;
-
-      const totalArmor = getTotalArmor(c);
-      const totalWard = getTotalWard(c);
-
-      let curArmor = (c.currentArmor !== null && c.currentArmor !== undefined) ? c.currentArmor : totalArmor;
-      let curWard = (c.currentWard !== null && c.currentWard !== undefined) ? c.currentWard : totalWard;
-      let rem = amount;
-
-      if (selectedType === 'physical') {
-        if (curArmor > 0) {
-          if (rem <= curArmor) {
-            curArmor -= rem;
-            rem = 0;
-          } else {
-            rem -= curArmor;
-            curArmor = 0;
-          }
-        }
-      } else if (selectedType === 'magical') {
-        if (curWard > 0) {
-          if (rem <= curWard) {
-            curWard -= rem;
-            rem = 0;
-          } else {
-            rem -= curWard;
-            curWard = 0;
-          }
-        }
-      }
-
-      if (rem > 0 && c.boostHp > 0) {
-        if (rem <= c.boostHp) {
-          c.boostHp -= rem;
-          rem = 0;
-        } else {
-          rem -= c.boostHp;
-          c.boostHp = 0;
-        }
-      }
-
-      if (rem > 0) {
-        c.currentHp = Math.max(0, c.currentHp - rem);
-      }
-
-      c.currentArmor = curArmor;
-      c.currentWard = curWard;
-
-      saveData();
-      closeDamageModal();
-      renderUseScreen();
-    }
-
-    /* ABILITIES TAB */
-    let editingAbilityId = null;
-
-    function formatAbilityDescription(c, rawDesc) {
-      if (!rawDesc) return '';
-      if (!c) return rawDesc;
-
-      const keys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
-      let res = rawDesc;
-      keys.forEach(k => {
-        const total = (c[k] || 0) + getEquippedStatModifier(c, k);
-        const tagShort = k.slice(0, 3).toUpperCase();
-        const regexShort = new RegExp(`\\{${tagShort}\\}`, 'gi');
-        const regexLong = new RegExp(`\\{${k}\\}`, 'gi');
-        res = res.replace(regexShort, total).replace(regexLong, total);
-      });
-      return res;
-    }
-
-    const expandedCardIds = new Set();
-
-    function toggleCardExpansion(id) {
-      if (expandedCardIds.has(id)) {
-        expandedCardIds.delete(id);
-      } else {
-        expandedCardIds.add(id);
-      }
-      switchSessionTab(currentSessionTab);
-    }
-
-    function renderAbilitiesScreen() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-
-      const container = document.getElementById('abilitiesList');
-      const abilities = c.abilities || [];
-
-      if (abilities.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">✨</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">No Abilities Added</div><div style="font-size:14px;">Tap '+ ADD ABILITY' to create spells, skills, or special attacks!</div></div>`;
-        return;
-      }
-
-      container.innerHTML = abilities.map(a => {
-        const evalDesc = formatAbilityDescription(c, a.description);
-        const showFormula = a.description && (a.description !== evalDesc);
-        const maxCharLimit = 130;
-        const isExpanded = expandedCardIds.has(a.id);
-        const isLong = evalDesc.length > maxCharLimit;
-        const displayText = (isLong && !isExpanded) ? (evalDesc.slice(0, maxCharLimit) + '...') : evalDesc;
-
-        return `
-          <div class="item-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-weight:bold; font-size:16px; color:var(--gold-accent);">${a.name}</span>
-              <div>
-                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('abilities', '${a.id}', 'up')">🔼</button>
-                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('abilities', '${a.id}', 'down')">🔽</button>
-                <button class="action-icon-btn edit-btn" title="Edit Ability" onclick="openEditAbilityModal('${a.id}')">✏️</button>
-                <button class="action-icon-btn delete-btn" title="Delete Ability" onclick="deleteAbility('${a.id}')">🗑</button>
-              </div>
-            </div>
-
-            ${evalDesc ? `
-              <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'};" ${isLong ? `onclick="toggleCardExpansion('${a.id}')"` : ''}>
-                <div style="font-size:14px; font-weight:500; color:var(--text-primary); white-space:pre-line;">${displayText}</div>
-                ${isLong ? `<div style="font-size:11px; font-weight:bold; color:var(--gold-accent); margin-top:4px;">${isExpanded ? '▲ Tap to collapse' : '▼ Tap to expand'}</div>` : ''}
-                ${showFormula ? `<div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Formula: ${a.description}</div>` : ''}
-              </div>
-            ` : ''}
-          </div>
-        `;
-      }).join('');
-    }
-
-    function insertAbilityTag(tag) {
-      const textarea = document.getElementById('abilityInputDesc');
-      textarea.value += tag;
-      updateAbilityPreview();
-    }
-
-    function updateAbilityPreview() {
-      const c = characters.find(item => item.id === activeCharId);
-      const raw = document.getElementById('abilityInputDesc').value;
-      const previewBox = document.getElementById('abilityPreviewBox');
-      if (!raw.trim()) {
-        previewBox.innerText = 'Preview will appear here as you type...';
-        previewBox.style.color = 'var(--text-secondary)';
-      } else {
-        previewBox.innerText = formatAbilityDescription(c, raw);
-        previewBox.style.color = 'var(--text-primary)';
-      }
-    }
-
-    function openAddAbilityModal() {
-      editingAbilityId = null;
-      document.getElementById('addAbilityModalTitle').innerText = 'ADD ABILITY';
-      document.getElementById('addAbilityModalSaveBtn').innerText = 'SAVE ABILITY';
-      document.getElementById('abilityInputName').value = '';
-      document.getElementById('abilityInputDesc').value = '';
-      updateAbilityPreview();
-      document.getElementById('addAbilityModal').classList.remove('hidden');
-    }
-
-    function openEditAbilityModal(abilityId) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.abilities) return;
-      const a = c.abilities.find(item => item.id === abilityId);
-      if (!a) return;
-
-      editingAbilityId = abilityId;
-      document.getElementById('addAbilityModalTitle').innerText = 'EDIT ABILITY';
-      document.getElementById('addAbilityModalSaveBtn').innerText = 'SAVE CHANGES';
-      document.getElementById('abilityInputName').value = a.name;
-      document.getElementById('abilityInputDesc').value = a.description;
-      updateAbilityPreview();
-      document.getElementById('addAbilityModal').classList.remove('hidden');
-    }
-
-    function closeAddAbilityModal() {
-      document.getElementById('addAbilityModal').classList.add('hidden');
-    }
-
-    function saveNewAbility() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-
-      const name = document.getElementById('abilityInputName').value.trim();
-      const description = document.getElementById('abilityInputDesc').value.trim();
-
-      if (!name) { alert("Please enter an ability name"); return; }
-
-      if (!c.abilities) c.abilities = [];
-
-      if (editingAbilityId) {
-        const a = c.abilities.find(item => item.id === editingAbilityId);
-        if (a) {
-          a.name = name;
-          a.description = description;
-        }
-      } else {
-        c.abilities.push({
-          id: Date.now().toString(),
-          name,
-          description
-        });
-      }
-
-      saveData();
-      closeAddAbilityModal();
-      switchSessionTab(currentSessionTab);
-    }
-
-    function deleteAbility(abilityId) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.abilities) return;
-      c.abilities = c.abilities.filter(a => a.id !== abilityId);
-      saveData();
-      switchSessionTab(currentSessionTab);
-    }
-
-    /* NOTES TAB */
-    let editingNoteId = null;
-    let showArchivedNotes = false;
-
-    function toggleShowArchivedNotes() {
-      showArchivedNotes = !showArchivedNotes;
-      renderNotesScreen();
-    }
-
-    function toggleArchiveNote(noteId) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.notes) return;
-      const n = c.notes.find(item => item.id === noteId);
-      if (n) {
-        n.isArchived = !n.isArchived;
-      }
-      saveData();
-      renderNotesScreen();
-    }
-
-    function renderNotesScreen() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-
-      const container = document.getElementById('notesList');
-      const notes = c.notes || [];
-      const archivedCount = notes.filter(n => n.isArchived).length;
-      const visibleNotes = notes.filter(n => !n.isArchived || showArchivedNotes);
-
-      let headerHtml = '';
-      if (archivedCount > 0) {
-        headerHtml = `
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <button class="prompt-btn" style="flex:none; width:auto; padding:4px 10px; font-size:11px; background:${showArchivedNotes ? 'rgba(212,175,55,0.2)' : 'var(--surface-variant)'}; color:${showArchivedNotes ? 'var(--gold-accent)' : 'var(--text-secondary)'}; border:1px solid ${showArchivedNotes ? 'var(--gold-accent)' : 'transparent'};" onclick="toggleShowArchivedNotes()">
-              ${showArchivedNotes ? '🙈 Hide Archived Notes (' + archivedCount + ')' : '👁️ Show Archived Notes (' + archivedCount + ')'}
-            </button>
-          </div>
-        `;
-      }
-
-      if (visibleNotes.length === 0) {
-        container.innerHTML = headerHtml + `
-          <div style="text-align:center; padding:40px; color:var(--text-secondary);">
-            ${notes.length === 0 ? "No notes created yet. Tap '+ ADD NOTE' to write down quests, secrets, or NPC info!" : "All notes are currently archived. Tap 'Show Archived Notes' to view them."}
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = headerHtml + visibleNotes.map(n => {
-        const maxCharLimit = 130;
-        const isExpanded = expandedCardIds.has(n.id);
-        const isLong = (n.content || '').length > maxCharLimit;
-        const displayText = (isLong && !isExpanded) ? (n.content.slice(0, maxCharLimit) + '...') : n.content;
-
-        return `
-          <div class="item-card" style="${n.isArchived ? 'opacity:0.65; border:1px dashed var(--surface-variant);' : ''}">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-weight:bold; font-size:16px; color:${n.isArchived ? 'var(--text-secondary)' : 'var(--gold-accent)'};">${n.title}</span>
-                ${n.tag ? `<span style="font-size:10px; font-weight:bold; color:var(--cyan-accent); background:var(--surface-variant); padding:2px 6px; border-radius:4px;">${n.tag.toUpperCase()}</span>` : ''}
-                ${n.isArchived ? `<span style="font-size:9px; font-weight:bold; color:var(--crimson-primary); background:rgba(229,57,53,0.15); padding:2px 6px; border-radius:4px;">ARCHIVED</span>` : ''}
-              </div>
-              <div style="display:flex; gap:4px; align-items:center;">
-                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('notes', '${n.id}', 'up')">🔼</button>
-                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('notes', '${n.id}', 'down')">🔽</button>
-                ${isLong ? `<button class="action-icon-btn edit-btn" style="color:var(--gold-accent); font-weight:bold;" title="${isExpanded ? 'Collapse Note' : 'Expand Note'}" onclick="toggleCardExpansion('${n.id}')">${isExpanded ? '▲' : '▼'}</button>` : ''}
-                <button class="action-icon-btn edit-btn" title="${n.isArchived ? 'Unarchive Note' : 'Archive Note'}" onclick="toggleArchiveNote('${n.id}')">${n.isArchived ? '📥' : '📦'}</button>
-                <button class="action-icon-btn edit-btn" title="Edit Note" onclick="openEditNoteModal('${n.id}')">✏️</button>
-                <button class="action-icon-btn delete-btn" title="Delete Note" onclick="deleteNote('${n.id}')">🗑</button>
-              </div>
-            </div>
-
-            ${n.content ? `
-              <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'};" ${isLong ? `onclick="toggleCardExpansion('${n.id}')"` : ''}>
-                <div style="font-size:14px; font-weight:400; color:var(--text-primary); white-space:pre-line;">${displayText}</div>
-              </div>
-            ` : ''}
-          </div>
-        `;
-      }).join('');
-    }
-
-    function setNoteTag(tag) {
-      document.getElementById('noteInputTag').value = tag;
-    }
-
-    function openAddNoteModal() {
-      editingNoteId = null;
-      document.getElementById('addNoteModalTitle').innerText = 'ADD NOTE';
-      document.getElementById('addNoteModalSaveBtn').innerText = 'SAVE NOTE';
-      document.getElementById('noteInputTitle').value = '';
-      document.getElementById('noteInputTag').value = '';
-      document.getElementById('noteInputContent').value = '';
-      document.getElementById('addNoteModal').classList.remove('hidden');
-    }
-
-    function openEditNoteModal(noteId) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.notes) return;
-      const n = c.notes.find(item => item.id === noteId);
-      if (!n) return;
-
-      editingNoteId = noteId;
-      document.getElementById('addNoteModalTitle').innerText = 'EDIT NOTE';
-      document.getElementById('addNoteModalSaveBtn').innerText = 'SAVE CHANGES';
-      document.getElementById('noteInputTitle').value = n.title;
-      document.getElementById('noteInputTag').value = n.tag || '';
-      document.getElementById('noteInputContent').value = n.content || '';
-      document.getElementById('addNoteModal').classList.remove('hidden');
-    }
-
-    function closeAddNoteModal() {
-      document.getElementById('addNoteModal').classList.add('hidden');
-    }
-
-    function saveNewNote() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-
-      const title = document.getElementById('noteInputTitle').value.trim();
-      const tag = document.getElementById('noteInputTag').value.trim();
-      const content = document.getElementById('noteInputContent').value.trim();
-
-      if (!title) { alert("Please enter a note title"); return; }
-
-      if (!c.notes) c.notes = [];
-
-      if (editingNoteId) {
-        const n = c.notes.find(item => item.id === editingNoteId);
-        if (n) {
-          n.title = title;
-          n.tag = tag;
-          n.content = content;
-        }
-      } else {
-        c.notes.push({
-          id: Date.now().toString(),
-          title,
-          tag,
-          content
-        });
-      }
-
-      saveData();
-      closeAddNoteModal();
-      switchSessionTab(currentSessionTab);
-    }
-
-    function deleteNote(noteId) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.notes) return;
-      c.notes = c.notes.filter(n => n.id !== noteId);
-      saveData();
-      switchSessionTab(currentSessionTab);
-    }
-
-    /* EQUIPMENT TAB */
-    function renderEquipmentScreen() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      const container = document.getElementById('equipmentList');
-      const equippedItems = (c.inventory || []).filter(i => i.isEquipped);
-      if (equippedItems.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">🛡️</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">No Equipped Items</div><div style="font-size:14px;">Equip items from your Inventory tab, or tap '+ ADD ITEM'!</div></div>`;
-        return;
-      }
-      const grouped = {};
-      equippedItems.forEach(item => {
-        const cat = item.category || 'Misc';
-        if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(item);
-      });
-      const categories = c.equipmentCategoryOrder || Object.keys(grouped).sort();
-      c.equipmentCategoryOrder = categories; // save it back
       
-      let htmlStr = '';
-      categories.forEach((cat, catIdx) => {
-        const items = grouped[cat];
-        if (!items || items.length === 0) return;
-        
-        const isCollapsed = c.equipmentCategoryCollapsed && c.equipmentCategoryCollapsed[cat];
-        
-        htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
-        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('equipment', '${cat}')">`;
-        htmlStr += `  <div style="font-weight:bold; color:var(--gold-accent);">`;
-        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${cat.toUpperCase()} (${items.length})`;
-        htmlStr += `  </div>`;
-        htmlStr += `  <div style="display:flex; gap:8px;" onclick="event.stopPropagation()">`;
-        if (catIdx > 0) {
-            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', '${cat}', 'up')">🔼</button>`;
-        }
-        if (catIdx < categories.length - 1) {
-            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', '${cat}', 'down')">🔽</button>`;
-        }
-        htmlStr += `  </div>`;
-        htmlStr += `</div>`;
-        
-        if (!isCollapsed) {
-          htmlStr += `<div class="category-items" style="margin-top:8px;">`;
-          items.forEach(item => {
-            htmlStr += `
-            <div class="item-card equipped">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                  <span style="font-weight:bold; font-size:15px;">${item.name}</span>
-                </div>
-                <div>
-                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', true)">🔼</button>
-                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', true)">🔽</button>
-                  <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
-                  <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
-                </div>
-              </div>
-              <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
-                ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
-                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
-              </div>
-              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
-              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}
-              <button class="prompt-btn" style="background:rgba(229, 57, 53, 0.15); color:var(--crimson-primary);" onclick="toggleEquip('${item.id}')">✖ UNEQUIP (MOVE TO INVENTORY)</button>
-            </div>`;
-          });
-          htmlStr += `</div>`;
-        }
-        htmlStr += `</div>`;
-      });
-      container.innerHTML = htmlStr;
-    }
+      const maxBoostArmor = (c.maxBoostArmor !== undefined && c.maxBoostArmor !== null) ? c.maxBoostArmor : (c.boostArmor || 0);
+      let turnsArmor = c.boostArmorTurns !== undefined ? c.boostArmorTurns : 0;
+      const resetArmor = c.boostArmorResetOnNextRound !== false;
 
-    /* INVENTORY TAB */
-    function renderInventoryScreen() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      const container = document.getElementById('inventoryList');
-      const unequippedItems = (c.inventory || []).filter(i => !i.isEquipped);
-      if (unequippedItems.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">🎒</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">Inventory is Empty</div><div style="font-size:14px;">Unequip items from Equipment, or tap '+ ADD ITEM'!</div></div>`;
-        return;
+      if (maxBoostArmor > 0 && resetArmor && (turnsArmor > 0 || (turnsArmor === 0 && c.boostArmor > 0))) {
+        c.boostArmor = maxBoostArmor;
       }
-      const grouped = {};
-      unequippedItems.forEach(item => {
-        const cat = item.category || 'Misc';
-        if (!grouped[cat]) grouped[cat] = [];
-        grouped[cat].push(item);
-      });
-      const categories = c.inventoryCategoryOrder || Object.keys(grouped).sort();
-      c.inventoryCategoryOrder = categories; 
+
+      if (turnsArmor > 1) {
+        c.boostArmorTurns = turnsArmor - 1;
+      } else if (turnsArmor === 1) {
+        c.boostArmorTurns = 0;
+        c.boostArmor = 0;
+        c.maxBoostArmor = 0;
+      }
       
-      let htmlStr = '';
-      categories.forEach((cat, catIdx) => {
-        const items = grouped[cat];
-        if (!items || items.length === 0) return;
-        
-        const isCollapsed = c.inventoryCategoryCollapsed && c.inventoryCategoryCollapsed[cat];
-        
-        htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
-        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('inventory', '${cat}')">`;
-        htmlStr += `  <div style="font-weight:bold; color:var(--text-secondary);">`;
-        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${cat.toUpperCase()} (${items.length})`;
-        htmlStr += `  </div>`;
-        htmlStr += `  <div style="display:flex; gap:8px;" onclick="event.stopPropagation()">`;
-        if (catIdx > 0) {
-            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', '${cat}', 'up')">🔼</button>`;
-        }
-        if (catIdx < categories.length - 1) {
-            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', '${cat}', 'down')">🔽</button>`;
-        }
-        htmlStr += `  </div>`;
-        htmlStr += `</div>`;
-        
-        if (!isCollapsed) {
-          htmlStr += `<div class="category-items" style="margin-top:8px;">`;
-          items.forEach(item => {
-            htmlStr += `
-            <div class="item-card">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                  <span style="font-weight:bold; font-size:15px;">${item.name}</span>
-                </div>
-                <div>
-                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', false)">🔼</button>
-                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', false)">🔽</button>
-                  <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
-                  <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
-                </div>
-              </div>
-              <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
-                ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
-                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
-              </div>
-              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
-              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}`;
-              
-              if (item.isConsumable) {
-                htmlStr += `<div style="display:flex; align-items:center; gap:8px; margin-top:8px;">`;
-                htmlStr += `  <button class="prompt-btn" style="width:auto; padding:4px 12px; background:var(--surface-variant);" onclick="adjustConsumable('${item.id}', -1)">-</button>`;
-                htmlStr += `  <span style="font-weight:bold;">${item.consumableAmount}</span>`;
-                htmlStr += `  <button class="prompt-btn" style="width:auto; padding:4px 12px; background:var(--surface-variant);" onclick="adjustConsumable('${item.id}', 1)">+</button>`;
-                htmlStr += `</div>`;
-              } else {
-                htmlStr += `<button class="prompt-btn" style="background:rgba(76, 175, 80, 0.15); color:var(--green-hp);" onclick="toggleEquip('${item.id}')">✓ EQUIP (MOVE TO EQUIPMENT)</button>`;
-              }
-            htmlStr += `</div>`;
-          });
-          htmlStr += `</div>`;
-        }
-        htmlStr += `</div>`;
-      });
-      container.innerHTML = htmlStr;
-    }
+      const maxBoostWard = (c.maxBoostWard !== undefined && c.maxBoostWard !== null) ? c.maxBoostWard : (c.boostWard || 0);
+      let turnsWard = c.boostWardTurns !== undefined ? c.boostWardTurns : 0;
+      const resetWard = c.boostWardResetOnNextRound !== false;
 
-    
-    function moveCategory(type, catName, direction) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      let orderList = (type === 'equipment') ? c.equipmentCategoryOrder : c.inventoryCategoryOrder;
-      if (!orderList) return;
-      const idx = orderList.indexOf(catName);
-      if (idx < 0) return;
-      
-      if (direction === 'up' && idx > 0) {
-        const temp = orderList[idx];
-        orderList[idx] = orderList[idx - 1];
-        orderList[idx - 1] = temp;
-      } else if (direction === 'down' && idx < orderList.length - 1) {
-        const temp = orderList[idx];
-        orderList[idx] = orderList[idx + 1];
-        orderList[idx + 1] = temp;
-      }
-      saveData();
-      switchSessionTab(currentSessionTab);
-    }
-
-    function toggleCategoryCollapse(type, catName) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      if (type === 'equipment') {
-        if (!c.equipmentCategoryCollapsed) c.equipmentCategoryCollapsed = {};
-        c.equipmentCategoryCollapsed[catName] = !c.equipmentCategoryCollapsed[catName];
-      } else {
-        if (!c.inventoryCategoryCollapsed) c.inventoryCategoryCollapsed = {};
-        c.inventoryCategoryCollapsed[catName] = !c.inventoryCategoryCollapsed[catName];
-      }
-      saveData();
-      switchSessionTab(currentSessionTab);
-    }
-    
-    function adjustConsumable(itemId, amount) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.inventory) return;
-      const item = c.inventory.find(i => i.id === itemId);
-      if (item && item.isConsumable) {
-        item.consumableAmount += amount;
-        if (item.consumableAmount <= 0) {
-            item.consumableAmount = 0;
-            if (confirm(`Consumable depleted! Do you want to delete ${item.name}?`)) {
-                deleteItem(item.id);
-                return;
-            }
-        }
-        saveData();
-        switchSessionTab(currentSessionTab);
-      }
-    }
-
-    function toggleEquip(itemId) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.inventory) return;
-      adjustVitalsOnMaxChange(c, () => {
-        const item = c.inventory.find(i => i.id === itemId);
-        if (item) {
-          item.isEquipped = !item.isEquipped;
-          c.currentArmor = null;
-          c.currentWard = null;
-        }
-      });
-      saveData();
-      switchSessionTab(currentSessionTab);
-    }
-
-    function deleteItem(itemId) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.inventory) return;
-      adjustVitalsOnMaxChange(c, () => {
-        c.inventory = c.inventory.filter(i => i.id !== itemId);
-        c.currentArmor = null;
-        c.currentWard = null;
-      });
-      saveData();
-      switchSessionTab(currentSessionTab);
-    }
-
-    function toggleItemFormSections() {
-      const hasArmor = document.getElementById('chkHasArmor').checked;
-      const hasWard = document.getElementById('chkHasWard').checked;
-      const modifiesStats = document.getElementById('chkModifiesStats').checked;
-      const hasAttacks = document.getElementById('chkHasAttacks').checked;
-      const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
-      const isConsumable = document.getElementById('chkIsConsumable').checked;
-
-      if (hasArmor) document.getElementById('armorInputBlock').classList.remove('hidden');
-      else document.getElementById('armorInputBlock').classList.add('hidden');
-
-      if (hasWard) document.getElementById('wardInputBlock').classList.remove('hidden');
-      else document.getElementById('wardInputBlock').classList.add('hidden');
-
-      if (modifiesStats) {
-        document.getElementById('statModBlock').classList.remove('hidden');
-        renderStatModSteppers();
-      } else {
-        document.getElementById('statModBlock').classList.add('hidden');
+      if (maxBoostWard > 0 && resetWard && (turnsWard > 0 || (turnsWard === 0 && c.boostWard > 0))) {
+        c.boostWard = maxBoostWard;
       }
 
-      if (hasAttacks) document.getElementById('attacksInputBlock').classList.remove('hidden');
-      else document.getElementById('attacksInputBlock').classList.add('hidden');
-
-      if (hasSpecialEffects) document.getElementById('specialEffectsInputBlock').classList.remove('hidden');
-      else document.getElementById('specialEffectsInputBlock').classList.add('hidden');
-
-      if (isConsumable) {
-        document.getElementById('consumableInputBlock').classList.remove('hidden');
-        document.getElementById('itemEquippedBlock').classList.add('hidden');
-        document.getElementById('itemInputEquipped').value = 'false';
-      } else {
-        document.getElementById('consumableInputBlock').classList.add('hidden');
-        document.getElementById('itemEquippedBlock').classList.remove('hidden');
+      if (turnsWard > 1) {
+        c.boostWardTurns = turnsWard - 1;
+      } else if (turnsWard === 1) {
+        c.boostWardTurns = 0;
+        c.boostWard = 0;
+        c.maxBoostWard = 0;
+      } else if (target === 'Armor') {
+        c.boostArmor = 0; c.maxBoostArmor = 0;
+      } else if (target === 'Ward Save') {
+        c.boostWard = 0; c.maxBoostWard = 0;
       }
-    }
-
-    function renderStatModSteppers() {
-      const keys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
-      document.getElementById('statModSteppersList').innerHTML = keys.map(k => `
-        <div class="stepper-row">
-          <div style="font-size:12px; font-weight:600; text-transform:capitalize;">${k}</div>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <button class="stepper-btn" onclick="changeStatMod('${k}', -1)">-</button>
-            <span style="font-weight:bold; min-width:28px; text-align:center; color:${tempStatMods[k] > 0 ? 'var(--green-hp)' : tempStatMods[k] < 0 ? 'var(--crimson-primary)' : 'var(--text-secondary)'};">
-              ${tempStatMods[k] > 0 ? '+' + tempStatMods[k] : tempStatMods[k]}
-            </span>
-            <button class="stepper-btn" onclick="changeStatMod('${k}', 1)">+</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function changeStatMod(key, delta) {
-      tempStatMods[key] = (tempStatMods[key] || 0) + delta;
-      renderStatModSteppers();
-    }
-
-    function openAddItemModal() {
-      editingItemId = null;
-      document.getElementById('addItemModalTitle').innerText = 'ADD ITEM';
-      
-      document.getElementById('itemInputName').value = '';
-      document.getElementById('itemInputCategory').value = '';
-      document.getElementById('itemInputEquipped').value = 'true';
-
-      document.getElementById('chkHasArmor').checked = false;
-      document.getElementById('itemInputArmorSave').value = '0';
-
-      document.getElementById('chkHasWard').checked = false;
-      document.getElementById('itemInputWardSave').value = '0';
-
-      document.getElementById('chkModifiesStats').checked = false;
-      tempStatMods = {};
-
-      document.getElementById('chkHasAttacks').checked = false;
-      document.getElementById('itemInputAttackCount').value = '1';
-      document.getElementById('itemInputAttackDamage').value = '';
-
-      document.getElementById('chkHasSpecialEffects').checked = false;
-      document.getElementById('itemInputSpecialEffects').value = '';
-
-      document.getElementById('chkIsConsumable').checked = false;
-      document.getElementById('itemInputConsumableAmount').value = '1';
-
-      toggleItemFormSections();
-      document.getElementById('addItemModal').classList.remove('hidden');
-    }
-
-    function openEditItemModal(itemId) {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c || !c.inventory) return;
-      const item = c.inventory.find(i => i.id === itemId);
-      if (!item) return;
-
-      editingItemId = item.id;
-      document.getElementById('addItemModalTitle').innerText = 'EDIT ITEM';
-      
-      document.getElementById('itemInputName').value = item.name || '';
-      document.getElementById('itemInputCategory').value = item.category || '';
-      document.getElementById('itemInputEquipped').value = item.isEquipped ? 'true' : 'false';
-
-      document.getElementById('chkHasArmor').checked = item.hasArmor || false;
-      document.getElementById('itemInputArmorSave').value = item.armorSave || 0;
-
-      document.getElementById('chkHasWard').checked = item.hasWard || false;
-      document.getElementById('itemInputWardSave').value = item.wardSave || 0;
-
-      document.getElementById('chkModifiesStats').checked = item.hasStatModifiers || false;
-      tempStatMods = {};
-      if (item.statModifiers) {
-        Object.assign(tempStatMods, item.statModifiers);
-      }
-
-      document.getElementById('chkHasAttacks').checked = item.hasAttacks || false;
-      document.getElementById('itemInputAttackCount').value = item.attackCount || 1;
-      document.getElementById('itemInputAttackDamage').value = item.attackDamage || '';
-
-      document.getElementById('chkHasSpecialEffects').checked = item.hasSpecialEffects || false;
-      document.getElementById('itemInputSpecialEffects').value = item.specialEffectsText || '';
-
-      document.getElementById('chkIsConsumable').checked = item.isConsumable || false;
-      document.getElementById('itemInputConsumableAmount').value = item.consumableAmount || 1;
-
-      toggleItemFormSections();
-      document.getElementById('addItemModal').classList.remove('hidden');
-    }
-
-    function closeAddItemModal() {
-      document.getElementById('addItemModal').classList.add('hidden');
-    }
-
-    function saveNewItem() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-
-      const name = document.getElementById('itemInputName').value.trim();
-      const category = document.getElementById('itemInputCategory').value.trim() || 'Misc';
-      const isEquipped = document.getElementById('itemInputEquipped').value === 'true';
-
-      const rawArmorSave = parseInt(document.getElementById('itemInputArmorSave').value) || 0;
-      const hasArmor = document.getElementById('chkHasArmor').checked || rawArmorSave > 0;
-      const armorSave = hasArmor ? rawArmorSave : 0;
-
-      const rawWardSave = parseInt(document.getElementById('itemInputWardSave').value) || 0;
-      const hasWard = document.getElementById('chkHasWard').checked || rawWardSave > 0;
-      const wardSave = hasWard ? rawWardSave : 0;
-
-      const hasStatModifiers = document.getElementById('chkModifiesStats').checked;
-      const statModifiers = {};
-      if (hasStatModifiers) {
-        Object.entries(tempStatMods).forEach(([k, v]) => {
-          if (v !== 0) statModifiers[k] = v;
-        });
-      }
-
-      const hasAttacks = document.getElementById('chkHasAttacks').checked;
-      const attackCount = hasAttacks ? (parseInt(document.getElementById('itemInputAttackCount').value) || 1) : 1;
-      const attackDamage = hasAttacks ? document.getElementById('itemInputAttackDamage').value.trim() : '';
-
-      const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
-      const specialEffectsText = hasSpecialEffects ? document.getElementById('itemInputSpecialEffects').value.trim() : '';
-
-      const isConsumable = document.getElementById('chkIsConsumable').checked;
-      const consumableAmount = isConsumable ? (parseInt(document.getElementById('itemInputConsumableAmount').value) || 1) : 0;
-
-      if (!name) { alert("Please enter an item name"); return; }
-
-      adjustVitalsOnMaxChange(c, () => {
-        if (!c.inventory) c.inventory = [];
-
-        if (editingItemId) {
-          const item = c.inventory.find(i => i.id === editingItemId);
-          if (item) {
-            item.name = name;
-            item.category = category;
-            item.isEquipped = isEquipped;
-            
-            item.hasArmor = hasArmor;
-            item.armorSave = armorSave;
-            
-            item.hasWard = hasWard;
-            item.wardSave = wardSave;
-            
-            item.hasStatModifiers = hasStatModifiers;
-            item.statModifiers = statModifiers;
-            
-            item.hasAttacks = hasAttacks;
-            item.attackCount = attackCount;
-            item.attackDamage = attackDamage;
-            
-            item.hasSpecialEffects = hasSpecialEffects;
-            item.specialEffectsText = specialEffectsText;
-
-            item.isConsumable = isConsumable;
-            item.consumableAmount = consumableAmount;
-          }
-        } else {
-          const newItem = {
-            id: Date.now().toString(),
-            name,
-            category,
-            isEquipped,
-            hasArmor,
-            armorSave,
-            hasWard,
-            wardSave,
-            hasStatModifiers,
-            statModifiers,
-            hasAttacks,
-            attackCount,
-            attackDamage,
-            hasSpecialEffects,
-            specialEffectsText,
-            isConsumable,
-            consumableAmount
-          };
-          c.inventory.push(newItem);
-          
-          if (isEquipped) {
-            if (!c.equipmentCategoryOrder) c.equipmentCategoryOrder = [];
-            if (!c.equipmentCategoryOrder.includes(category)) c.equipmentCategoryOrder.push(category);
-          } else {
-            if (!c.inventoryCategoryOrder) c.inventoryCategoryOrder = [];
-            if (!c.inventoryCategoryOrder.includes(category)) c.inventoryCategoryOrder.push(category);
-          }
-        }
-        
-        c.currentArmor = null;
-        c.currentWard = null;
-      });
-
-      saveData();
-      closeAddItemModal();
-      switchSessionTab(currentSessionTab);
-    }
-
-    function promptHeal() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      const input = prompt("Enter heal amount to restore:");
-      const heal = parseInt(input);
-      if (isNaN(heal) || heal <= 0) return;
-
-      const maxHp = getEffectiveMaxHp(c);
-      c.currentHp = Math.min(maxHp, c.currentHp + heal);
-
       saveData();
       renderUseScreen();
+      // Show notification
+      const oldNotify = document.getElementById('temp-notify');
+      if (oldNotify) oldNotify.remove();
+      const notify = document.createElement('div');
+      notify.id = 'temp-notify';
+      notify.style.position = 'fixed';
+      notify.style.bottom = '80px';
+      notify.style.left = '50%';
+      notify.style.transform = 'translateX(-50%)';
+      notify.style.background = 'rgba(0,0,0,0.8)';
+      notify.style.color = 'white';
+      notify.style.padding = '10px 20px';
+      notify.style.borderRadius = '20px';
+      notify.style.zIndex = '9999';
+      notify.innerText = target + ' Boost Removed';
+      document.body.appendChild(notify);
+      setTimeout(() => { if (notify.parentNode) notify.remove(); }, 2000);
     }
 
-    function promptBoostHp() {
-      openBoostHpModal();
+    function promptBoost() {
+      document.getElementById('boostModal').classList.remove('hidden');
     }
 
-    function openBoostHpModal() {
+    function closeBoostModal() {
+      document.getElementById('boostModal').classList.add('hidden');
+    }
+
+    function confirmApplyBoost() {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
-      document.getElementById('boostHpAmountInput').value = c.boostHp > 0 ? c.boostHp : '10';
-      document.getElementById('boostHpTurnsInput').value = c.boostHpTurns || '0';
-      document.getElementById('boostHpResetChk').checked = c.boostHpResetOnNextRound !== false;
-      document.getElementById('boostHpModal').classList.remove('hidden');
-    }
 
-    function closeBoostHpModal() {
-      document.getElementById('boostHpModal').classList.add('hidden');
-    }
-
-    function confirmApplyBoostHp() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      const amount = parseInt(document.getElementById('boostHpAmountInput').value);
-      const turns = parseInt(document.getElementById('boostHpTurnsInput').value) || 0;
-      const resetOnNextRound = document.getElementById('boostHpResetChk').checked;
+      const target = document.querySelector('input[name="boostTarget"]:checked').value;
+      const amount = parseInt(document.getElementById('boostAmountInput').value);
+      const turns = parseInt(document.getElementById('boostTurnsInput').value) || 0;
+      const resetOnNextRound = document.getElementById('boostResetChk').checked;
 
       if (isNaN(amount) || amount <= 0) {
-        closeBoostHpModal();
+        closeBoostModal();
         return;
       }
 
-      c.boostHp = amount;
-      c.maxBoostHp = amount;
-      c.boostHpTurns = turns;
-      c.boostHpResetOnNextRound = resetOnNextRound;
+      if (target === 'HP') {
+        c.boostHp = amount;
+        c.maxBoostHp = amount;
+        c.boostHpTurns = turns;
+        c.boostHpResetOnNextRound = resetOnNextRound;
+      } else if (target === 'Armor') {
+        c.boostArmor = amount;
+        c.maxBoostArmor = amount;
+        c.boostArmorTurns = turns;
+        c.boostArmorResetOnNextRound = resetOnNextRound;
+      } else if (target === 'Ward Save') {
+        c.boostWard = amount;
+        c.maxBoostWard = amount;
+        c.boostWardTurns = turns;
+        c.boostWardResetOnNextRound = resetOnNextRound;
+      }
 
       saveData();
-      closeBoostHpModal();
       renderUseScreen();
+      closeBoostModal();
     }
 
     function promptSpendMp() {
