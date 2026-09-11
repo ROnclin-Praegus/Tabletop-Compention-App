@@ -113,6 +113,7 @@ class MainActivity : ComponentActivity() {
                         UpdateAvailableDialog(
                             updateInfo = info,
                             currentVersion = "v$currentAppVersion",
+                            characters = characters,
                             onDismiss = { updateInfoState = null }
                         )
                     }
