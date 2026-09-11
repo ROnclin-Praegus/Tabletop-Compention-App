@@ -1908,7 +1908,7 @@
         document.getElementById('wardBarBlock').classList.add('hidden');
       }
 
-      const turnsTag = c.boostHpTurns > 0 ? ` (${c.boostHpTurns}t)` : (c.boostHpResetOnNextRound !== false ? ' (Reset)' : '');
+      const turnsTag = c.boostHpTurns > 0 ? ` (${c.boostHpTurns}t)` : (c.boostHpResetOnNextRound !== false ? ' (R)' : '');
       const hpText = c.boostHp > 0 
         ? `${c.currentHp} / ${maxHp} <span class="boost-tag">+${c.boostHp} Boost${turnsTag}</span>`
         : `${c.currentHp} / ${maxHp}`;

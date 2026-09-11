@@ -846,6 +846,7 @@ fun UseCharacterScreen(
                                                 Text("Armor", fontWeight = FontWeight.Bold, color = GoldAccent)
                                             }
 
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
                                                 "$currentArmor / $totalArmor",
                                                 fontWeight = FontWeight.Bold,
@@ -867,7 +868,7 @@ fun UseCharacterScreen(
                                                         )
                                                     }
                                                 ) {
-                                                    val turnsTag = if (activeCharacter.boostArmorTurns > 0) " (${activeCharacter.boostArmorTurns}t)" else if (activeCharacter.boostArmorResetOnNextRound) " (Reset)" else ""
+                                                    val turnsTag = if (activeCharacter.boostArmorTurns > 0) " (${activeCharacter.boostArmorTurns}t)" else if (activeCharacter.boostArmorResetOnNextRound) " (R)" else ""
                                                     Text(
                                                         text = "+${activeCharacter.boostArmor} Boost$turnsTag",
                                                         fontSize = 11.sp,
@@ -877,6 +878,7 @@ fun UseCharacterScreen(
                                                     )
                                                 }
                                             }
+                                        }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
                                         LinearProgressIndicator(
@@ -907,6 +909,7 @@ fun UseCharacterScreen(
                                                 Text("Ward Save", fontWeight = FontWeight.Bold, color = CyanAccent)
                                             }
 
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
                                                 "$currentWard / $totalWard",
                                                 fontWeight = FontWeight.Bold,
@@ -928,7 +931,7 @@ fun UseCharacterScreen(
                                                         )
                                                     }
                                                 ) {
-                                                    val turnsTag = if (activeCharacter.boostWardTurns > 0) " (${activeCharacter.boostWardTurns}t)" else if (activeCharacter.boostWardResetOnNextRound) " (Reset)" else ""
+                                                    val turnsTag = if (activeCharacter.boostWardTurns > 0) " (${activeCharacter.boostWardTurns}t)" else if (activeCharacter.boostWardResetOnNextRound) " (R)" else ""
                                                     Text(
                                                         text = "+${activeCharacter.boostWard} Boost$turnsTag",
                                                         fontSize = 11.sp,
@@ -938,6 +941,7 @@ fun UseCharacterScreen(
                                                     )
                                                 }
                                             }
+                                        }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
                                         LinearProgressIndicator(
@@ -972,7 +976,7 @@ fun UseCharacterScreen(
                                                 "${activeCharacter.currentHp} / $effectiveMaxHp",
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 16.sp,
-                                                color = TextPrimary
+                                                color = GreenHp
                                             )
                                             if (activeCharacter.boostHp > 0) {
                                                 Spacer(modifier = Modifier.width(6.dp))
@@ -989,12 +993,12 @@ fun UseCharacterScreen(
                                                         )
                                                     }
                                                 ) {
-                                                    val turnsTag = if (activeCharacter.boostHpTurns > 0) " (${activeCharacter.boostHpTurns}t)" else if (activeCharacter.boostHpResetOnNextRound) " (Reset)" else ""
+                                                    val turnsTag = if (activeCharacter.boostHpTurns > 0) " (${activeCharacter.boostHpTurns}t)" else if (activeCharacter.boostHpResetOnNextRound) " (R)" else ""
                                                     Text(
                                                         text = "+${activeCharacter.boostHp} Boost$turnsTag",
                                                         fontSize = 11.sp,
                                                         fontWeight = FontWeight.Bold,
-                                                        color = GoldAccent,
+                                                        color = GreenHp,
                                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                     )
                                                 }
