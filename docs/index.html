@@ -773,7 +773,7 @@
           <div id="armorBarBlock" class="bar-group hidden">
             <div class="bar-header">
               <span style="color: var(--gold-accent);">🛡️ Armor</span>
-              <span id="useArmorText">0 / 0</span>
+              <span id="useArmorText" style="color: var(--gold-accent);">0 / 0</span>
             </div>
             <div class="bar-bg"><div id="useArmorFill" class="bar-fill fill-armor"></div></div>
             <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
@@ -783,7 +783,7 @@
           <div id="wardBarBlock" class="bar-group hidden">
             <div class="bar-header">
               <span style="color: var(--cyan-accent);">✨ Ward Save</span>
-              <span id="useWardText">0 / 0</span>
+              <span id="useWardText" style="color: var(--cyan-accent);">0 / 0</span>
             </div>
             <div class="bar-bg"><div id="useWardFill" class="bar-fill fill-ward"></div></div>
             <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
@@ -793,13 +793,13 @@
           <div class="bar-group">
             <div class="bar-header">
               <span style="color: var(--green-hp);">Health</span>
-              <span id="useHpText">0 / 0</span>
+              <span id="useHpText" style="color: var(--green-hp);">0 / 0</span>
             </div>
             <div class="bar-bg"><div id="useHpFill" class="bar-fill fill-hp"></div></div>
             <div style="display:flex; gap:6px; margin-top:10px;">
               <button class="prompt-btn" style="color:var(--crimson-primary);" onclick="openDamageModal()">- DAMAGE</button>
               <button class="prompt-btn" style="color:var(--green-hp);" onclick="promptHeal()">+ HEAL</button>
-              <button class="prompt-btn" style="color:var(--gold-accent); border: 1px solid var(--gold-accent);" onclick="promptBoost()">+ BOOST HP</button>
+              <button class="prompt-btn" style="color:var(--gold-accent); border: 1px solid var(--gold-accent);" onclick="promptBoost()">+ BOOST DEFENSES</button>
             </div>
           </div>
 
@@ -1914,6 +1914,7 @@
         : `${c.currentHp} / ${maxHp}`;
 
       document.getElementById('useHpText').innerHTML = hpText;
+        document.getElementById('useHpText').style.color = 'var(--green-hp)';
       document.getElementById('useHpFill').style.width = `${(c.currentHp / Math.max(1, maxHp)) * 100}%`;
       document.getElementById('useHpFill').className = `bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}`;
 
