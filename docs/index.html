@@ -1347,6 +1347,33 @@
     </div>
   </div>
 
+
+  <!-- Premium Modal -->
+  <div id="premiumModal" class="modal-backdrop hidden">
+    <div class="modal-content">
+      <h3 style="color:var(--gold-accent); margin-top:0;">&#x1F31F; PREMIUM FEATURES</h3>
+      <p style="font-weight:bold;">Unlock the ultimate experience with Premium!</p>
+      <ul style="color:var(--text-secondary); font-size:14px; text-align:left; line-height:1.4;">
+        <li>Quick support</li>
+        <li>Ad-free experience</li>
+        <li>High-five from the dev</li>
+        <li>And so much more!</li>
+      </ul>
+      <p style="color:var(--crimson-primary); font-size:12px; font-weight:bold;">To upgrade, please pay 13,37 EUR to the dev in-cash to receive your code.</p>
+      
+      <div class="form-group" style="margin-top:16px;">
+        <label>Activation Code</label>
+        <input type="text" id="premiumCodeInput" class="form-input" placeholder="Enter code here...">
+        <div id="premiumErrorMsg" style="color:var(--crimson-primary); font-size:12px; margin-top:4px;"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="prompt-btn" style="color:var(--text-secondary);" onclick="closePremiumModal()">CANCEL</button>
+        <button class="prompt-btn" style="background:var(--gold-accent); color:var(--bg-dark);" onclick="activatePremium()">ACTIVATE</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Delete Modal -->
   <div id="deleteModal" class="modal-overlay hidden">
     <div class="modal-card" style="max-width:320px;">
@@ -1362,6 +1389,7 @@
   <script>
     const STORAGE_KEY = "rpg_homebrew_characters_v14";
     let characters = [];
+    let isPremium = localStorage.getItem('rpg_is_premium') === 'true';
     let activeCharId = null;
     let editingCharId = null;
     let editingItemId = null;
@@ -1381,6 +1409,50 @@
 
     let tempStats = { ...defaultStats };
     let tempStatMods = { ...defaultStats };
+
+
+    function openPremiumModal() {
+        document.getElementById('premiumCodeInput').value = '';
+        document.getElementById('premiumErrorMsg').innerText = '';
+        document.getElementById('premiumModal').classList.remove('hidden');
+    }
+
+    function closePremiumModal() {
+        document.getElementById('premiumModal').classList.add('hidden');
+    }
+
+    function activatePremium() {
+        const code = document.getElementById('premiumCodeInput').value.trim();
+        if (code === '8008135') {
+            isPremium = true;
+            localStorage.setItem('rpg_is_premium', 'true');
+            closePremiumModal();
+            updateLogoColor();
+            renderCharacterList();
+            alert("Premium Activated! High-five from the dev!");
+        } else {
+            document.getElementById('premiumErrorMsg').innerText = "Invalid code. Please pay the dev in-cash.";
+        }
+    }
+
+    function togglePremiumStatus() {
+        if (isPremium) {
+            isPremium = false;
+            localStorage.setItem('rpg_is_premium', 'false');
+            updateLogoColor();
+            renderCharacterList();
+            alert("Premium Deactivated");
+        } else {
+            openPremiumModal();
+        }
+    }
+
+    function updateLogoColor() {
+        const logo = document.getElementById('mainAppLogo');
+        if (logo) {
+            logo.style.color = isPremium ? 'var(--gold-accent)' : 'var(--text-primary)';
+        }
+    }
 
     function init() {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -1728,11 +1800,11 @@
       `;
 
       if (characters.length === 0) {
-        container.innerHTML = headerHTML + `<div style="text-align:center; padding:40px; color:var(--text-secondary);">No heroes found. Tap '+ CREATE HERO' to begin!</div>`;
+        container.innerHTML = premiumBanner + headerHTML + `<div style="text-align:center; padding:40px; color:var(--text-secondary);">No heroes found. Tap '+ CREATE HERO' to begin!</div>`;
         return;
       }
 
-      container.innerHTML = headerHTML + characters.map(c => {
+      container.innerHTML = premiumBanner + headerHTML + characters.map(c => {
         const statsList = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
         const maxHp = getEffectiveMaxHp(c);
         const maxMp = getEffectiveMaxMp(c);
