@@ -1720,9 +1720,10 @@
 
       const container = document.getElementById('characterList');
       const headerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom: 12px;">
-           <button class="prompt-btn" style="width:auto; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
-           <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 12px; gap:8px;">
+          <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
+          <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)" multiple>
+          <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--green-hp);" onclick="backupAllCharacters()">&#x1F4BE; BACKUP ALL</button>
         </div>
       `;
 
@@ -3266,6 +3267,21 @@
       renderCharacterList();
     }
     
+    function backupAllCharacters() {
+    if(characters.length === 0) {
+        alert("No characters to backup!");
+        return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(characters, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", "TabletopCompanion_All_Characters.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+    
     function exportCharacter(id) {
       const c = characters.find(item => item.id === id);
       if (!c) return;
@@ -3279,24 +3295,49 @@
     }
     
     function importCharacter(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    let filesProcessed = 0;
+    let totalImported = 0;
+    
+    Array.from(files).forEach(file => {
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
-          const importedChar = JSON.parse(e.target.result);
-          if (!importedChar.name || !importedChar.id) throw new Error("Invalid format");
-          importedChar.id = Date.now().toString();
-          characters.push(importedChar);
-          saveData();
-          renderCharacterList();
+          const parsed = JSON.parse(e.target.result);
+          if (Array.isArray(parsed)) {
+              parsed.forEach(c => {
+                  if(c.name) {
+                      c.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                      characters.push(c);
+                      totalImported++;
+                  }
+              });
+          } else {
+              if (!parsed.name) throw new Error("Invalid format");
+              parsed.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+              characters.push(parsed);
+              totalImported++;
+          }
         } catch(err) {
-          alert("Invalid character file.");
+          console.error("Invalid character file.", err);
         }
-        event.target.value = '';
-      }
+        filesProcessed++;
+        if (filesProcessed === files.length) {
+            if (totalImported > 0) {
+                alert(`Successfully imported ${totalImported} characters!`);
+            } else {
+                alert("No valid characters found in the file(s).");
+            }
+            saveData();
+            renderCharacterList();
+            event.target.value = '';
+        }
+      };
       reader.readAsText(file);
-    }
+    });
+  }
 
     function promptDelete(id) {
       deletingCharId = id;
