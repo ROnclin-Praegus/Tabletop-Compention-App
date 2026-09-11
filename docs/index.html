@@ -828,37 +828,40 @@
 
       <!-- TAB 2: ABILITIES -->
       <div id="abilitiesTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddAbilityModal()">
+          <span style="font-size: 16px;">+</span> ADD ABILITY
+        </button>
         <div id="abilitiesList"></div>
       </div>
 
       <!-- TAB 3: EQUIPMENT (EQUIPPED ITEMS ONLY) -->
       <div id="equipmentTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddItemModal()">
+          <span style="font-size: 16px;">+</span> ADD EQUIPMENT
+        </button>
         <div id="equipmentList"></div>
       </div>
 
       <!-- TAB 4: INVENTORY (CARRIED UNEQUIPPED ITEMS ONLY) -->
       <div id="inventoryTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddItemModal()">
+          <span style="font-size: 16px;">+</span> ADD INVENTORY ITEM
+        </button>
         <div id="inventoryList"></div>
       </div>
 
       <!-- TAB 5: NOTES -->
       <div id="notesTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddNoteModal()">
+          <span style="font-size: 16px;">+</span> ADD NOTE
+        </button>
         <div id="notesList"></div>
       </div>
     </div>
 
-    <!-- FAB for Create / Add Item / Add Ability / Add Note -->
+    <!-- FAB for Create -->
     <button id="createFab" class="fab" onclick="openCreateModal()">
       <span>+</span> CREATE HERO
-    </button>
-    <button id="addItemFab" class="fab hidden" onclick="openAddItemModal()">
-      <span>+</span> ADD ITEM
-    </button>
-    <button id="addAbilityFab" class="fab hidden" onclick="openAddAbilityModal()">
-      <span>+</span> ADD ABILITY
-    </button>
-    <button id="addNoteFab" class="fab hidden" onclick="openAddNoteModal()">
-      <span>+</span> ADD NOTE
     </button>
   </div>
 
@@ -1789,10 +1792,6 @@
       document.getElementById('inventoryTabContent').classList.add('hidden');
       document.getElementById('notesTabContent').classList.add('hidden');
 
-      document.getElementById('addItemFab').classList.add('hidden');
-      document.getElementById('addAbilityFab').classList.add('hidden');
-      document.getElementById('addNoteFab').classList.add('hidden');
-
       if (tab === 'vitals') {
         document.getElementById('tabVitals').classList.add('active');
         document.getElementById('vitalsTabContent').classList.remove('hidden');
@@ -1800,24 +1799,18 @@
       } else if (tab === 'abilities') {
         document.getElementById('tabAbilities').classList.add('active');
         document.getElementById('abilitiesTabContent').classList.remove('hidden');
-        document.getElementById('addAbilityFab').classList.remove('hidden');
         renderAbilitiesScreen();
       } else if (tab === 'equipment') {
         document.getElementById('tabEquipment').classList.add('active');
         document.getElementById('equipmentTabContent').classList.remove('hidden');
-        document.getElementById('addItemFab').classList.remove('hidden');
-        document.getElementById('addItemFab').innerHTML = '<span>+</span> ADD EQUIPMENT';
         renderEquipmentScreen();
       } else if (tab === 'inventory') {
         document.getElementById('tabInventory').classList.add('active');
         document.getElementById('inventoryTabContent').classList.remove('hidden');
-        document.getElementById('addItemFab').classList.remove('hidden');
-        document.getElementById('addItemFab').innerHTML = '<span>+</span> ADD ITEM';
         renderInventoryScreen();
       } else if (tab === 'notes') {
         document.getElementById('tabNotes').classList.add('active');
         document.getElementById('notesTabContent').classList.remove('hidden');
-        document.getElementById('addNoteFab').classList.remove('hidden');
         renderNotesScreen();
       }
     }

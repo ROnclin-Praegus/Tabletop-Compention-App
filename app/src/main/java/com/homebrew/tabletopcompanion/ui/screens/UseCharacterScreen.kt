@@ -692,33 +692,6 @@ fun UseCharacterScreen(
                 }
             }
         },
-        floatingActionButton = {
-            if (selectedTab in 1..4) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        when (selectedTab) {
-                            1 -> showAddAbilityDialog = true
-                            2, 3 -> showAddEquipmentDialog = true
-                            4 -> showAddNoteDialog = true
-                        }
-                    },
-                    icon = { Icon(Icons.Default.Add, contentDescription = "Add") },
-                    text = {
-                        Text(
-                            text = when (selectedTab) {
-                                1 -> "ADD ABILITY"
-                                2 -> "ADD EQUIPMENT"
-                                3 -> "ADD INVENTORY ITEM"
-                                else -> "ADD NOTE"
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    containerColor = GoldAccent,
-                    contentColor = DarkBackground
-                )
-            }
-        },
         containerColor = DarkBackground
     ) { paddingValues ->
         Box(
@@ -1136,45 +1109,57 @@ fun UseCharacterScreen(
                 }
                 1 -> {
                     // TAB 1: ABILITIES
-                    if (activeCharacter.abilities.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = TextSecondary,
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No Abilities Added",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Tap 'ADD ABILITY' to create spells, skills, or special attacks!",
-                                color = TextSecondary,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        item {
+                            Button(
+                                onClick = { showAddAbilityDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("ADD ABILITY", fontWeight = FontWeight.Bold)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
+                        if (activeCharacter.abilities.isEmpty()) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "No Abilities Added",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Tap 'ADD ABILITY' to create spells, skills, or special attacks!",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        } else {
                             items(activeCharacter.abilities, key = { it.id }) { ability ->
                                 AbilityCard(
                                     ability = ability,
@@ -1190,45 +1175,57 @@ fun UseCharacterScreen(
                 }
                 2 -> {
                     // TAB 2: EQUIPMENT (Equipped Items Only)
-                    if (equippedItems.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Shield,
-                                contentDescription = null,
-                                tint = TextSecondary,
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No Equipped Items",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Equip items from your Inventory tab, or tap 'ADD EQUIPMENT'!",
-                                color = TextSecondary,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        item {
+                            Button(
+                                onClick = { showAddEquipmentDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("ADD EQUIPMENT", fontWeight = FontWeight.Bold)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
+                        if (equippedItems.isEmpty()) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Shield,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "No Equipped Items",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Equip items from your Inventory tab, or tap 'ADD EQUIPMENT'!",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        } else {
                             val groupedEquipped = equippedItems.groupBy { it.category }
                             for (category in groupedEquipped.keys) {
                                 val isCollapsed = collapsedEquippedCategories.contains(category)
@@ -1267,45 +1264,57 @@ fun UseCharacterScreen(
                 }
                 3 -> {
                     // TAB 3: INVENTORY (Unequipped Carried Items Only)
-                    if (unequippedItems.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Backpack,
-                                contentDescription = null,
-                                tint = TextSecondary,
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Inventory is Empty",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Unequip items from Equipment, or tap 'ADD INVENTORY ITEM'!",
-                                color = TextSecondary,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        item {
+                            Button(
+                                onClick = { showAddEquipmentDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("ADD INVENTORY ITEM", fontWeight = FontWeight.Bold)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
+                        if (unequippedItems.isEmpty()) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Backpack,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Inventory is Empty",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Unequip items from Equipment, or tap 'ADD INVENTORY ITEM'!",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        } else {
                             val groupedUnequipped = unequippedItems.groupBy { it.category }
                             for (category in groupedUnequipped.keys) {
                                 val isCollapsed = collapsedUnequippedCategories.contains(category)
@@ -1347,80 +1356,90 @@ fun UseCharacterScreen(
                     val archivedCount = activeCharacter.notes.count { it.isArchived }
                     val visibleNotes = activeCharacter.notes.filter { !it.isArchived || showArchivedNotes }
 
-                    Column(
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        if (archivedCount > 0) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                        item {
+                            Button(
+                                onClick = { showAddNoteDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
                             ) {
-                                FilterChip(
-                                    selected = showArchivedNotes,
-                                    onClick = { showArchivedNotes = !showArchivedNotes },
-                                    label = { Text(if (showArchivedNotes) "Hide Archived Notes ($archivedCount)" else "Show Archived Notes ($archivedCount)", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
-                                    leadingIcon = { Icon(if (showArchivedNotes) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = GoldAccent.copy(alpha = 0.2f),
-                                        selectedLabelColor = GoldAccent,
-                                        containerColor = DarkSurfaceVariant,
-                                        labelColor = TextSecondary
+                                Icon(Icons.Default.Add, contentDescription = "Add")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("ADD NOTE", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        
+                        if (archivedCount > 0) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    FilterChip(
+                                        selected = showArchivedNotes,
+                                        onClick = { showArchivedNotes = !showArchivedNotes },
+                                        label = { Text(if (showArchivedNotes) "Hide Archived Notes ($archivedCount)" else "Show Archived Notes ($archivedCount)", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                                        leadingIcon = { Icon(if (showArchivedNotes) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = GoldAccent.copy(alpha = 0.2f),
+                                            selectedLabelColor = GoldAccent,
+                                            containerColor = DarkSurfaceVariant,
+                                            labelColor = TextSecondary
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
 
                         if (visibleNotes.isEmpty()) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.EditNote,
-                                    contentDescription = null,
-                                    tint = TextSecondary,
-                                    modifier = Modifier.size(64.dp)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = if (activeCharacter.notes.isEmpty()) "No Notes Created" else "No Active Notes",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = if (activeCharacter.notes.isEmpty()) "Tap 'ADD NOTE' to record quests, secrets, or NPC info!" else "All notes are currently archived. Tap 'Show Archived Notes' to view them.",
-                                    color = TextSecondary,
-                                    fontSize = 14.sp,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                items(visibleNotes, key = { it.id }) { note ->
-                                    NoteCard(
-                                        note = note,
-                                        onEdit = { noteToEdit = note },
-                                        onToggleArchive = { toggleArchiveNote(note.id) },
-                                        onDelete = { deleteNote(note.id) },
-                                        onMoveUp = { moveNote(note.id, -1) },
-                                        onMoveDown = { moveNote(note.id, 1) }
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.EditNote,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = if (activeCharacter.notes.isEmpty()) "No Notes Created" else "No Active Notes",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = if (activeCharacter.notes.isEmpty()) "Tap 'ADD NOTE' to record quests, secrets, or NPC info!" else "All notes are currently archived. Tap 'Show Archived Notes' to view them.",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
+                            }
+                        } else {
+                            items(visibleNotes, key = { it.id }) { note ->
+                                NoteCard(
+                                    note = note,
+                                    onEdit = { noteToEdit = note },
+                                    onToggleArchive = { toggleArchiveNote(note.id) },
+                                    onDelete = { deleteNote(note.id) },
+                                    onMoveUp = { moveNote(note.id, -1) },
+                                    onMoveDown = { moveNote(note.id, 1) }
+                                )
                             }
                         }
                     }
