@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(isPremium, showPremiumImage) {
                         if (isPremium && !showPremiumImage) {
                             // Delay 15 seconds for debug
-                            kotlinx.coroutines.delay(15000L)
+                            kotlinx.coroutines.delay(900000L) // 15 minutes
                             val images = listOf(
                                 R.drawable.images1,
                                 R.drawable.images2,
