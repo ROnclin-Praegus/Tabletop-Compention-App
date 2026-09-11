@@ -103,7 +103,15 @@ fun CharacterSelectScreen(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp
                             ),
-                            color = TextPrimary
+                            color = if (isPremium) GoldAccent else TextPrimary,
+                            modifier = Modifier.clickable { 
+                                if (isPremium) {
+                                    onSetPremium(false)
+                                    Toast.makeText(context, "Premium Deactivated", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    showPremiumDialog = true
+                                }
+                            }
                         )
                         Text(
                             text = "Character Selection",
