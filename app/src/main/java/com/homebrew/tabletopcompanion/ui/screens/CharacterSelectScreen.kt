@@ -39,6 +39,8 @@ import androidx.compose.material.icons.filled.Share
 @Composable
 fun CharacterSelectScreen(
     characters: List<Character>,
+    isPremium: Boolean,
+    onSetPremium: (Boolean) -> Unit,
     onSelectCharacter: (Character) -> Unit,
     onCreateCharacter: (Character) -> Unit,
     onUpdateCharacter: (Character) -> Unit,
@@ -46,6 +48,7 @@ fun CharacterSelectScreen(
     onCheckForUpdates: () -> Unit = {}
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showPremiumDialog by remember { mutableStateOf(false) }
     var characterToEdit by remember { mutableStateOf<Character?>(null) }
     var characterToDelete by remember { mutableStateOf<Character?>(null) }
     var characterToExport by remember { mutableStateOf<Character?>(null) }
@@ -147,11 +150,85 @@ fun CharacterSelectScreen(
         containerColor = DarkBackground
     ) { paddingValues ->
 
-        Box(
+        if (showPremiumDialog) {
+            var inputCode by remember { mutableStateOf("") }
+            var errorMsg by remember { mutableStateOf<String?>(null) }
+            AlertDialog(
+                onDismissRequest = { showPremiumDialog = false },
+                title = { Text("PREMIUM FEATURES", fontWeight = FontWeight.Bold, color = GoldAccent) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Unlock the ultimate experience with Premium!", color = TextPrimary, fontWeight = FontWeight.Bold)
+                        Text("- Quick support\n- Ad-free experience\n- High-five from the dev\n- And so much more!", color = TextSecondary, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("To upgrade, please pay 13,37 EUR to the dev in-cash to receive your code.", color = CrimsonPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = inputCode,
+                            onValueChange = { 
+                                inputCode = it
+                                errorMsg = null
+                            },
+                            label = { Text("Activation Code") },
+                            singleLine = true,
+                            isError = errorMsg != null
+                        )
+                        if (errorMsg != null) {
+                            Text(errorMsg!!, color = CrimsonPrimary, fontSize = 12.sp)
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (inputCode.trim() == "8008135") {
+                                onSetPremium(true)
+                                showPremiumDialog = false
+                                Toast.makeText(context, "Premium Activated!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                errorMsg = "Invalid code. Please pay the dev."
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                    ) {
+                        Text("ACTIVATE", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPremiumDialog = false }) {
+                        Text("CANCEL", color = TextSecondary)
+                    }
+                },
+                containerColor = DarkSurface
+            )
+        }
+
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            if (!isPremium) {
+                Surface(
+                    color = GoldAccent.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clickable { showPremiumDialog = true }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text("UPGRADE TO PREMIUM", fontWeight = FontWeight.Bold, color = GoldAccent)
+                    }
+                }
+            }
+
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (characters.isEmpty()) {
                 Column(
                     modifier = Modifier
@@ -207,6 +284,7 @@ fun CharacterSelectScreen(
         }
     }
 
+        }
     // Create Hero Dialog
     if (showCreateDialog) {
         CreateCharacterDialog(

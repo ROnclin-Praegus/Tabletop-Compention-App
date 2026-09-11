@@ -10,6 +10,15 @@ class CharacterRepository(context: Context) {
     private val prefs = context.getSharedPreferences("rpg_characters_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
     private val KEY_CHARACTERS = "characters_json"
+    private val KEY_PREMIUM = "is_premium"
+
+    fun isPremium(): Boolean {
+        return prefs.getBoolean(KEY_PREMIUM, false)
+    }
+
+    fun setPremium(premium: Boolean) {
+        prefs.edit().putBoolean(KEY_PREMIUM, premium).apply()
+    }
 
     fun getCharacters(): List<Character> {
         val json = prefs.getString(KEY_CHARACTERS, null)

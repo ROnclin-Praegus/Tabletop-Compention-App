@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
                     var currentScreen by remember { mutableStateOf<Screen>(Screen.Select) }
                     var characters by remember { mutableStateOf(repository.getCharacters()) }
                     var updateInfoState by remember { mutableStateOf<UpdateInfo?>(null) }
+                    var isPremium by remember { mutableStateOf(repository.isPremium()) }
 
                     fun runUpdateCheck(manual: Boolean) {
                         val versionName = try {
@@ -69,6 +70,11 @@ class MainActivity : ComponentActivity() {
                         is Screen.Select -> {
                             CharacterSelectScreen(
                                 characters = characters,
+                                isPremium = isPremium,
+                                onSetPremium = { 
+                                    repository.setPremium(it)
+                                    isPremium = it 
+                                },
                                 onSelectCharacter = { char ->
                                     currentScreen = Screen.Use(char)
                                 },
