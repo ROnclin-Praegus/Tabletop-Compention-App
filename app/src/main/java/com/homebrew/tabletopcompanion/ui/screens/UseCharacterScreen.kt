@@ -916,9 +916,9 @@ fun UseCharacterScreen(
                                             if (activeCharacter.boostWard > 0) {
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Surface(
-                                                    color = CyanAccent.copy(alpha = 0.2f),
+                                                    color = GoldAccent.copy(alpha = 0.2f),
                                                     shape = RoundedCornerShape(4.dp),
-                                                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
                                                     modifier = Modifier.pointerInput(Unit) {
                                                         detectTapGestures(
                                                             onDoubleTap = {
@@ -946,7 +946,7 @@ fun UseCharacterScreen(
                                                 .fillMaxWidth()
                                                 .height(8.dp)
                                                 .clip(RoundedCornerShape(4.dp)),
-                                            color = CyanAccent,
+                                            color = if (activeCharacter.boostWard > 0) GoldAccent else CyanAccent,
                                             trackColor = DarkSurfaceVariant
                                         )
                                     }
@@ -1049,7 +1049,7 @@ fun UseCharacterScreen(
                                         ) {
                                             Icon(Icons.Default.Shield, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("BOOST HP", color = GoldAccent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            Text("BOOST DEFENSES", color = GoldAccent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                         }
                                     }
                                 }
