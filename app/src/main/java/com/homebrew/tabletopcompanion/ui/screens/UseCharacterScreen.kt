@@ -359,7 +359,7 @@ fun UseCharacterScreen(
     }
 
     fun applyBoost(target: String, amount: Int, turns: Int = 0, resetOnNextRound: Boolean = true) {
-        if (amount <= 0) return
+        if (amount < 0) return
         var updated = activeCharacter
         when (target) {
             "HP" -> {
@@ -2065,17 +2065,34 @@ fun UseCharacterScreen(
         val type = pendingAdjustmentType!!
 
         if (type == AdjustmentType.BOOST) {
+            var target by remember { mutableStateOf("HP") }
             var amountInput by remember { mutableStateOf("") }
             var turnsInput by remember { mutableStateOf("0") }
             var resetOnNextRound by remember { mutableStateOf(true) }
 
             AlertDialog(
                 onDismissRequest = { pendingAdjustmentType = null },
-                title = { Text("Add Boost HP", fontWeight = FontWeight.Bold, color = GoldAccent) },
+                title = { Text("Add Boost", fontWeight = FontWeight.Bold, color = GoldAccent) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Select what to boost:", fontSize = 13.sp, color = TextPrimary)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = target == "HP", onClick = { target = "HP" })
+                                Text("HP", fontSize = 13.sp)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = target == "Armor", onClick = { target = "Armor" })
+                                Text("Armor", fontSize = 13.sp)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = target == "Ward Save", onClick = { target = "Ward Save" })
+                                Text("Ward", fontSize = 13.sp)
+                            }
+                        }
+                        
                         Text(
-                            text = "Enter Boost HP details. Boost HP absorbs damage first before HP!",
+                            text = "Enter Boost details. Absorbs damage before base value!",
                             fontSize = 13.sp,
                             color = TextSecondary
                         )
@@ -2083,7 +2100,7 @@ fun UseCharacterScreen(
                         OutlinedTextField(
                             value = amountInput,
                             onValueChange = { amountInput = it.filter { c -> c.isDigit() } },
-                            label = { Text("Boost HP Amount") },
+                            label = { Text("Boost Amount") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -2096,8 +2113,7 @@ fun UseCharacterScreen(
                         OutlinedTextField(
                             value = turnsInput,
                             onValueChange = { turnsInput = it.filter { c -> c.isDigit() } },
-                            label = { Text("Duration in Turns (0 = Unlimited)") },
-                            placeholder = { Text("0 for unlimited, or 1, 2, 3...") },
+                            label = { Text("Duration (Rounds) - 0 = Permanent") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -2108,19 +2124,19 @@ fun UseCharacterScreen(
                         )
 
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { resetOnNextRound = !resetOnNextRound }
+                                .padding(vertical = 8.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Reset to Max on Next Round", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
-                                Text("Resets Boost HP to full value each round", fontSize = 11.sp, color = TextSecondary)
-                            }
-                            Switch(
+                            Checkbox(
                                 checked = resetOnNextRound,
                                 onCheckedChange = { resetOnNextRound = it },
-                                colors = SwitchDefaults.colors(checkedThumbColor = DarkBackground, checkedTrackColor = GoldAccent)
+                                colors = CheckboxDefaults.colors(checkedColor = GoldAccent)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Resets to full value each round", fontSize = 11.sp, color = TextSecondary)
                         }
                     }
                 },
@@ -2129,7 +2145,9 @@ fun UseCharacterScreen(
                         onClick = {
                             val amount = amountInput.toIntOrNull() ?: 0
                             val turns = turnsInput.toIntOrNull() ?: 0
-                            applyBoost("HP", amount, turns, resetOnNextRound)
+                            if (amount > 0) {
+                                applyBoost(target, amount, turns, resetOnNextRound)
+                            }
                             pendingAdjustmentType = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
@@ -2146,7 +2164,7 @@ fun UseCharacterScreen(
             )
         } else {
             val title = when (type) {
-                AdjustmentType.HEAL -> "Heal HP"
+                AdjustmentType.HEAL -> "Restore Vitals"
                 AdjustmentType.SPEND_MP -> "Use MP"
                 AdjustmentType.RECOVER_MP -> "Recover MP"
                 else -> ""
@@ -2160,15 +2178,35 @@ fun UseCharacterScreen(
             }
 
             var amountInput by remember { mutableStateOf("") }
+            var healTarget by remember { mutableStateOf("HP") }
 
             AlertDialog(
                 onDismissRequest = { pendingAdjustmentType = null },
                 title = { Text(title, fontWeight = FontWeight.Bold, color = actionColor) },
                 text = {
                     Column {
+                        if (type == AdjustmentType.HEAL) {
+                            Text("Select what to restore:", fontSize = 13.sp, color = TextPrimary)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected = healTarget == "HP", onClick = { healTarget = "HP" }, colors = RadioButtonDefaults.colors(selectedColor = actionColor))
+                                    Text("HP", fontSize = 13.sp)
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected = healTarget == "Armor", onClick = { healTarget = "Armor" }, colors = RadioButtonDefaults.colors(selectedColor = actionColor))
+                                    Text("Armor", fontSize = 13.sp)
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected = healTarget == "Ward Save", onClick = { healTarget = "Ward Save" }, colors = RadioButtonDefaults.colors(selectedColor = actionColor))
+                                    Text("Ward", fontSize = 13.sp)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        
                         Text(
                             text = when (type) {
-                                AdjustmentType.HEAL -> "Enter heal amount to restore HP (up to max HP):"
+                                AdjustmentType.HEAL -> "Enter amount to restore:"
                                 AdjustmentType.SPEND_MP -> "Enter MP amount to spend:"
                                 AdjustmentType.RECOVER_MP -> "Enter MP amount to recover:"
                                 else -> ""
@@ -2196,11 +2234,13 @@ fun UseCharacterScreen(
                     Button(
                         onClick = {
                             val amount = amountInput.toIntOrNull() ?: 0
-                            when (type) {
-                                AdjustmentType.HEAL -> applyHeal("HP", amount)
-                                AdjustmentType.SPEND_MP -> applySpendMp(amount)
-                                AdjustmentType.RECOVER_MP -> applyRecoverMp(amount)
-                                else -> {}
+                            if (amount > 0) {
+                                when (type) {
+                                    AdjustmentType.HEAL -> applyHeal(healTarget, amount)
+                                    AdjustmentType.SPEND_MP -> applySpendMp(amount)
+                                    AdjustmentType.RECOVER_MP -> applyRecoverMp(amount)
+                                    else -> {}
+                                }
                             }
                             pendingAdjustmentType = null
                         },
@@ -2353,14 +2393,6 @@ fun AbilityCard(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = GoldAccent
-                            )
-                        }
-                        if (ability.description.isNotBlank() && ability.description != evaluatedDescription) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Formula: ${ability.description}",
-                                fontSize = 11.sp,
-                                color = TextSecondary
                             )
                         }
                     }
