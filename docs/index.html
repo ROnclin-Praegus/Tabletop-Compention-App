@@ -339,14 +339,26 @@
     .fill-mp { background-color: var(--blue-mp); }
 
     .boost-tag {
-      background: rgba(255, 193, 7, 0.2);
-      border: 1px solid var(--gold-accent);
-      color: var(--gold-accent);
       font-size: 10px;
       font-weight: bold;
       padding: 2px 6px;
       border-radius: 4px;
       margin-left: 6px;
+    }
+    .boost-tag-armor {
+      background: rgba(255, 193, 7, 0.2);
+      border: 1px solid var(--gold-accent);
+      color: var(--gold-accent);
+    }
+    .boost-tag-ward {
+      background: rgba(0, 229, 255, 0.2);
+      border: 1px solid var(--cyan-accent);
+      color: var(--cyan-accent);
+    }
+    .boost-tag-hp {
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid var(--green-hp);
+      color: var(--green-hp);
     }
 
     .save-badge {
@@ -1744,7 +1756,7 @@
             <div class="bar-group">
               <div class="bar-header">
                 <span style="color:var(--green-hp);">HP</span>
-                <span>${c.currentHp} / ${maxHp} ${c.boostHp > 0 ? `<span class="boost-tag">+${c.boostHp} Boost</span>` : ''}</span>
+                <span style="color:var(--green-hp);">${c.currentHp} / ${maxHp} ${c.boostHp > 0 ? `<span class="boost-tag boost-tag-hp">+${c.boostHp} Boost</span>` : ''}</span>
               </div>
               <div class="bar-bg"><div class="bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}" style="width:${(c.currentHp / Math.max(1, maxHp)) * 100}%"></div></div>
             </div>

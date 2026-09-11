@@ -916,9 +916,9 @@ fun UseCharacterScreen(
                                             if (activeCharacter.boostWard > 0) {
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Surface(
-                                                    color = GoldAccent.copy(alpha = 0.2f),
+                                                    color = CyanAccent.copy(alpha = 0.2f),
                                                     shape = RoundedCornerShape(4.dp),
-                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent),
                                                     modifier = Modifier.pointerInput(Unit) {
                                                         detectTapGestures(
                                                             onDoubleTap = {
@@ -946,7 +946,7 @@ fun UseCharacterScreen(
                                                 .fillMaxWidth()
                                                 .height(8.dp)
                                                 .clip(RoundedCornerShape(4.dp)),
-                                            color = if (activeCharacter.boostWard > 0) GoldAccent else CyanAccent,
+                                            color = CyanAccent,
                                             trackColor = DarkSurfaceVariant
                                         )
                                     }
@@ -977,9 +977,9 @@ fun UseCharacterScreen(
                                             if (activeCharacter.boostHp > 0) {
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Surface(
-                                                    color = GoldAccent.copy(alpha = 0.2f),
+                                                    color = GreenHp.copy(alpha = 0.2f),
                                                     shape = RoundedCornerShape(4.dp),
-                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GreenHp),
                                                     modifier = Modifier.pointerInput(Unit) {
                                                         detectTapGestures(
                                                             onDoubleTap = {
@@ -1008,7 +1008,7 @@ fun UseCharacterScreen(
                                             .fillMaxWidth()
                                             .height(10.dp)
                                             .clip(RoundedCornerShape(5.dp)),
-                                        color = if (activeCharacter.boostHp > 0) GoldAccent else GreenHp,
+                                        color = GreenHp,
                                         trackColor = DarkSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
