@@ -339,14 +339,26 @@
     .fill-mp { background-color: var(--blue-mp); }
 
     .boost-tag {
-      background: rgba(255, 193, 7, 0.2);
-      border: 1px solid var(--gold-accent);
-      color: var(--gold-accent);
       font-size: 10px;
       font-weight: bold;
       padding: 2px 6px;
       border-radius: 4px;
       margin-left: 6px;
+    }
+    .boost-tag-armor {
+      background: rgba(255, 193, 7, 0.2);
+      border: 1px solid var(--gold-accent);
+      color: var(--gold-accent);
+    }
+    .boost-tag-ward {
+      background: rgba(0, 229, 255, 0.2);
+      border: 1px solid var(--cyan-accent);
+      color: var(--cyan-accent);
+    }
+    .boost-tag-hp {
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid var(--green-hp);
+      color: var(--green-hp);
     }
 
     .save-badge {
@@ -760,8 +772,8 @@
           <!-- ARMOR BAR (Shown ABOVE HP if equipped Armor > 0) -->
           <div id="armorBarBlock" class="bar-group hidden">
             <div class="bar-header">
-              <span style="color: var(--gold-accent);">🛡️ Armor Points (Physical)</span>
-              <span id="useArmorText">0 / 0</span>
+              <span style="color: var(--gold-accent);">🛡️ Armor</span>
+              <span id="useArmorText" style="color: var(--gold-accent);">0 / 0</span>
             </div>
             <div class="bar-bg"><div id="useArmorFill" class="bar-fill fill-armor"></div></div>
             <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
@@ -770,8 +782,8 @@
           <!-- WARD SAVE BAR (Shown ABOVE HP if equipped Ward > 0) -->
           <div id="wardBarBlock" class="bar-group hidden">
             <div class="bar-header">
-              <span style="color: var(--cyan-accent);">✨ Ward Save (Magical)</span>
-              <span id="useWardText">0 / 0</span>
+              <span style="color: var(--cyan-accent);">✨ Ward Save</span>
+              <span id="useWardText" style="color: var(--cyan-accent);">0 / 0</span>
             </div>
             <div class="bar-bg"><div id="useWardFill" class="bar-fill fill-ward"></div></div>
             <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
@@ -780,14 +792,14 @@
           <!-- HP BAR -->
           <div class="bar-group">
             <div class="bar-header">
-              <span style="color: var(--green-hp);">Health Points (HP)</span>
-              <span id="useHpText">0 / 0</span>
+              <span style="color: var(--green-hp);">Health</span>
+              <span id="useHpText" style="color: var(--green-hp);">0 / 0</span>
             </div>
             <div class="bar-bg"><div id="useHpFill" class="bar-fill fill-hp"></div></div>
             <div style="display:flex; gap:6px; margin-top:10px;">
               <button class="prompt-btn" style="color:var(--crimson-primary);" onclick="openDamageModal()">- DAMAGE</button>
               <button class="prompt-btn" style="color:var(--green-hp);" onclick="promptHeal()">+ HEAL</button>
-              <button class="prompt-btn" style="color:var(--gold-accent); border: 1px solid var(--gold-accent);" onclick="promptBoostHp()">+ BOOST HP</button>
+              <button class="prompt-btn" style="color:var(--gold-accent); border: 1px solid var(--gold-accent);" onclick="promptBoost()">+ BOOST DEFENSES</button>
             </div>
           </div>
 
@@ -797,7 +809,7 @@
 
             <div class="bar-group">
               <div class="bar-header">
-                <span style="color: var(--blue-mp);">Mana Points (MP)</span>
+                <span style="color: var(--blue-mp);">Mana</span>
                 <span id="useMpText">0 / 0</span>
               </div>
               <div class="bar-bg"><div id="useMpFill" class="bar-fill fill-mp"></div></div>
@@ -828,37 +840,40 @@
 
       <!-- TAB 2: ABILITIES -->
       <div id="abilitiesTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddAbilityModal()">
+          <span style="font-size: 16px;">+</span> ADD ABILITY
+        </button>
         <div id="abilitiesList"></div>
       </div>
 
       <!-- TAB 3: EQUIPMENT (EQUIPPED ITEMS ONLY) -->
       <div id="equipmentTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddItemModal()">
+          <span style="font-size: 16px;">+</span> ADD EQUIPMENT
+        </button>
         <div id="equipmentList"></div>
       </div>
 
       <!-- TAB 4: INVENTORY (CARRIED UNEQUIPPED ITEMS ONLY) -->
       <div id="inventoryTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddItemModal()">
+          <span style="font-size: 16px;">+</span> ADD INVENTORY ITEM
+        </button>
         <div id="inventoryList"></div>
       </div>
 
       <!-- TAB 5: NOTES -->
       <div id="notesTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddNoteModal()">
+          <span style="font-size: 16px;">+</span> ADD NOTE
+        </button>
         <div id="notesList"></div>
       </div>
     </div>
 
-    <!-- FAB for Create / Add Item / Add Ability / Add Note -->
+    <!-- FAB for Create -->
     <button id="createFab" class="fab" onclick="openCreateModal()">
       <span>+</span> CREATE HERO
-    </button>
-    <button id="addItemFab" class="fab hidden" onclick="openAddItemModal()">
-      <span>+</span> ADD ITEM
-    </button>
-    <button id="addAbilityFab" class="fab hidden" onclick="openAddAbilityModal()">
-      <span>+</span> ADD ABILITY
-    </button>
-    <button id="addNoteFab" class="fab hidden" onclick="openAddNoteModal()">
-      <span>+</span> ADD NOTE
     </button>
   </div>
 
@@ -959,29 +974,77 @@
     </div>
   </div>
 
-  <!-- Boost HP Modal -->
-  <div id="boostHpModal" class="modal-overlay hidden">
+  <!-- Boost Modal -->
+  <div id="boostModal" class="modal-overlay hidden">
     <div class="modal-card">
-      <h2 style="color:var(--gold-accent)">ADD BOOST HP</h2>
-      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Boost HP absorbs damage first before HP!</p>
+      <h2 style="color:var(--gold-accent)">ADD BOOST</h2>
+      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Boost absorbs damage first before base value!</p>
 
       <div class="form-group">
-        <label>Boost HP Amount</label>
-        <input id="boostHpAmountInput" type="number" class="form-input" value="10" placeholder="e.g. 10">
+        <label>Select Target</label>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="boostTarget" value="HP" checked> HP
+          </label>
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="boostTarget" value="Armor"> Armor
+          </label>
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="boostTarget" value="Ward Save"> Ward Save
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Boost Amount</label>
+        <input id="boostAmountInput" type="number" class="form-input" value="10" placeholder="e.g. 10">
       </div>
 
       <div class="form-group">
         <label>Duration in Turns (0 = Unlimited / Permanent)</label>
-        <input id="boostHpTurnsInput" type="number" class="form-input" value="0" placeholder="0 = Unlimited, or 1, 2, 3...">
+        <input id="boostTurnsInput" type="number" class="form-input" value="0" placeholder="0 = Unlimited, or 1, 2, 3...">
       </div>
 
       <label class="checkbox-row" style="color:var(--gold-accent); margin-top:8px;">
-        <input type="checkbox" id="boostHpResetChk" checked> Reset to Max Amount on Next Round
+        <input type="checkbox" id="boostResetChk" checked> Reset to Max Amount on Next Round
       </label>
 
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
-        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeBoostHpModal()">CANCEL</button>
-        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="confirmApplyBoostHp()">APPLY BOOST</button>
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeBoostModal()">CANCEL</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="confirmApplyBoost()">APPLY BOOST</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Heal Modal -->
+  <div id="healModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 style="color:var(--green-hp)">RESTORE VITALS</h2>
+      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Restore HP, Armor or Ward Save.</p>
+
+      <div class="form-group">
+        <label>Select Target</label>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="healTarget" value="HP" checked> HP
+          </label>
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="healTarget" value="Armor"> Armor
+          </label>
+          <label class="damage-option">
+            <input autocapitalize="sentences" type="radio" name="healTarget" value="Ward Save"> Ward Save
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Heal Amount</label>
+        <input id="healAmountInput" type="number" class="form-input" placeholder="e.g. 10">
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeHealModal()">CANCEL</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--green-hp); color:var(--bg-dark);" onclick="confirmApplyHeal()">RESTORE</button>
       </div>
     </div>
   </div>
@@ -1652,15 +1715,15 @@
       document.getElementById('headerGoldBtn').classList.add('hidden');
       document.getElementById('headerEditBtn').classList.add('hidden');
       document.getElementById('createFab').classList.remove('hidden');
-      document.getElementById('addItemFab').classList.add('hidden');
       document.getElementById('appTitle').innerText = "HOMEBREW RPG";
       document.getElementById('appSubtitle').innerText = "Character Selection";
 
       const container = document.getElementById('characterList');
       const headerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom: 12px;">
-           <button class="prompt-btn" style="width:auto; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
-           <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 12px; gap:8px;">
+          <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
+          <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)" multiple>
+          <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--green-hp);" onclick="backupAllCharacters()">&#x1F4BE; BACKUP ALL</button>
         </div>
       `;
 
@@ -1694,7 +1757,7 @@
             <div class="bar-group">
               <div class="bar-header">
                 <span style="color:var(--green-hp);">HP</span>
-                <span>${c.currentHp} / ${maxHp} ${c.boostHp > 0 ? `<span class="boost-tag">+${c.boostHp} Boost</span>` : ''}</span>
+                <span style="color:var(--green-hp);">${c.currentHp} / ${maxHp} ${c.boostHp > 0 ? `<span class="boost-tag boost-tag-hp">+${c.boostHp} Boost</span>` : ''}</span>
               </div>
               <div class="bar-bg"><div class="bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}" style="width:${(c.currentHp / Math.max(1, maxHp)) * 100}%"></div></div>
             </div>
@@ -1789,10 +1852,6 @@
       document.getElementById('inventoryTabContent').classList.add('hidden');
       document.getElementById('notesTabContent').classList.add('hidden');
 
-      document.getElementById('addItemFab').classList.add('hidden');
-      document.getElementById('addAbilityFab').classList.add('hidden');
-      document.getElementById('addNoteFab').classList.add('hidden');
-
       if (tab === 'vitals') {
         document.getElementById('tabVitals').classList.add('active');
         document.getElementById('vitalsTabContent').classList.remove('hidden');
@@ -1800,24 +1859,18 @@
       } else if (tab === 'abilities') {
         document.getElementById('tabAbilities').classList.add('active');
         document.getElementById('abilitiesTabContent').classList.remove('hidden');
-        document.getElementById('addAbilityFab').classList.remove('hidden');
         renderAbilitiesScreen();
       } else if (tab === 'equipment') {
         document.getElementById('tabEquipment').classList.add('active');
         document.getElementById('equipmentTabContent').classList.remove('hidden');
-        document.getElementById('addItemFab').classList.remove('hidden');
-        document.getElementById('addItemFab').innerHTML = '<span>+</span> ADD EQUIPMENT';
         renderEquipmentScreen();
       } else if (tab === 'inventory') {
         document.getElementById('tabInventory').classList.add('active');
         document.getElementById('inventoryTabContent').classList.remove('hidden');
-        document.getElementById('addItemFab').classList.remove('hidden');
-        document.getElementById('addItemFab').innerHTML = '<span>+</span> ADD ITEM';
         renderInventoryScreen();
       } else if (tab === 'notes') {
         document.getElementById('tabNotes').classList.add('active');
         document.getElementById('notesTabContent').classList.remove('hidden');
-        document.getElementById('addNoteFab').classList.remove('hidden');
         renderNotesScreen();
       }
     }
@@ -1856,12 +1909,13 @@
         document.getElementById('wardBarBlock').classList.add('hidden');
       }
 
-      const turnsTag = c.boostHpTurns > 0 ? ` (${c.boostHpTurns}t)` : (c.boostHpResetOnNextRound !== false ? ' (Reset)' : '');
+      const turnsTag = c.boostHpTurns > 0 ? ` (${c.boostHpTurns}t)` : (c.boostHpResetOnNextRound !== false ? ' (R)' : '');
       const hpText = c.boostHp > 0 
         ? `${c.currentHp} / ${maxHp} <span class="boost-tag">+${c.boostHp} Boost${turnsTag}</span>`
         : `${c.currentHp} / ${maxHp}`;
 
       document.getElementById('useHpText').innerHTML = hpText;
+        document.getElementById('useHpText').style.color = 'var(--green-hp)';
       document.getElementById('useHpFill').style.width = `${(c.currentHp / Math.max(1, maxHp)) * 100}%`;
       document.getElementById('useHpFill').className = `bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}`;
 
@@ -2868,56 +2922,112 @@
     }
 
     function promptHeal() {
+      document.getElementById('healModal').classList.remove('hidden');
+    }
+
+    function closeHealModal() {
+      document.getElementById('healModal').classList.add('hidden');
+    }
+
+    function confirmApplyHeal() {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
-      const input = prompt("Enter heal amount to restore:");
-      const heal = parseInt(input);
-      if (isNaN(heal) || heal <= 0) return;
-
-      const maxHp = getEffectiveMaxHp(c);
-      c.currentHp = Math.min(maxHp, c.currentHp + heal);
-
-      saveData();
-      renderUseScreen();
-    }
-
-    function promptBoostHp() {
-      openBoostHpModal();
-    }
-
-    function openBoostHpModal() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      document.getElementById('boostHpAmountInput').value = c.boostHp > 0 ? c.boostHp : '10';
-      document.getElementById('boostHpTurnsInput').value = c.boostHpTurns || '0';
-      document.getElementById('boostHpResetChk').checked = c.boostHpResetOnNextRound !== false;
-      document.getElementById('boostHpModal').classList.remove('hidden');
-    }
-
-    function closeBoostHpModal() {
-      document.getElementById('boostHpModal').classList.add('hidden');
-    }
-
-    function confirmApplyBoostHp() {
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-      const amount = parseInt(document.getElementById('boostHpAmountInput').value);
-      const turns = parseInt(document.getElementById('boostHpTurnsInput').value) || 0;
-      const resetOnNextRound = document.getElementById('boostHpResetChk').checked;
-
+      const target = document.querySelector('input[name="healTarget"]:checked').value;
+      const amount = parseInt(document.getElementById('healAmountInput').value);
       if (isNaN(amount) || amount <= 0) {
-        closeBoostHpModal();
+        closeHealModal();
         return;
       }
 
-      c.boostHp = amount;
-      c.maxBoostHp = amount;
-      c.boostHpTurns = turns;
-      c.boostHpResetOnNextRound = resetOnNextRound;
+      if (target === 'HP') {
+        const maxHp = getEffectiveMaxHp(c);
+        c.currentHp = Math.min(maxHp, c.currentHp + amount);
+      } else if (target === 'Armor') {
+        const maxArmor = getTotalArmor(c);
+        c.currentArmor = Math.min(maxArmor, (c.currentArmor != null ? c.currentArmor : maxArmor) + amount);
+      } else if (target === 'Ward Save') {
+        const maxWard = getTotalWard(c);
+        c.currentWard = Math.min(maxWard, (c.currentWard != null ? c.currentWard : maxWard) + amount);
+      }
+      
+      saveData();
+      renderUseScreen();
+      closeHealModal();
+    }
+
+    function removeBoost(target) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      if (target === 'HP') {
+        c.boostHp = 0; c.maxBoostHp = 0;
+      } else if (target === 'Armor') {
+        c.boostArmor = 0; c.maxBoostArmor = 0;
+      } else if (target === 'Ward Save') {
+        c.boostWard = 0; c.maxBoostWard = 0;
+      }
+      saveData();
+      renderUseScreen();
+      
+      const oldNotify = document.getElementById('temp-notify');
+      if (oldNotify) oldNotify.remove();
+      const notify = document.createElement('div');
+      notify.id = 'temp-notify';
+      notify.style.position = 'fixed';
+      notify.style.bottom = '80px';
+      notify.style.left = '50%';
+      notify.style.transform = 'translateX(-50%)';
+      notify.style.background = 'rgba(0,0,0,0.8)';
+      notify.style.color = 'white';
+      notify.style.padding = '10px 20px';
+      notify.style.borderRadius = '20px';
+      notify.style.zIndex = '9999';
+      notify.innerText = target + ' Boost Removed';
+      document.body.appendChild(notify);
+      setTimeout(() => { if (notify.parentNode) notify.remove(); }, 2000);
+    }
+
+    function promptBoost() {
+      document.getElementById('boostModal').classList.remove('hidden');
+    }
+
+    function closeBoostModal() {
+      document.getElementById('boostModal').classList.add('hidden');
+    }
+
+    function confirmApplyBoost() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const target = document.querySelector('input[name="boostTarget"]:checked').value;
+      const amount = parseInt(document.getElementById('boostAmountInput').value);
+      const turns = parseInt(document.getElementById('boostTurnsInput').value) || 0;
+      const resetOnNextRound = document.getElementById('boostResetChk').checked;
+
+      if (isNaN(amount) || amount <= 0) {
+        closeBoostModal();
+        return;
+      }
+
+      if (target === 'HP') {
+        c.boostHp = amount;
+        c.maxBoostHp = amount;
+        c.boostHpTurns = turns;
+        c.boostHpResetOnNextRound = resetOnNextRound;
+      } else if (target === 'Armor') {
+        c.boostArmor = amount;
+        c.maxBoostArmor = amount;
+        c.boostArmorTurns = turns;
+        c.boostArmorResetOnNextRound = resetOnNextRound;
+      } else if (target === 'Ward Save') {
+        c.boostWard = amount;
+        c.maxBoostWard = amount;
+        c.boostWardTurns = turns;
+        c.boostWardResetOnNextRound = resetOnNextRound;
+      }
 
       saveData();
-      closeBoostHpModal();
       renderUseScreen();
+      closeBoostModal();
     }
 
     function promptSpendMp() {
@@ -3157,6 +3267,21 @@
       renderCharacterList();
     }
     
+    function backupAllCharacters() {
+    if(characters.length === 0) {
+        alert("No characters to backup!");
+        return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(characters, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", "TabletopCompanion_All_Characters.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+    
     function exportCharacter(id) {
       const c = characters.find(item => item.id === id);
       if (!c) return;
@@ -3170,24 +3295,49 @@
     }
     
     function importCharacter(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    let filesProcessed = 0;
+    let totalImported = 0;
+    
+    Array.from(files).forEach(file => {
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
-          const importedChar = JSON.parse(e.target.result);
-          if (!importedChar.name || !importedChar.id) throw new Error("Invalid format");
-          importedChar.id = Date.now().toString();
-          characters.push(importedChar);
-          saveData();
-          renderCharacterList();
+          const parsed = JSON.parse(e.target.result);
+          if (Array.isArray(parsed)) {
+              parsed.forEach(c => {
+                  if(c.name) {
+                      c.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                      characters.push(c);
+                      totalImported++;
+                  }
+              });
+          } else {
+              if (!parsed.name) throw new Error("Invalid format");
+              parsed.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+              characters.push(parsed);
+              totalImported++;
+          }
         } catch(err) {
-          alert("Invalid character file.");
+          console.error("Invalid character file.", err);
         }
-        event.target.value = '';
-      }
+        filesProcessed++;
+        if (filesProcessed === files.length) {
+            if (totalImported > 0) {
+                alert(`Successfully imported ${totalImported} characters!`);
+            } else {
+                alert("No valid characters found in the file(s).");
+            }
+            saveData();
+            renderCharacterList();
+            event.target.value = '';
+        }
+      };
       reader.readAsText(file);
-    }
+    });
+  }
 
     function promptDelete(id) {
       deletingCharId = id;

@@ -80,7 +80,7 @@ fun UpdateAvailableDialog(
                         context.contentResolver, 
                         documentUri, 
                         "application/json", 
-                        "${char.name}.json"
+                        "\.json"
                     )
                     if (newFileUri != null) {
                         context.contentResolver.openOutputStream(newFileUri)?.use { out ->
@@ -89,10 +89,10 @@ fun UpdateAvailableDialog(
                         successCount++
                     }
                 }
-                Toast.makeText(context, "Backed up $successCount characters successfully!", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Backed up \ characters successfully!", Toast.LENGTH_LONG).show()
                 startUpdate()
             } catch (e: Exception) {
-                Toast.makeText(context, "Backup failed: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Backup failed: \", Toast.LENGTH_LONG).show()
                 startUpdate()
             }
         } else {

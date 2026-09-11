@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -41,8 +43,8 @@ import com.homebrew.tabletopcompanion.ui.theme.*
 
 enum class AdjustmentType {
     DAMAGE_PROMPT,
-    HEAL_HP,
-    BOOST_HP,
+    HEAL,
+    BOOST,
     SPEND_MP,
     RECOVER_MP
 }
@@ -55,6 +57,7 @@ fun UseCharacterScreen(
     onCharacterUpdated: (Character) -> Unit
 ) {
     var activeCharacter by remember { mutableStateOf(character) }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // Active Tab state: 0 = Vitals, 1 = Abilities, 2 = Equipment, 3 = Inventory, 4 = Notes
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -104,6 +107,14 @@ fun UseCharacterScreen(
         var newBoostHp = activeCharacter.boostHp
         var newMaxBoostHp = activeCharacter.maxBoostHp
         var newBoostHpTurns = activeCharacter.boostHpTurns
+        
+        var newBoostArmor = activeCharacter.boostArmor
+        var newMaxBoostArmor = activeCharacter.maxBoostArmor
+        var newBoostArmorTurns = activeCharacter.boostArmorTurns
+        
+        var newBoostWard = activeCharacter.boostWard
+        var newMaxBoostWard = activeCharacter.maxBoostWard
+        var newBoostWardTurns = activeCharacter.boostWardTurns
 
         val expiredList = mutableListOf<String>()
 
@@ -198,6 +209,22 @@ fun UseCharacterScreen(
             newMaxBoostHp = 0
             expiredList.add("Boost HP duration has ended!")
         }
+        if (newBoostArmorTurns > 1) {
+            newBoostArmorTurns -= 1
+        } else if (newBoostArmorTurns == 1) {
+            newBoostArmorTurns = 0
+            newBoostArmor = 0
+            newMaxBoostArmor = 0
+            expiredList.add("Armor Boost duration has ended!")
+        }
+        if (newBoostWardTurns > 1) {
+            newBoostWardTurns -= 1
+        } else if (newBoostWardTurns == 1) {
+            newBoostWardTurns = 0
+            newBoostWard = 0
+            newMaxBoostWard = 0
+            expiredList.add("Ward Save Boost duration has ended!")
+        }
 
         if (expiredList.isNotEmpty()) {
             activeExpiredNotification = expiredList.joinToString("\n")
@@ -209,6 +236,12 @@ fun UseCharacterScreen(
             boostHp = newBoostHp,
             maxBoostHp = newMaxBoostHp,
             boostHpTurns = newBoostHpTurns,
+            boostArmor = newBoostArmor,
+            maxBoostArmor = newMaxBoostArmor,
+            boostArmorTurns = newBoostArmorTurns,
+            boostWard = newBoostWard,
+            maxBoostWard = newMaxBoostWard,
+            boostWardTurns = newBoostWardTurns,
             currentArmor = newArmor,
             currentWard = newWard,
             effects = updatedEffects
@@ -223,11 +256,22 @@ fun UseCharacterScreen(
         var newArmor = currentArmor
         var newWard = currentWard
         var newBoostHp = activeCharacter.boostHp
+        var newBoostArmor = activeCharacter.boostArmor
+        var newBoostWard = activeCharacter.boostWard
         var newCurrentHp = activeCharacter.currentHp
 
         when (type) {
             DamageType.PHYSICAL -> {
-                if (newArmor > 0) {
+                if (remainingDamage > 0 && newBoostArmor > 0) {
+                    if (remainingDamage <= newBoostArmor) {
+                        newBoostArmor -= remainingDamage
+                        remainingDamage = 0
+                    } else {
+                        remainingDamage -= newBoostArmor
+                        newBoostArmor = 0
+                    }
+                }
+                if (remainingDamage > 0 && newArmor > 0) {
                     if (remainingDamage <= newArmor) {
                         newArmor -= remainingDamage
                         remainingDamage = 0
@@ -238,7 +282,16 @@ fun UseCharacterScreen(
                 }
             }
             DamageType.MAGICAL -> {
-                if (newWard > 0) {
+                if (remainingDamage > 0 && newBoostWard > 0) {
+                    if (remainingDamage <= newBoostWard) {
+                        newBoostWard -= remainingDamage
+                        remainingDamage = 0
+                    } else {
+                        remainingDamage -= newBoostWard
+                        newBoostWard = 0
+                    }
+                }
+                if (remainingDamage > 0 && newWard > 0) {
                     if (remainingDamage <= newWard) {
                         newWard -= remainingDamage
                         remainingDamage = 0
@@ -272,6 +325,8 @@ fun UseCharacterScreen(
         val updated = activeCharacter.copy(
             currentHp = newCurrentHp,
             boostHp = newBoostHp,
+            boostArmor = newBoostArmor,
+            boostWard = newBoostWard,
             currentArmor = newArmor,
             currentWard = newWard
         )
@@ -279,23 +334,53 @@ fun UseCharacterScreen(
         onCharacterUpdated(updated)
     }
 
-    fun applyHeal(amount: Int) {
+    fun applyHeal(target: String, amount: Int) {
         if (amount <= 0) return
-        val maxHp = activeCharacter.getEffectiveMaxHp()
-        val newCurrentHp = (activeCharacter.currentHp + amount).coerceAtMost(maxHp)
-        val updated = activeCharacter.copy(currentHp = newCurrentHp)
+        var updated = activeCharacter
+        when (target) {
+            "HP" -> {
+                val maxHp = activeCharacter.getEffectiveMaxHp()
+                val newCurrentHp = (activeCharacter.currentHp + amount).coerceAtMost(maxHp)
+                updated = updated.copy(currentHp = newCurrentHp)
+            }
+            "Armor" -> {
+                val maxArmor = activeCharacter.getTotalArmor()
+                val newArmor = (activeCharacter.getEffectiveCurrentArmor() + amount).coerceAtMost(maxArmor)
+                updated = updated.copy(currentArmor = newArmor)
+            }
+            "Ward Save" -> {
+                val maxWard = activeCharacter.getTotalWard()
+                val newWard = (activeCharacter.getEffectiveCurrentWard() + amount).coerceAtMost(maxWard)
+                updated = updated.copy(currentWard = newWard)
+            }
+        }
         activeCharacter = updated
         onCharacterUpdated(updated)
     }
 
-    fun applyBoostHp(amount: Int, turns: Int = 0, resetOnNextRound: Boolean = true) {
-        if (amount <= 0) return
-        val updated = activeCharacter.copy(
-            boostHp = amount,
-            maxBoostHp = amount,
-            boostHpTurns = turns,
-            boostHpResetOnNextRound = resetOnNextRound
-        )
+    fun applyBoost(target: String, amount: Int, turns: Int = 0, resetOnNextRound: Boolean = true) {
+        if (amount < 0) return
+        var updated = activeCharacter
+        when (target) {
+            "HP" -> {
+                updated = updated.copy(
+                    boostHp = amount, maxBoostHp = amount,
+                    boostHpTurns = turns, boostHpResetOnNextRound = resetOnNextRound
+                )
+            }
+            "Armor" -> {
+                updated = updated.copy(
+                    boostArmor = amount, maxBoostArmor = amount,
+                    boostArmorTurns = turns, boostArmorResetOnNextRound = resetOnNextRound
+                )
+            }
+            "Ward Save" -> {
+                updated = updated.copy(
+                    boostWard = amount, maxBoostWard = amount,
+                    boostWardTurns = turns, boostWardResetOnNextRound = resetOnNextRound
+                )
+            }
+        }
         activeCharacter = updated
         onCharacterUpdated(updated)
     }
@@ -692,33 +777,6 @@ fun UseCharacterScreen(
                 }
             }
         },
-        floatingActionButton = {
-            if (selectedTab in 1..4) {
-                ExtendedFloatingActionButton(
-                    onClick = {
-                        when (selectedTab) {
-                            1 -> showAddAbilityDialog = true
-                            2, 3 -> showAddEquipmentDialog = true
-                            4 -> showAddNoteDialog = true
-                        }
-                    },
-                    icon = { Icon(Icons.Default.Add, contentDescription = "Add") },
-                    text = {
-                        Text(
-                            text = when (selectedTab) {
-                                1 -> "ADD ABILITY"
-                                2 -> "ADD EQUIPMENT"
-                                3 -> "ADD INVENTORY ITEM"
-                                else -> "ADD NOTE"
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    containerColor = GoldAccent,
-                    contentColor = DarkBackground
-                )
-            }
-        },
         containerColor = DarkBackground
     ) { paddingValues ->
         Box(
@@ -785,15 +843,42 @@ fun UseCharacterScreen(
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(Icons.Default.Shield, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(18.dp))
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Armor Points (Physical)", fontWeight = FontWeight.Bold, color = GoldAccent)
+                                                Text("Armor", fontWeight = FontWeight.Bold, color = GoldAccent)
                                             }
 
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
                                                 "$currentArmor / $totalArmor",
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 15.sp,
                                                 color = GoldAccent
                                             )
+                                            if (activeCharacter.boostArmor > 0) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Surface(
+                                                    color = GoldAccent.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
+                                                    modifier = Modifier.pointerInput(Unit) {
+                                                        detectTapGestures(
+                                                            onDoubleTap = {
+                                                                applyBoost("Armor", 0)
+                                                                android.widget.Toast.makeText(context, "Armor Boost Removed", android.widget.Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        )
+                                                    }
+                                                ) {
+                                                    val turnsTag = if (activeCharacter.boostArmorTurns > 0) " (${activeCharacter.boostArmorTurns}t)" else if (activeCharacter.boostArmorResetOnNextRound) " (R)" else ""
+                                                    Text(
+                                                        text = "+${activeCharacter.boostArmor} Boost$turnsTag",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = GoldAccent,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
                                         LinearProgressIndicator(
@@ -821,15 +906,42 @@ fun UseCharacterScreen(
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(18.dp))
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Ward Save (Magical)", fontWeight = FontWeight.Bold, color = CyanAccent)
+                                                Text("Ward Save", fontWeight = FontWeight.Bold, color = CyanAccent)
                                             }
 
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
                                                 "$currentWard / $totalWard",
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 15.sp,
                                                 color = CyanAccent
                                             )
+                                            if (activeCharacter.boostWard > 0) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Surface(
+                                                    color = CyanAccent.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanAccent),
+                                                    modifier = Modifier.pointerInput(Unit) {
+                                                        detectTapGestures(
+                                                            onDoubleTap = {
+                                                                applyBoost("Ward Save", 0)
+                                                                android.widget.Toast.makeText(context, "Ward Save Boost Removed", android.widget.Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        )
+                                                    }
+                                                ) {
+                                                    val turnsTag = if (activeCharacter.boostWardTurns > 0) " (${activeCharacter.boostWardTurns}t)" else if (activeCharacter.boostWardResetOnNextRound) " (R)" else ""
+                                                    Text(
+                                                        text = "+${activeCharacter.boostWard} Boost$turnsTag",
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = CyanAccent,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
                                         LinearProgressIndicator(
@@ -856,7 +968,7 @@ fun UseCharacterScreen(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Icon(Icons.Default.Favorite, contentDescription = null, tint = GreenHp, modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Health Points (HP)", fontWeight = FontWeight.Bold, color = GreenHp)
+                                            Text("Health", fontWeight = FontWeight.Bold, color = GreenHp)
                                         }
 
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -864,21 +976,29 @@ fun UseCharacterScreen(
                                                 "${activeCharacter.currentHp} / $effectiveMaxHp",
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 16.sp,
-                                                color = TextPrimary
+                                                color = GreenHp
                                             )
                                             if (activeCharacter.boostHp > 0) {
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Surface(
-                                                    color = GoldAccent.copy(alpha = 0.2f),
+                                                    color = GreenHp.copy(alpha = 0.2f),
                                                     shape = RoundedCornerShape(4.dp),
-                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent)
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, GreenHp),
+                                                    modifier = Modifier.pointerInput(Unit) {
+                                                        detectTapGestures(
+                                                            onDoubleTap = {
+                                                                applyBoost("HP", 0)
+                                                                android.widget.Toast.makeText(context, "HP Boost Removed", android.widget.Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        )
+                                                    }
                                                 ) {
-                                                    val turnsTag = if (activeCharacter.boostHpTurns > 0) " (${activeCharacter.boostHpTurns}t)" else if (activeCharacter.boostHpResetOnNextRound) " (Reset)" else ""
+                                                    val turnsTag = if (activeCharacter.boostHpTurns > 0) " (${activeCharacter.boostHpTurns}t)" else if (activeCharacter.boostHpResetOnNextRound) " (R)" else ""
                                                     Text(
                                                         text = "+${activeCharacter.boostHp} Boost$turnsTag",
                                                         fontSize = 11.sp,
                                                         fontWeight = FontWeight.Bold,
-                                                        color = GoldAccent,
+                                                        color = GreenHp,
                                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                     )
                                                 }
@@ -892,7 +1012,7 @@ fun UseCharacterScreen(
                                             .fillMaxWidth()
                                             .height(10.dp)
                                             .clip(RoundedCornerShape(5.dp)),
-                                        color = if (activeCharacter.boostHp > 0) GoldAccent else GreenHp,
+                                        color = GreenHp,
                                         trackColor = DarkSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
@@ -914,7 +1034,7 @@ fun UseCharacterScreen(
                                         }
 
                                         Button(
-                                            onClick = { pendingAdjustmentType = AdjustmentType.HEAL_HP },
+                                            onClick = { pendingAdjustmentType = AdjustmentType.HEAL },
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant),
                                             contentPadding = PaddingValues(8.dp)
@@ -925,7 +1045,7 @@ fun UseCharacterScreen(
                                         }
 
                                         Button(
-                                            onClick = { pendingAdjustmentType = AdjustmentType.BOOST_HP },
+                                            onClick = { pendingAdjustmentType = AdjustmentType.BOOST },
                                             modifier = Modifier.weight(1.2f),
                                             colors = ButtonDefaults.buttonColors(containerColor = GoldAccent.copy(alpha = 0.2f)),
                                             border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent),
@@ -933,7 +1053,7 @@ fun UseCharacterScreen(
                                         ) {
                                             Icon(Icons.Default.Shield, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("BOOST HP", color = GoldAccent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            Text("BOOST DEFENSES", color = GoldAccent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                         }
                                     }
                                 }
@@ -948,7 +1068,7 @@ fun UseCharacterScreen(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text("Mana Points (MP)", fontWeight = FontWeight.Bold, color = BlueMp)
+                                            Text("Mana", fontWeight = FontWeight.Bold, color = BlueMp)
                                             Text(
                                                 "${activeCharacter.currentMp} / $effectiveMaxMp",
                                                 fontWeight = FontWeight.Bold,
@@ -1136,45 +1256,57 @@ fun UseCharacterScreen(
                 }
                 1 -> {
                     // TAB 1: ABILITIES
-                    if (activeCharacter.abilities.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = TextSecondary,
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No Abilities Added",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Tap 'ADD ABILITY' to create spells, skills, or special attacks!",
-                                color = TextSecondary,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        item {
+                            Button(
+                                onClick = { showAddAbilityDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("ADD ABILITY", fontWeight = FontWeight.Bold)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
+                        if (activeCharacter.abilities.isEmpty()) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "No Abilities Added",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Tap 'ADD ABILITY' to create spells, skills, or special attacks!",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        } else {
                             items(activeCharacter.abilities, key = { it.id }) { ability ->
                                 AbilityCard(
                                     ability = ability,
@@ -1190,45 +1322,57 @@ fun UseCharacterScreen(
                 }
                 2 -> {
                     // TAB 2: EQUIPMENT (Equipped Items Only)
-                    if (equippedItems.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Shield,
-                                contentDescription = null,
-                                tint = TextSecondary,
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No Equipped Items",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Equip items from your Inventory tab, or tap 'ADD EQUIPMENT'!",
-                                color = TextSecondary,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        item {
+                            Button(
+                                onClick = { showAddEquipmentDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("ADD EQUIPMENT", fontWeight = FontWeight.Bold)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
+                        if (equippedItems.isEmpty()) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Shield,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "No Equipped Items",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Equip items from your Inventory tab, or tap 'ADD EQUIPMENT'!",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        } else {
                             val groupedEquipped = equippedItems.groupBy { it.category }
                             for (category in groupedEquipped.keys) {
                                 val isCollapsed = collapsedEquippedCategories.contains(category)
@@ -1267,45 +1411,57 @@ fun UseCharacterScreen(
                 }
                 3 -> {
                     // TAB 3: INVENTORY (Unequipped Carried Items Only)
-                    if (unequippedItems.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Backpack,
-                                contentDescription = null,
-                                tint = TextSecondary,
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Inventory is Empty",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Unequip items from Equipment, or tap 'ADD INVENTORY ITEM'!",
-                                color = TextSecondary,
-                                fontSize = 14.sp,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        item {
+                            Button(
+                                onClick = { showAddEquipmentDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = "Add")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("ADD INVENTORY ITEM", fontWeight = FontWeight.Bold)
+                            }
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
+                        if (unequippedItems.isEmpty()) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Backpack,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Inventory is Empty",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Unequip items from Equipment, or tap 'ADD INVENTORY ITEM'!",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        } else {
                             val groupedUnequipped = unequippedItems.groupBy { it.category }
                             for (category in groupedUnequipped.keys) {
                                 val isCollapsed = collapsedUnequippedCategories.contains(category)
@@ -1347,80 +1503,90 @@ fun UseCharacterScreen(
                     val archivedCount = activeCharacter.notes.count { it.isArchived }
                     val visibleNotes = activeCharacter.notes.filter { !it.isArchived || showArchivedNotes }
 
-                    Column(
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        if (archivedCount > 0) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                        item {
+                            Button(
+                                onClick = { showAddNoteDialog = true },
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
                             ) {
-                                FilterChip(
-                                    selected = showArchivedNotes,
-                                    onClick = { showArchivedNotes = !showArchivedNotes },
-                                    label = { Text(if (showArchivedNotes) "Hide Archived Notes ($archivedCount)" else "Show Archived Notes ($archivedCount)", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
-                                    leadingIcon = { Icon(if (showArchivedNotes) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = GoldAccent.copy(alpha = 0.2f),
-                                        selectedLabelColor = GoldAccent,
-                                        containerColor = DarkSurfaceVariant,
-                                        labelColor = TextSecondary
+                                Icon(Icons.Default.Add, contentDescription = "Add")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("ADD NOTE", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        
+                        if (archivedCount > 0) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    FilterChip(
+                                        selected = showArchivedNotes,
+                                        onClick = { showArchivedNotes = !showArchivedNotes },
+                                        label = { Text(if (showArchivedNotes) "Hide Archived Notes ($archivedCount)" else "Show Archived Notes ($archivedCount)", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                                        leadingIcon = { Icon(if (showArchivedNotes) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = GoldAccent.copy(alpha = 0.2f),
+                                            selectedLabelColor = GoldAccent,
+                                            containerColor = DarkSurfaceVariant,
+                                            labelColor = TextSecondary
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
 
                         if (visibleNotes.isEmpty()) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.EditNote,
-                                    contentDescription = null,
-                                    tint = TextSecondary,
-                                    modifier = Modifier.size(64.dp)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = if (activeCharacter.notes.isEmpty()) "No Notes Created" else "No Active Notes",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = if (activeCharacter.notes.isEmpty()) "Tap 'ADD NOTE' to record quests, secrets, or NPC info!" else "All notes are currently archived. Tap 'Show Archived Notes' to view them.",
-                                    color = TextSecondary,
-                                    fontSize = 14.sp,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                            }
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                items(visibleNotes, key = { it.id }) { note ->
-                                    NoteCard(
-                                        note = note,
-                                        onEdit = { noteToEdit = note },
-                                        onToggleArchive = { toggleArchiveNote(note.id) },
-                                        onDelete = { deleteNote(note.id) },
-                                        onMoveUp = { moveNote(note.id, -1) },
-                                        onMoveDown = { moveNote(note.id, 1) }
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.EditNote,
+                                        contentDescription = null,
+                                        tint = TextSecondary,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = if (activeCharacter.notes.isEmpty()) "No Notes Created" else "No Active Notes",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = if (activeCharacter.notes.isEmpty()) "Tap 'ADD NOTE' to record quests, secrets, or NPC info!" else "All notes are currently archived. Tap 'Show Archived Notes' to view them.",
+                                        color = TextSecondary,
+                                        fontSize = 14.sp,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
                                     )
                                 }
+                            }
+                        } else {
+                            items(visibleNotes, key = { it.id }) { note ->
+                                NoteCard(
+                                    note = note,
+                                    onEdit = { noteToEdit = note },
+                                    onToggleArchive = { toggleArchiveNote(note.id) },
+                                    onDelete = { deleteNote(note.id) },
+                                    onMoveUp = { moveNote(note.id, -1) },
+                                    onMoveDown = { moveNote(note.id, 1) }
+                                )
                             }
                         }
                     }
@@ -1902,18 +2068,35 @@ fun UseCharacterScreen(
     if (pendingAdjustmentType != null && pendingAdjustmentType != AdjustmentType.DAMAGE_PROMPT) {
         val type = pendingAdjustmentType!!
 
-        if (type == AdjustmentType.BOOST_HP) {
+        if (type == AdjustmentType.BOOST) {
+            var target by remember { mutableStateOf("HP") }
             var amountInput by remember { mutableStateOf("") }
             var turnsInput by remember { mutableStateOf("0") }
             var resetOnNextRound by remember { mutableStateOf(true) }
 
             AlertDialog(
                 onDismissRequest = { pendingAdjustmentType = null },
-                title = { Text("Add Boost HP", fontWeight = FontWeight.Bold, color = GoldAccent) },
+                title = { Text("Add Boost", fontWeight = FontWeight.Bold, color = GoldAccent) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Select what to boost:", fontSize = 13.sp, color = TextPrimary)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = target == "HP", onClick = { target = "HP" })
+                                Text("HP", fontSize = 13.sp)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = target == "Armor", onClick = { target = "Armor" })
+                                Text("Armor", fontSize = 13.sp)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = target == "Ward Save", onClick = { target = "Ward Save" })
+                                Text("Ward", fontSize = 13.sp)
+                            }
+                        }
+                        
                         Text(
-                            text = "Enter Boost HP details. Boost HP absorbs damage first before HP!",
+                            text = "Enter Boost details. Absorbs damage before base value!",
                             fontSize = 13.sp,
                             color = TextSecondary
                         )
@@ -1921,7 +2104,7 @@ fun UseCharacterScreen(
                         OutlinedTextField(
                             value = amountInput,
                             onValueChange = { amountInput = it.filter { c -> c.isDigit() } },
-                            label = { Text("Boost HP Amount") },
+                            label = { Text("Boost Amount") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -1934,8 +2117,7 @@ fun UseCharacterScreen(
                         OutlinedTextField(
                             value = turnsInput,
                             onValueChange = { turnsInput = it.filter { c -> c.isDigit() } },
-                            label = { Text("Duration in Turns (0 = Unlimited)") },
-                            placeholder = { Text("0 for unlimited, or 1, 2, 3...") },
+                            label = { Text("Duration (Rounds) - 0 = Permanent") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -1946,19 +2128,19 @@ fun UseCharacterScreen(
                         )
 
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { resetOnNextRound = !resetOnNextRound }
+                                .padding(vertical = 8.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("Reset to Max on Next Round", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
-                                Text("Resets Boost HP to full value each round", fontSize = 11.sp, color = TextSecondary)
-                            }
-                            Switch(
+                            Checkbox(
                                 checked = resetOnNextRound,
                                 onCheckedChange = { resetOnNextRound = it },
-                                colors = SwitchDefaults.colors(checkedThumbColor = DarkBackground, checkedTrackColor = GoldAccent)
+                                colors = CheckboxDefaults.colors(checkedColor = GoldAccent)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Resets to full value each round", fontSize = 11.sp, color = TextSecondary)
                         }
                     }
                 },
@@ -1967,7 +2149,9 @@ fun UseCharacterScreen(
                         onClick = {
                             val amount = amountInput.toIntOrNull() ?: 0
                             val turns = turnsInput.toIntOrNull() ?: 0
-                            applyBoostHp(amount, turns, resetOnNextRound)
+                            if (amount > 0) {
+                                applyBoost(target, amount, turns, resetOnNextRound)
+                            }
                             pendingAdjustmentType = null
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
@@ -1984,29 +2168,49 @@ fun UseCharacterScreen(
             )
         } else {
             val title = when (type) {
-                AdjustmentType.HEAL_HP -> "Heal HP"
+                AdjustmentType.HEAL -> "Restore Vitals"
                 AdjustmentType.SPEND_MP -> "Use MP"
                 AdjustmentType.RECOVER_MP -> "Recover MP"
                 else -> ""
             }
 
             val actionColor = when (type) {
-                AdjustmentType.HEAL_HP -> GreenHp
+                AdjustmentType.HEAL -> GreenHp
                 AdjustmentType.SPEND_MP -> TextSecondary
                 AdjustmentType.RECOVER_MP -> BlueMp
                 else -> GoldAccent
             }
 
             var amountInput by remember { mutableStateOf("") }
+            var healTarget by remember { mutableStateOf("HP") }
 
             AlertDialog(
                 onDismissRequest = { pendingAdjustmentType = null },
                 title = { Text(title, fontWeight = FontWeight.Bold, color = actionColor) },
                 text = {
                     Column {
+                        if (type == AdjustmentType.HEAL) {
+                            Text("Select what to restore:", fontSize = 13.sp, color = TextPrimary)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected = healTarget == "HP", onClick = { healTarget = "HP" }, colors = RadioButtonDefaults.colors(selectedColor = actionColor))
+                                    Text("HP", fontSize = 13.sp)
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected = healTarget == "Armor", onClick = { healTarget = "Armor" }, colors = RadioButtonDefaults.colors(selectedColor = actionColor))
+                                    Text("Armor", fontSize = 13.sp)
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected = healTarget == "Ward Save", onClick = { healTarget = "Ward Save" }, colors = RadioButtonDefaults.colors(selectedColor = actionColor))
+                                    Text("Ward", fontSize = 13.sp)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        
                         Text(
                             text = when (type) {
-                                AdjustmentType.HEAL_HP -> "Enter heal amount to restore HP (up to max HP):"
+                                AdjustmentType.HEAL -> "Enter amount to restore:"
                                 AdjustmentType.SPEND_MP -> "Enter MP amount to spend:"
                                 AdjustmentType.RECOVER_MP -> "Enter MP amount to recover:"
                                 else -> ""
@@ -2034,11 +2238,13 @@ fun UseCharacterScreen(
                     Button(
                         onClick = {
                             val amount = amountInput.toIntOrNull() ?: 0
-                            when (type) {
-                                AdjustmentType.HEAL_HP -> applyHeal(amount)
-                                AdjustmentType.SPEND_MP -> applySpendMp(amount)
-                                AdjustmentType.RECOVER_MP -> applyRecoverMp(amount)
-                                else -> {}
+                            if (amount > 0) {
+                                when (type) {
+                                    AdjustmentType.HEAL -> applyHeal(healTarget, amount)
+                                    AdjustmentType.SPEND_MP -> applySpendMp(amount)
+                                    AdjustmentType.RECOVER_MP -> applyRecoverMp(amount)
+                                    else -> {}
+                                }
                             }
                             pendingAdjustmentType = null
                         },
@@ -2191,14 +2397,6 @@ fun AbilityCard(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = GoldAccent
-                            )
-                        }
-                        if (ability.description.isNotBlank() && ability.description != evaluatedDescription) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Formula: ${ability.description}",
-                                fontSize = 11.sp,
-                                color = TextSecondary
                             )
                         }
                     }
