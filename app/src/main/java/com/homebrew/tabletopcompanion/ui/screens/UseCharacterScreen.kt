@@ -758,7 +758,7 @@ fun UseCharacterScreen(
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(Icons.Default.Shield, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(18.dp))
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Armor Points (Physical)", fontWeight = FontWeight.Bold, color = GoldAccent)
+                                                Text("Armor", fontWeight = FontWeight.Bold, color = GoldAccent)
                                             }
 
                                             Text(
@@ -794,7 +794,7 @@ fun UseCharacterScreen(
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(18.dp))
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Ward Save (Magical)", fontWeight = FontWeight.Bold, color = CyanAccent)
+                                                Text("Ward Save", fontWeight = FontWeight.Bold, color = CyanAccent)
                                             }
 
                                             Text(
@@ -829,7 +829,7 @@ fun UseCharacterScreen(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Icon(Icons.Default.Favorite, contentDescription = null, tint = GreenHp, modifier = Modifier.size(18.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Health Points (HP)", fontWeight = FontWeight.Bold, color = GreenHp)
+                                            Text("Health", fontWeight = FontWeight.Bold, color = GreenHp)
                                         }
 
                                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -921,7 +921,7 @@ fun UseCharacterScreen(
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text("Mana Points (MP)", fontWeight = FontWeight.Bold, color = BlueMp)
+                                            Text("Mana", fontWeight = FontWeight.Bold, color = BlueMp)
                                             Text(
                                                 "${activeCharacter.currentMp} / $effectiveMaxMp",
                                                 fontWeight = FontWeight.Bold,
