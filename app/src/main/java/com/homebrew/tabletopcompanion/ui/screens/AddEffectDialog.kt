@@ -27,15 +27,28 @@ import com.homebrew.tabletopcompanion.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEffectDialog(
+    effectToEdit: CharacterEffect? = null,
     onDismiss: () -> Unit,
-    onEffectAdded: (CharacterEffect) -> Unit
+    onEffectSaved: (CharacterEffect) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf(EffectType.STAT_MODIFIER) }
-    var selectedStat by remember { mutableStateOf("strength") }
-    var selectedDamageType by remember { mutableStateOf(com.homebrew.tabletopcompanion.model.DamageType.UNSAVEABLE) }
-    var valueAmount by remember { mutableIntStateOf(1) }
-    var roundsText by remember { mutableStateOf("0") }
+    var name by remember { mutableStateOf(effectToEdit?.name ?: "") }
+    var selectedType by remember { mutableStateOf(effectToEdit?.effectType ?: EffectType.STAT_MODIFIER) }
+    var selectedDamageType by remember { mutableStateOf(effectToEdit?.damageType ?: com.homebrew.tabletopcompanion.model.DamageType.UNSAVEABLE) }
+    
+    // For HP/MP change per round
+    var valueAmount by remember { mutableIntStateOf(if (effectToEdit?.effectType != EffectType.STAT_MODIFIER) (effectToEdit?.value ?: 1) else 1) }
+    
+    // For STAT_MODIFIER
+    val initialMods = mutableMapOf<String, Int>()
+    if (effectToEdit?.effectType == EffectType.STAT_MODIFIER) {
+        initialMods.putAll(effectToEdit.statModifiers)
+        if (effectToEdit.targetStat != null && effectToEdit.value != 0) {
+            initialMods[effectToEdit.targetStat] = (initialMods[effectToEdit.targetStat] ?: 0) + effectToEdit.value
+        }
+    }
+    var statMods by remember { mutableStateOf(initialMods.toMap()) }
+    
+    var roundsText by remember { mutableStateOf((effectToEdit?.roundsRemaining ?: 0).toString()) }
 
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -58,7 +71,7 @@ fun AddEffectDialog(
                     .padding(20.dp)
             ) {
                 Text(
-                    text = "APPLY EFFECT / BUFF",
+                    text = if (effectToEdit != null) "EDIT EFFECT / BUFF" else "APPLY EFFECT / BUFF",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.2.sp
@@ -150,86 +163,103 @@ fun AddEffectDialog(
                         }
                     }
 
-                    // If Stat Modifier: Pick Stat
                     if (selectedType == EffectType.STAT_MODIFIER) {
-                        Text("TARGET STAT", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldAccent)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            stats.take(3).forEach { st ->
-                                FilterChip(
-                                    selected = selectedStat == st,
-                                    onClick = { selectedStat = st },
-                                    label = { Text(st.take(3).uppercase(), fontSize = 11.sp) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = GoldAccent,
-                                        selectedLabelColor = DarkBackground
-                                    )
-                                )
-                            }
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            stats.drop(3).forEach { st ->
-                                FilterChip(
-                                    selected = selectedStat == st,
-                                    onClick = { selectedStat = st },
-                                    label = { Text(st.take(3).uppercase(), fontSize = 11.sp) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = GoldAccent,
-                                        selectedLabelColor = DarkBackground
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    // VALUE AMOUNT (+ or -)
-                    Text("EFFECT VALUE (+ OR -)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-
-                    Surface(
-                        color = DarkSurfaceVariant,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("Amount", fontWeight = FontWeight.SemiBold, color = TextPrimary)
-
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
-                                    onClick = { valueAmount -= 1 },
+                        Text("TARGET STATS MODIFIERS (+ OR -)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldAccent)
+                        stats.forEach { st ->
+                            Surface(
+                                color = DarkSurfaceVariant,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
                                     modifier = Modifier
-                                        .size(32.dp)
-                                        .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = TextPrimary)
+                                    Text(st.uppercase(), fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                    val currentVal = statMods[st] ?: 0
+
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                statMods = statMods.toMutableMap().apply { this[st] = currentVal - 1 }
+                                            },
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                                        ) {
+                                            Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = TextPrimary)
+                                        }
+
+                                        val formattedVal = if (currentVal > 0) "+$currentVal" else "$currentVal"
+                                        Text(
+                                            text = formattedVal,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 18.sp,
+                                            color = if (currentVal > 0) GreenHp else if (currentVal < 0) CrimsonPrimary else TextSecondary,
+                                            modifier = Modifier.padding(horizontal = 16.dp)
+                                        )
+
+                                        IconButton(
+                                            onClick = {
+                                                statMods = statMods.toMutableMap().apply { this[st] = currentVal + 1 }
+                                            },
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                                        ) {
+                                            Icon(Icons.Default.Add, contentDescription = "Increase", tint = TextPrimary)
+                                        }
+                                    }
                                 }
+                            }
+                        }
+                    } else {
+                        // VALUE AMOUNT (+ or -) for HP/MP
+                        Text("EFFECT VALUE (+ OR -)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                        Surface(
+                            color = DarkSurfaceVariant,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Amount", fontWeight = FontWeight.SemiBold, color = TextPrimary)
 
-                                val formattedVal = if (valueAmount > 0) "+$valueAmount" else "$valueAmount"
-                                Text(
-                                    text = formattedVal,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp,
-                                    color = if (valueAmount > 0) GreenHp else if (valueAmount < 0) CrimsonPrimary else TextSecondary,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = { valueAmount -= 1 },
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                                    ) {
+                                        Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = TextPrimary)
+                                    }
 
-                                IconButton(
-                                    onClick = { valueAmount += 1 },
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = "Increase", tint = TextPrimary)
+                                    val formattedVal = if (valueAmount > 0) "+$valueAmount" else "$valueAmount"
+                                    Text(
+                                        text = formattedVal,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = if (valueAmount > 0) GreenHp else if (valueAmount < 0) CrimsonPrimary else TextSecondary,
+                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                    )
+
+                                    IconButton(
+                                        onClick = { valueAmount += 1 },
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = "Increase", tint = TextPrimary)
+                                    }
                                 }
                             }
                         }
@@ -314,18 +344,20 @@ fun AddEffectDialog(
                             val rounds = roundsText.toIntOrNull() ?: 0
 
                             val effect = CharacterEffect(
+                                id = effectToEdit?.id ?: java.util.UUID.randomUUID().toString(),
                                 name = name.trim(),
                                 effectType = selectedType,
-                                targetStat = if (selectedType == EffectType.STAT_MODIFIER) selectedStat else null,
-                                value = valueAmount,
+                                targetStat = null,
+                                value = if (selectedType != EffectType.STAT_MODIFIER) valueAmount else 0,
+                                statModifiers = if (selectedType == EffectType.STAT_MODIFIER) statMods.filter { it.value != 0 } else emptyMap(),
                                 roundsRemaining = rounds,
                                 damageType = if (selectedType == EffectType.HP_CHANGE_PER_ROUND && valueAmount < 0) selectedDamageType else com.homebrew.tabletopcompanion.model.DamageType.UNSAVEABLE
                             )
-                            onEffectAdded(effect)
+                            onEffectSaved(effect)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
                     ) {
-                        Text("APPLY EFFECT", fontWeight = FontWeight.Bold)
+                        Text(if (effectToEdit != null) "SAVE EFFECT" else "APPLY EFFECT", fontWeight = FontWeight.Bold)
                     }
                 }
             }

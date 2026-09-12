@@ -79,6 +79,7 @@ fun UseCharacterScreen(
     var itemToEdit by remember { mutableStateOf<EquipmentItem?>(null) }
     var abilityToEdit by remember { mutableStateOf<CharacterAbility?>(null) }
     var noteToEdit by remember { mutableStateOf<CharacterNote?>(null) }
+    var effectToEdit by remember { mutableStateOf<CharacterEffect?>(null) }
 
     var activeExpiredNotification by remember { mutableStateOf<String?>(null) }
 
@@ -1245,6 +1246,7 @@ fun UseCharacterScreen(
                                         activeCharacter.effects.forEach { effect ->
                                             EffectItemRow(
                                                 effect = effect,
+                                                onEdit = { effectToEdit = effect },
                                                 onDelete = { removeEffect(effect.id) }
                                             )
                                         }
@@ -1943,13 +1945,25 @@ fun UseCharacterScreen(
         )
     }
 
-    // ADD EFFECT DIALOG
-    if (showAddEffectDialog) {
+    // ADD / EDIT EFFECT DIALOG
+    if (showAddEffectDialog || effectToEdit != null) {
         AddEffectDialog(
-            onDismiss = { showAddEffectDialog = false },
-            onEffectAdded = { newEffect ->
-                addEffect(newEffect)
+            effectToEdit = effectToEdit,
+            onDismiss = {
                 showAddEffectDialog = false
+                effectToEdit = null
+            },
+            onEffectSaved = { savedEffect ->
+                if (effectToEdit != null) {
+                    val updatedList = activeCharacter.effects.map { if (it.id == savedEffect.id) savedEffect else it }
+                    val updated = activeCharacter.copy(effects = updatedList)
+                    activeCharacter = updated
+                    onCharacterUpdated(updated)
+                } else {
+                    addEffect(savedEffect)
+                }
+                showAddEffectDialog = false
+                effectToEdit = null
             }
         )
     }
@@ -2428,6 +2442,7 @@ fun AbilityCard(
 @Composable
 fun EffectItemRow(
     effect: CharacterEffect,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Surface(
@@ -2452,7 +2467,11 @@ fun EffectItemRow(
 
                 val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
                 val desc = when (effect.effectType) {
-                    EffectType.STAT_MODIFIER -> "${effect.targetStat?.uppercase()}: $valStr"
+                    EffectType.STAT_MODIFIER -> {
+                        val legacy = if (effect.targetStat != null) "${effect.targetStat.uppercase()}: $valStr" else ""
+                        val mapDesc = effect.statModifiers.entries.joinToString(", ") { "${it.key.uppercase()}: ${if (it.value > 0) "+" else ""}${it.value}" }
+                        listOf(legacy, mapDesc).filter { it.isNotBlank() }.joinToString(", ")
+                    }
                     EffectType.HP_CHANGE_PER_ROUND -> {
                         if (effect.value < 0) {
                             val typeLabel = when (effect.damageType) {
@@ -2472,7 +2491,7 @@ fun EffectItemRow(
                     text = desc,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (effect.value >= 0) GreenHp else CrimsonPrimary
+                    color = if (effect.value >= 0 || (effect.effectType == EffectType.STAT_MODIFIER && (effect.statModifiers.values.any { it > 0 } || effect.value > 0))) GreenHp else CrimsonPrimary
                 )
 
                 val durationText = if (effect.roundsRemaining == 0) "Duration: Unlimited" else "Duration: ${effect.roundsRemaining} Rounds left"
@@ -2483,12 +2502,21 @@ fun EffectItemRow(
                 )
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Remove Effect",
-                    tint = CrimsonPrimary.copy(alpha = 0.8f)
-                )
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Effect",
+                        tint = GoldAccent.copy(alpha = 0.8f)
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Remove Effect",
+                        tint = CrimsonPrimary.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
     }
