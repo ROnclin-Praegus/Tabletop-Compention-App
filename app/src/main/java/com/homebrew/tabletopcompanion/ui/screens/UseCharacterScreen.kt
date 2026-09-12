@@ -2487,11 +2487,19 @@ fun EffectItemRow(
                     EffectType.MP_CHANGE_PER_ROUND -> "$valStr MP / round"
                 }
 
+                val isPositive = when (effect.effectType) {
+                    EffectType.STAT_MODIFIER -> {
+                        val mapVals = effect.statModifiers.values.toList() + (if (effect.targetStat != null) effect.value else 0)
+                        if (mapVals.any { it < 0 } && mapVals.none { it > 0 }) false else true
+                    }
+                    else -> effect.value >= 0
+                }
+
                 Text(
                     text = desc,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (effect.value >= 0 || (effect.effectType == EffectType.STAT_MODIFIER && (effect.statModifiers.values.any { it > 0 } || effect.value > 0))) GreenHp else CrimsonPrimary
+                    color = if (isPositive) GreenHp else CrimsonPrimary
                 )
 
                 val durationText = if (effect.roundsRemaining == 0) "Duration: Unlimited" else "Duration: ${effect.roundsRemaining} Rounds left"
