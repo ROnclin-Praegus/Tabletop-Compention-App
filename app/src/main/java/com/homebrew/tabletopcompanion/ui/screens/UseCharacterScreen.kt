@@ -2673,19 +2673,7 @@ fun EquipmentItemCard(
                         fontSize = 16.sp,
                         color = TextPrimary
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        color = DarkBackground,
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = item.category.uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = GoldAccent,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
+
                 }
 
                 Row {
