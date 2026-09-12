@@ -1212,7 +1212,7 @@
 
       <div class="form-group" id="itemEquippedBlock">
         <label>Equipped Status</label>
-        <select id="itemInputEquipped" class="form-input">
+        <select id="itemInputEquipped" class="form-input" onchange="toggleItemFormSections()">
           <option value="true">Equipped (Goes to Equipment)</option>
           <option value="false">Unequipped (Goes to Inventory)</option>
         </select>
@@ -1266,7 +1266,7 @@
 
       
       <!-- CHECKBOX 6: IS CONSUMABLE? -->
-      <label class="checkbox-row" style="color:var(--blue-mp);">
+      <label id="consumableCheckboxRow" class="checkbox-row" style="color:var(--blue-mp);">
         <input type="checkbox" id="chkIsConsumable" onchange="toggleItemFormSections()"> Is Consumable?
       </label>
       <div id="consumableInputBlock" class="form-group hidden">
@@ -2796,7 +2796,7 @@
       const modifiesStats = document.getElementById('chkModifiesStats').checked;
       const hasAttacks = document.getElementById('chkHasAttacks').checked;
       const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
-      const isConsumable = document.getElementById('chkIsConsumable').checked;
+
 
       if (hasArmor) document.getElementById('armorInputBlock').classList.remove('hidden');
       else document.getElementById('armorInputBlock').classList.add('hidden');
@@ -2816,6 +2816,18 @@
 
       if (hasSpecialEffects) document.getElementById('specialEffectsInputBlock').classList.remove('hidden');
       else document.getElementById('specialEffectsInputBlock').classList.add('hidden');
+
+      let isEquipped = document.getElementById('itemInputEquipped').value === 'true';
+      let chkIsConsumable = document.getElementById('chkIsConsumable');
+      
+      if (isEquipped) {
+        chkIsConsumable.checked = false;
+        document.getElementById('consumableCheckboxRow').classList.add('hidden');
+      } else {
+        document.getElementById('consumableCheckboxRow').classList.remove('hidden');
+      }
+
+      const isConsumable = chkIsConsumable.checked;
 
       if (isConsumable) {
         document.getElementById('consumableInputBlock').classList.remove('hidden');
