@@ -25,6 +25,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.*
@@ -2445,6 +2448,26 @@ fun EffectItemRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showDeletePrompt by remember { mutableStateOf(false) }
+
+    if (showDeletePrompt) {
+        AlertDialog(
+            onDismissRequest = { showDeletePrompt = false },
+            title = { Text("Remove Effect?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text("Are you sure you want to remove ${effect.name}?") },
+            confirmButton = {
+                Button(
+                    onClick = { showDeletePrompt = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary, contentColor = TextPrimary)
+                ) { Text("REMOVE", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePrompt = false }) { Text("CANCEL", color = TextSecondary) }
+            },
+            containerColor = DarkSurface
+        )
+    }
+
     Surface(
         color = DarkSurfaceVariant,
         shape = RoundedCornerShape(8.dp),
@@ -2465,41 +2488,60 @@ fun EffectItemRow(
                     color = TextPrimary
                 )
 
-                val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
-                val desc = when (effect.effectType) {
-                    EffectType.STAT_MODIFIER -> {
-                        val legacy = if (effect.targetStat != null) "${effect.targetStat.uppercase()}: $valStr" else ""
-                        val mapDesc = effect.statModifiers.entries.joinToString(", ") { "${it.key.uppercase()}: ${if (it.value > 0) "+" else ""}${it.value}" }
-                        listOf(legacy, mapDesc).filter { it.isNotBlank() }.joinToString(", ")
-                    }
-                    EffectType.HP_CHANGE_PER_ROUND -> {
-                        if (effect.value < 0) {
-                            val typeLabel = when (effect.damageType) {
-                                DamageType.PHYSICAL -> "Physical 🛡️"
-                                DamageType.MAGICAL -> "Magical ✨"
-                                DamageType.UNSAVEABLE -> "Unsaveable 💥"
+                val annotatedDesc = buildAnnotatedString {
+                    when (effect.effectType) {
+                        EffectType.STAT_MODIFIER -> {
+                            val allMods = mutableMapOf<String, Int>()
+                            if (effect.targetStat != null && effect.value != 0) {
+                                allMods[effect.targetStat] = effect.value
                             }
-                            "$valStr $typeLabel HP / round"
-                        } else {
-                            "$valStr HP / round"
+                            effect.statModifiers.forEach { (k, v) ->
+                                allMods[k] = (allMods[k] ?: 0) + v
+                            }
+                            val entries = allMods.entries.toList()
+                            entries.forEachIndexed { index, entry ->
+                                val valStr = if (entry.value > 0) "+${entry.value}" else "${entry.value}"
+                                val color = if (entry.value >= 0) GreenHp else CrimsonPrimary
+                                withStyle(style = SpanStyle(color = color)) {
+                                    append("${entry.key.uppercase()}: $valStr")
+                                }
+                                if (index < entries.size - 1) {
+                                    withStyle(style = SpanStyle(color = TextSecondary)) {
+                                        append(", ")
+                                    }
+                                }
+                            }
+                        }
+                        EffectType.HP_CHANGE_PER_ROUND -> {
+                            val color = if (effect.value >= 0) GreenHp else CrimsonPrimary
+                            withStyle(style = SpanStyle(color = color)) {
+                                val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
+                                if (effect.value < 0) {
+                                    val typeLabel = when (effect.damageType) {
+                                        DamageType.PHYSICAL -> "Physical 🛡️"
+                                        DamageType.MAGICAL -> "Magical ✨"
+                                        DamageType.UNSAVEABLE -> "Unsaveable 💥"
+                                    }
+                                    append("$valStr $typeLabel HP / round")
+                                } else {
+                                    append("$valStr HP / round")
+                                }
+                            }
+                        }
+                        EffectType.MP_CHANGE_PER_ROUND -> {
+                            val color = if (effect.value >= 0) GreenHp else CrimsonPrimary
+                            withStyle(style = SpanStyle(color = color)) {
+                                val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
+                                append("$valStr MP / round")
+                            }
                         }
                     }
-                    EffectType.MP_CHANGE_PER_ROUND -> "$valStr MP / round"
-                }
-
-                val isPositive = when (effect.effectType) {
-                    EffectType.STAT_MODIFIER -> {
-                        val mapVals = effect.statModifiers.values.toList() + (if (effect.targetStat != null) effect.value else 0)
-                        if (mapVals.any { it < 0 } && mapVals.none { it > 0 }) false else true
-                    }
-                    else -> effect.value >= 0
                 }
 
                 Text(
-                    text = desc,
+                    text = annotatedDesc,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isPositive) GreenHp else CrimsonPrimary
+                    fontWeight = FontWeight.SemiBold
                 )
 
                 val durationText = if (effect.roundsRemaining == 0) "Duration: Unlimited" else "Duration: ${effect.roundsRemaining} Rounds left"
@@ -2518,7 +2560,7 @@ fun EffectItemRow(
                         tint = GoldAccent.copy(alpha = 0.8f)
                     )
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = { showDeletePrompt = true }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Remove Effect",
