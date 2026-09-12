@@ -2550,11 +2550,12 @@ fun EquipmentItemCard(
 ) {
     var showDeletePrompt by remember { mutableStateOf<String?>(null) }
 
-    if (showDeletePrompt != null) {
+    val promptText = showDeletePrompt
+    if (promptText != null) {
         AlertDialog(
             onDismissRequest = { showDeletePrompt = null },
-            title = { Text(if (showDeletePrompt!!.contains("Amount reached 0")) "Delete Consumable?" else "Delete Item?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
-            text = { Text(showDeletePrompt!!) },
+            title = { Text(if (promptText.contains("Amount reached 0")) "Delete Consumable?" else "Delete Item?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text(promptText) },
             confirmButton = {
                 Button(
                     onClick = { showDeletePrompt = null; onDelete() },
