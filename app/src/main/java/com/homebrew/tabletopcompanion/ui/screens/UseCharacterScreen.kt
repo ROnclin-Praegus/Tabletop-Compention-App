@@ -2328,6 +2328,7 @@ fun AbilityCard(
     onMoveDown: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    var showDeletePrompt by remember { mutableStateOf(false) }
     val maxCharLimit = 130
     val isLong = evaluatedDescription.length > maxCharLimit
 
@@ -2335,6 +2336,24 @@ fun AbilityCard(
         evaluatedDescription.take(maxCharLimit) + "..."
     } else {
         evaluatedDescription
+    }
+
+    if (showDeletePrompt) {
+        AlertDialog(
+            onDismissRequest = { showDeletePrompt = false },
+            title = { Text("Delete Ability?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text("Are you sure you want to delete ${ability.name}?") },
+            confirmButton = {
+                Button(
+                    onClick = { showDeletePrompt = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary, contentColor = TextPrimary)
+                ) { Text("DELETE", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePrompt = false }) { Text("CANCEL", color = TextSecondary) }
+            },
+            containerColor = DarkSurface
+        )
     }
 
     Card(
@@ -2369,7 +2388,7 @@ fun AbilityCard(
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Ability", tint = GoldAccent, modifier = Modifier.size(18.dp))
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { showDeletePrompt = true }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete Ability", tint = CrimsonPrimary, modifier = Modifier.size(18.dp))
                     }
                 }
@@ -2529,21 +2548,21 @@ fun EquipmentItemCard(
     onMoveDown: () -> Unit,
     onUpdateConsumable: (Int) -> Unit = {}
 ) {
-    var showDeletePrompt by remember { mutableStateOf(false) }
+    var showDeletePrompt by remember { mutableStateOf<String?>(null) }
 
-    if (showDeletePrompt) {
+    if (showDeletePrompt != null) {
         AlertDialog(
-            onDismissRequest = { showDeletePrompt = false },
-            title = { Text("Delete Consumable?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
-            text = { Text("Amount reached 0. Do you want to delete ${item.name} from your inventory?") },
+            onDismissRequest = { showDeletePrompt = null },
+            title = { Text(if (showDeletePrompt!!.contains("Amount reached 0")) "Delete Consumable?" else "Delete Item?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text(showDeletePrompt!!) },
             confirmButton = {
                 Button(
-                    onClick = { showDeletePrompt = false; onDelete() },
+                    onClick = { showDeletePrompt = null; onDelete() },
                     colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary, contentColor = TextPrimary)
                 ) { Text("DELETE", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeletePrompt = false }) { Text("CANCEL", color = TextSecondary) }
+                TextButton(onClick = { showDeletePrompt = null }) { Text("CANCEL", color = TextSecondary) }
             },
             containerColor = DarkSurface
         )
@@ -2600,7 +2619,7 @@ fun EquipmentItemCard(
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Item", tint = GoldAccent, modifier = Modifier.size(18.dp))
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { showDeletePrompt = "Are you sure you want to delete ${item.name}?" }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete Item", tint = CrimsonPrimary, modifier = Modifier.size(18.dp))
                     }
                 }
@@ -2723,7 +2742,7 @@ fun EquipmentItemCard(
                                 val newAmount = item.consumableAmount - 1
                                 if (newAmount <= 0) {
                                     onUpdateConsumable(0)
-                                    showDeletePrompt = true
+                                    showDeletePrompt = "Amount reached 0. Do you want to delete ${item.name} from your inventory?"
                                 } else {
                                     onUpdateConsumable(newAmount)
                                 }
@@ -2784,6 +2803,7 @@ fun NoteCard(
     onMoveDown: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    var showDeletePrompt by remember { mutableStateOf(false) }
     val maxCharLimit = 130
     val isLong = note.content.length > maxCharLimit
 
@@ -2791,6 +2811,24 @@ fun NoteCard(
         note.content.take(maxCharLimit) + "..."
     } else {
         note.content
+    }
+
+    if (showDeletePrompt) {
+        AlertDialog(
+            onDismissRequest = { showDeletePrompt = false },
+            title = { Text("Delete Note?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text("Are you sure you want to delete this note?") },
+            confirmButton = {
+                Button(
+                    onClick = { showDeletePrompt = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary, contentColor = TextPrimary)
+                ) { Text("DELETE", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePrompt = false }) { Text("CANCEL", color = TextSecondary) }
+            },
+            containerColor = DarkSurface
+        )
     }
 
     Card(
@@ -2879,7 +2917,7 @@ fun NoteCard(
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Note", tint = GoldAccent, modifier = Modifier.size(18.dp))
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { showDeletePrompt = true }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete Note", tint = CrimsonPrimary, modifier = Modifier.size(18.dp))
                     }
                 }
