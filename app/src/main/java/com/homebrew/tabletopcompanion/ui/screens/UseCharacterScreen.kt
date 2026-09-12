@@ -2493,9 +2493,9 @@ fun EffectItemRow(
                         EffectType.STAT_MODIFIER -> {
                             val allMods = mutableMapOf<String, Int>()
                             if (effect.targetStat != null && effect.value != 0) {
-                                allMods[effect.targetStat] = effect.value
+                                allMods[effect.targetStat] = (allMods[effect.targetStat] ?: 0) + effect.value
                             }
-                            effect.statModifiers.forEach { (k, v) ->
+                            effect.statModifiers?.forEach { (k, v) ->
                                 allMods[k] = (allMods[k] ?: 0) + v
                             }
                             val entries = allMods.entries.toList()
@@ -2742,8 +2742,8 @@ fun EquipmentItemCard(
                     }
                 }
 
-                if (item.hasStatModifiers && item.statModifiers.isNotEmpty()) {
-                    item.statModifiers.forEach { (stat, valMod) ->
+                if (item.hasStatModifiers && item.statModifiers?.isNotEmpty() == true) {
+                    item.statModifiers?.forEach { (stat, valMod) ->
                         if (valMod != 0) {
                             val color = if (valMod > 0) GreenHp else CrimsonPrimary
                             val valStr = if (valMod > 0) "+$valMod" else "$valMod"

@@ -41,7 +41,7 @@ fun AddEffectDialog(
     // For STAT_MODIFIER
     val initialMods = mutableMapOf<String, Int>()
     if (effectToEdit?.effectType == EffectType.STAT_MODIFIER) {
-        initialMods.putAll(effectToEdit.statModifiers)
+        effectToEdit.statModifiers?.let { initialMods.putAll(it) }
         if (effectToEdit.targetStat != null && effectToEdit.value != 0) {
             initialMods[effectToEdit.targetStat] = (initialMods[effectToEdit.targetStat] ?: 0) + effectToEdit.value
         }

@@ -20,7 +20,7 @@ data class CharacterEffect(
     val effectType: EffectType = EffectType.STAT_MODIFIER,
     val targetStat: String? = null, // "strength", "intelligence", "endurance", "spirit", "finesse", "charisma"
     val value: Int = 0, // e.g. +3, -5
-    val statModifiers: Map<String, Int> = emptyMap(),
+    val statModifiers: Map<String, Int>? = emptyMap(),
     val roundsRemaining: Int = 0, // 0 = Unlimited, > 0 = remaining rounds
     val damageType: DamageType = DamageType.UNSAVEABLE // For negative HP_CHANGE_PER_ROUND
 )

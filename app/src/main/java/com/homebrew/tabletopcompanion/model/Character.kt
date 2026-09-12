@@ -58,15 +58,15 @@ data class Character(
 
         // 1. From equipped gear
         val gearMod = inventory
-            .filter { it.isEquipped && (it.hasStatModifiers || it.statModifiers.isNotEmpty()) }
-            .sumOf { it.statModifiers[keyLower] ?: 0 }
+            .filter { it.isEquipped && (it.hasStatModifiers || it.statModifiers?.isNotEmpty() == true) }
+            .sumOf { it.statModifiers?.get(keyLower) ?: 0 }
 
         // 2. From active stat effects
         val effectMod = effects
             .filter { it.effectType == EffectType.STAT_MODIFIER }
             .sumOf { effect ->
                 val legacyVal = if (effect.targetStat?.lowercase() == keyLower) effect.value else 0
-                val mapVal = effect.statModifiers[keyLower] ?: 0
+                val mapVal = effect.statModifiers?.get(keyLower) ?: 0
                 legacyVal + mapVal
             }
 
