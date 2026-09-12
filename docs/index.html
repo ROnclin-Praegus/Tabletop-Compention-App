@@ -1069,18 +1069,36 @@
       </div>
 
       <div id="effectStatGroup" class="form-group">
-        <label>Target Stat</label>
-        <select id="effectInputStat" class="form-input">
-          <option value="strength">Strength</option>
-          <option value="intelligence">Intelligence</option>
-          <option value="endurance">Endurance</option>
-          <option value="spirit">Spirit</option>
-          <option value="finesse">Finesse</option>
-          <option value="charisma">Charisma</option>
-        </select>
+        <label style="color:var(--gold-accent)">Target Stats Modifiers (+ or -)</label>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:6px 12px; border-radius:8px;">
+            <span style="font-weight:600; font-size:13px;">STRENGTH</span>
+            <input type="number" id="statMod_strength" class="form-input" style="width:80px; text-align:center; padding:6px;" value="0">
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:6px 12px; border-radius:8px;">
+            <span style="font-weight:600; font-size:13px;">INTELLIGENCE</span>
+            <input type="number" id="statMod_intelligence" class="form-input" style="width:80px; text-align:center; padding:6px;" value="0">
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:6px 12px; border-radius:8px;">
+            <span style="font-weight:600; font-size:13px;">ENDURANCE</span>
+            <input type="number" id="statMod_endurance" class="form-input" style="width:80px; text-align:center; padding:6px;" value="0">
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:6px 12px; border-radius:8px;">
+            <span style="font-weight:600; font-size:13px;">SPIRIT</span>
+            <input type="number" id="statMod_spirit" class="form-input" style="width:80px; text-align:center; padding:6px;" value="0">
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:6px 12px; border-radius:8px;">
+            <span style="font-weight:600; font-size:13px;">FINESSE</span>
+            <input type="number" id="statMod_finesse" class="form-input" style="width:80px; text-align:center; padding:6px;" value="0">
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:6px 12px; border-radius:8px;">
+            <span style="font-weight:600; font-size:13px;">CHARISMA</span>
+            <input type="number" id="statMod_charisma" class="form-input" style="width:80px; text-align:center; padding:6px;" value="0">
+          </div>
+        </div>
       </div>
 
-      <div class="form-group">
+      <div id="effectValueGroup" class="form-group hidden">
         <label>Effect Value (+ or -)</label>
         <input id="effectInputValue" type="number" class="form-input" value="1" placeholder="e.g. +3 or -5" oninput="toggleEffectTargetFields()">
       </div>
@@ -1194,7 +1212,7 @@
 
       <div class="form-group" id="itemEquippedBlock">
         <label>Equipped Status</label>
-        <select id="itemInputEquipped" class="form-input">
+        <select id="itemInputEquipped" class="form-input" onchange="toggleItemFormSections()">
           <option value="true">Equipped (Goes to Equipment)</option>
           <option value="false">Unequipped (Goes to Inventory)</option>
         </select>
@@ -1248,8 +1266,8 @@
 
       
       <!-- CHECKBOX 6: IS CONSUMABLE? -->
-      <label class="checkbox-row" style="color:var(--blue-mp);">
-        <input type="checkbox" id="chkIsConsumable" onchange="toggleItemFormSections()"> Is Consumable?
+      <label id="consumableCheckboxRow" class="checkbox-row" style="color:var(--blue-mp);">
+        <input type="checkbox" id="chkIsConsumable" onchange="toggleItemFormSections()"> Is Consumable/Loot?
       </label>
       <div id="consumableInputBlock" class="form-group hidden">
         <label style="color:var(--blue-mp);">Consumable Amount</label>
@@ -1480,8 +1498,17 @@
 
       // 2. From active stat effects
       const effectSum = (c.effects || [])
-        .filter(e => e.effectType === "STAT_MODIFIER" && e.targetStat && e.targetStat.toLowerCase() === kLower)
-        .reduce((sum, e) => sum + (parseInt(e.value) || 0), 0);
+        .filter(e => e.effectType === "STAT_MODIFIER")
+        .reduce((sum, e) => {
+           let val = 0;
+           if (e.targetStat && e.targetStat.toLowerCase() === kLower) {
+              val += (parseInt(e.value) || 0);
+           }
+           if (e.statModifiers && e.statModifiers[kLower]) {
+              val += (parseInt(e.statModifiers[kLower]) || 0);
+           }
+           return sum + val;
+        }, 0);
 
       return gearSum + effectSum;
     }
@@ -1960,41 +1987,101 @@
         effectsContainer.innerHTML = `<div style="font-size:12px; color:var(--text-secondary); padding:4px 0;">No active status effects or buffs applied.</div>`;
       } else {
         effectsContainer.innerHTML = effects.map(e => {
-          const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
-          let desc = "";
-          if (e.effectType === "STAT_MODIFIER") desc = `${(e.targetStat || '').toUpperCase()}: ${valStr}`;
-          else if (e.effectType === "HP_CHANGE_PER_ROUND") {
+          let descHtml = "";
+          if (e.effectType === "STAT_MODIFIER") {
+            const allMods = {};
+            if (e.targetStat && e.value) allMods[e.targetStat] = e.value;
+            if (e.statModifiers) {
+              for (const [k, v] of Object.entries(e.statModifiers)) {
+                allMods[k] = (allMods[k] || 0) + v;
+              }
+            }
+            const entries = Object.entries(allMods);
+            descHtml = entries.map(([k, v]) => {
+              const valStr = v > 0 ? `+${v}` : `${v}`;
+              const col = v >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
+              return `<span style="color:${col}">${k.toUpperCase()}: ${valStr}</span>`;
+            }).join('<span style="color:var(--text-secondary)">, </span>');
+          } else if (e.effectType === "HP_CHANGE_PER_ROUND") {
+            const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
+            const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
             if (e.value < 0) {
               const dt = (e.damageType || 'unsaveable').toUpperCase();
-              desc = `${valStr} ${dt} HP / round`;
+              descHtml = `<span style="color:${col}">${valStr} ${dt} HP / round</span>`;
             } else {
-              desc = `${valStr} HP / round`;
+              descHtml = `<span style="color:${col}">${valStr} HP / round</span>`;
             }
+          } else if (e.effectType === "MP_CHANGE_PER_ROUND") {
+            const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
+            const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
+            descHtml = `<span style="color:${col}">${valStr} MP / round</span>`;
           }
-          else if (e.effectType === "MP_CHANGE_PER_ROUND") desc = `${valStr} MP / round`;
 
           const r = parseInt(e.roundsRemaining) || 0;
           const durStr = r === 0 ? "Unlimited" : `${r} Rounds left`;
 
           return `
-          <div class="effect-item-row">
-            <div>
+          <div class="effect-item-row" style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="flex:1;">
               <div style="font-weight:bold; font-size:13px;">${e.name}</div>
-              <div style="font-size:11px; font-weight:600; color:${e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${desc}</div>
+              <div style="font-size:11px; font-weight:600;">${descHtml}</div>
               <div style="font-size:10px; color:var(--gold-accent);">Duration: ${durStr}</div>
             </div>
-            <button class="action-icon-btn delete-btn" title="Remove Effect" onclick="removeEffect('${e.id}')">🗑</button>
+            <div style="display:flex; gap:8px;">
+              <button class="action-icon-btn" title="Edit Effect" onclick="openAddEffectModal('${e.id}')" style="color:var(--gold-accent);">&#x270E;</button>
+              <button class="action-icon-btn delete-btn" title="Remove Effect" onclick="removeEffect('${e.id}')">&#x1F5D1;</button>
+            </div>
           </div>
         `;
         }).join('');
       }
     }
 
-    function openAddEffectModal() {
-      document.getElementById('effectInputName').value = '';
-      document.getElementById('effectInputType').value = 'STAT_MODIFIER';
-      document.getElementById('effectInputValue').value = '1';
-      document.getElementById('effectInputRounds').value = '0';
+    let currentEditingEffectId = null;
+
+    function openAddEffectModal(editId = null) {
+      currentEditingEffectId = editId;
+      const c = characters.find(item => item.id === activeCharId);
+      let effect = null;
+      if (editId && c && c.effects) {
+        effect = c.effects.find(e => e.id === editId);
+      }
+
+      if (effect) {
+        document.getElementById('effectInputName').value = effect.name;
+        document.getElementById('effectInputType').value = effect.effectType;
+        document.getElementById('effectInputValue').value = effect.effectType !== 'STAT_MODIFIER' ? effect.value : '1';
+        document.getElementById('effectInputRounds').value = effect.roundsRemaining || 0;
+        
+        const stats = ["strength", "intelligence", "endurance", "spirit", "finesse", "charisma"];
+        stats.forEach(st => {
+          let v = 0;
+          if (effect.effectType === 'STAT_MODIFIER') {
+            if (effect.statModifiers && effect.statModifiers[st]) {
+              v = effect.statModifiers[st];
+            }
+            if (effect.targetStat && effect.targetStat.toLowerCase() === st) {
+              v += (effect.value || 0);
+            }
+          }
+          document.getElementById('statMod_' + st).value = v;
+        });
+
+        if (effect.effectType === 'HP_CHANGE_PER_ROUND' && effect.value < 0) {
+          document.getElementById('effectInputDamageType').value = effect.damageType || 'unsaveable';
+        }
+      } else {
+        document.getElementById('effectInputName').value = '';
+        document.getElementById('effectInputType').value = 'STAT_MODIFIER';
+        document.getElementById('effectInputValue').value = '1';
+        document.getElementById('effectInputRounds').value = '0';
+        
+        const stats = ["strength", "intelligence", "endurance", "spirit", "finesse", "charisma"];
+        stats.forEach(st => {
+          document.getElementById('statMod_' + st).value = '0';
+        });
+      }
+      
       toggleEffectTargetFields();
       document.getElementById('addEffectModal').classList.remove('hidden');
     }
@@ -2008,8 +2095,10 @@
       const val = parseInt(document.getElementById('effectInputValue').value) || 0;
       if (type === 'STAT_MODIFIER') {
         document.getElementById('effectStatGroup').classList.remove('hidden');
+        document.getElementById('effectValueGroup').classList.add('hidden');
       } else {
         document.getElementById('effectStatGroup').classList.add('hidden');
+        document.getElementById('effectValueGroup').classList.remove('hidden');
       }
 
       if (type === 'HP_CHANGE_PER_ROUND' && val < 0) {
@@ -2025,24 +2114,37 @@
 
       const name = document.getElementById('effectInputName').value.trim();
       const effectType = document.getElementById('effectInputType').value;
-      const targetStat = document.getElementById('effectInputStat').value;
       const value = parseInt(document.getElementById('effectInputValue').value) || 0;
       const roundsRemaining = parseInt(document.getElementById('effectInputRounds').value) || 0;
       const damageType = document.getElementById('effectInputDamageType').value;
 
       if (!name) { alert("Please enter an effect name"); return; }
+      
+      let statModifiers = {};
+      if (effectType === 'STAT_MODIFIER') {
+        const stats = ["strength", "intelligence", "endurance", "spirit", "finesse", "charisma"];
+        stats.forEach(st => {
+          const v = parseInt(document.getElementById('statMod_' + st).value) || 0;
+          if (v !== 0) statModifiers[st] = v;
+        });
+      }
 
       adjustVitalsOnMaxChange(c, () => {
         if (!c.effects) c.effects = [];
-        c.effects.push({
-          id: Date.now().toString(),
-          name,
-          effectType,
-          targetStat: (effectType === 'STAT_MODIFIER') ? targetStat : null,
-          value,
-          roundsRemaining,
-          damageType: (effectType === 'HP_CHANGE_PER_ROUND' && value < 0) ? damageType : 'unsaveable'
-        });
+        
+        let targetEffect = c.effects.find(e => e.id === currentEditingEffectId);
+        if (!targetEffect) {
+            targetEffect = { id: Date.now().toString() };
+            c.effects.push(targetEffect);
+        }
+        
+        targetEffect.name = name;
+        targetEffect.effectType = effectType;
+        targetEffect.targetStat = null;
+        targetEffect.statModifiers = statModifiers;
+        targetEffect.value = effectType === 'STAT_MODIFIER' ? 0 : value;
+        targetEffect.roundsRemaining = roundsRemaining;
+        targetEffect.damageType = (effectType === 'HP_CHANGE_PER_ROUND' && value < 0) ? damageType : 'unsaveable';
       });
 
       saveData();
@@ -2051,6 +2153,7 @@
     }
 
     function removeEffect(effectId) {
+      if(!confirm("Are you sure you want to remove this effect?")) return;
       const c = characters.find(item => item.id === activeCharId);
       if (!c || !c.effects) return;
       adjustVitalsOnMaxChange(c, () => {
@@ -2282,6 +2385,7 @@
     }
 
     function deleteAbility(abilityId) {
+      if(!confirm("Are you sure you want to delete this ability?")) return;
       const c = characters.find(item => item.id === activeCharId);
       if (!c || !c.abilities) return;
       c.abilities = c.abilities.filter(a => a.id !== abilityId);
@@ -2439,6 +2543,7 @@
     }
 
     function deleteNote(noteId) {
+      if(!confirm("Are you sure you want to delete this note?")) return;
       const c = characters.find(item => item.id === activeCharId);
       if (!c || !c.notes) return;
       c.notes = c.notes.filter(n => n.id !== noteId);
@@ -2648,7 +2753,7 @@
         if (item.consumableAmount <= 0) {
             item.consumableAmount = 0;
             if (confirm(`Consumable depleted! Do you want to delete ${item.name}?`)) {
-                deleteItem(item.id);
+                deleteItem(item.id, true);
                 return;
             }
         }
@@ -2672,7 +2777,8 @@
       switchSessionTab(currentSessionTab);
     }
 
-    function deleteItem(itemId) {
+    function deleteItem(itemId, force = false) {
+      if (!force && !confirm("Are you sure you want to delete this item?")) return;
       const c = characters.find(item => item.id === activeCharId);
       if (!c || !c.inventory) return;
       adjustVitalsOnMaxChange(c, () => {
@@ -2690,7 +2796,7 @@
       const modifiesStats = document.getElementById('chkModifiesStats').checked;
       const hasAttacks = document.getElementById('chkHasAttacks').checked;
       const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
-      const isConsumable = document.getElementById('chkIsConsumable').checked;
+
 
       if (hasArmor) document.getElementById('armorInputBlock').classList.remove('hidden');
       else document.getElementById('armorInputBlock').classList.add('hidden');
@@ -2710,6 +2816,18 @@
 
       if (hasSpecialEffects) document.getElementById('specialEffectsInputBlock').classList.remove('hidden');
       else document.getElementById('specialEffectsInputBlock').classList.add('hidden');
+
+      let isEquipped = document.getElementById('itemInputEquipped').value === 'true';
+      let chkIsConsumable = document.getElementById('chkIsConsumable');
+      
+      if (isEquipped) {
+        chkIsConsumable.checked = false;
+        document.getElementById('consumableCheckboxRow').classList.add('hidden');
+      } else {
+        document.getElementById('consumableCheckboxRow').classList.remove('hidden');
+      }
+
+      const isConsumable = chkIsConsumable.checked;
 
       if (isConsumable) {
         document.getElementById('consumableInputBlock').classList.remove('hidden');
@@ -2748,7 +2866,7 @@
       
       document.getElementById('itemInputName').value = '';
       document.getElementById('itemInputCategory').value = '';
-      document.getElementById('itemInputEquipped').value = 'true';
+      document.getElementById('itemInputEquipped').value = currentSessionTab === 'inventory' ? 'false' : 'true';
 
       document.getElementById('chkHasArmor').checked = false;
       document.getElementById('itemInputArmorSave').value = '0';

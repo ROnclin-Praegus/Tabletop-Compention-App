@@ -63,8 +63,12 @@ data class Character(
 
         // 2. From active stat effects
         val effectMod = effects
-            .filter { it.effectType == EffectType.STAT_MODIFIER && it.targetStat?.lowercase() == keyLower }
-            .sumOf { it.value }
+            .filter { it.effectType == EffectType.STAT_MODIFIER }
+            .sumOf { effect ->
+                val legacyVal = if (effect.targetStat?.lowercase() == keyLower) effect.value else 0
+                val mapVal = effect.statModifiers[keyLower] ?: 0
+                legacyVal + mapVal
+            }
 
         return gearMod + effectMod
     }

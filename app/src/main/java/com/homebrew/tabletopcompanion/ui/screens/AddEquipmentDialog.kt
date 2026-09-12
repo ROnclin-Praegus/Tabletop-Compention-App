@@ -164,7 +164,7 @@ fun AddEquipmentDialog(
                                 colors = CheckboxDefaults.colors(checkedColor = GoldAccent)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Is Consumable?", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GoldAccent)
+                            Text("Is Consumable/Loot?", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GoldAccent)
                         }
                         
                         if (isConsumable) {

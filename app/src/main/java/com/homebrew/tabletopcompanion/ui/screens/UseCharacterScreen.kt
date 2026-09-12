@@ -25,6 +25,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.*
@@ -79,6 +82,7 @@ fun UseCharacterScreen(
     var itemToEdit by remember { mutableStateOf<EquipmentItem?>(null) }
     var abilityToEdit by remember { mutableStateOf<CharacterAbility?>(null) }
     var noteToEdit by remember { mutableStateOf<CharacterNote?>(null) }
+    var effectToEdit by remember { mutableStateOf<CharacterEffect?>(null) }
 
     var activeExpiredNotification by remember { mutableStateOf<String?>(null) }
 
@@ -1245,6 +1249,7 @@ fun UseCharacterScreen(
                                         activeCharacter.effects.forEach { effect ->
                                             EffectItemRow(
                                                 effect = effect,
+                                                onEdit = { effectToEdit = effect },
                                                 onDelete = { removeEffect(effect.id) }
                                             )
                                         }
@@ -1943,13 +1948,25 @@ fun UseCharacterScreen(
         )
     }
 
-    // ADD EFFECT DIALOG
-    if (showAddEffectDialog) {
+    // ADD / EDIT EFFECT DIALOG
+    if (showAddEffectDialog || effectToEdit != null) {
         AddEffectDialog(
-            onDismiss = { showAddEffectDialog = false },
-            onEffectAdded = { newEffect ->
-                addEffect(newEffect)
+            effectToEdit = effectToEdit,
+            onDismiss = {
                 showAddEffectDialog = false
+                effectToEdit = null
+            },
+            onEffectSaved = { savedEffect ->
+                if (effectToEdit != null) {
+                    val updatedList = activeCharacter.effects.map { if (it.id == savedEffect.id) savedEffect else it }
+                    val updated = activeCharacter.copy(effects = updatedList)
+                    activeCharacter = updated
+                    onCharacterUpdated(updated)
+                } else {
+                    addEffect(savedEffect)
+                }
+                showAddEffectDialog = false
+                effectToEdit = null
             }
         )
     }
@@ -2328,6 +2345,7 @@ fun AbilityCard(
     onMoveDown: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    var showDeletePrompt by remember { mutableStateOf(false) }
     val maxCharLimit = 130
     val isLong = evaluatedDescription.length > maxCharLimit
 
@@ -2335,6 +2353,24 @@ fun AbilityCard(
         evaluatedDescription.take(maxCharLimit) + "..."
     } else {
         evaluatedDescription
+    }
+
+    if (showDeletePrompt) {
+        AlertDialog(
+            onDismissRequest = { showDeletePrompt = false },
+            title = { Text("Delete Ability?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text("Are you sure you want to delete ${ability.name}?") },
+            confirmButton = {
+                Button(
+                    onClick = { showDeletePrompt = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary, contentColor = TextPrimary)
+                ) { Text("DELETE", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePrompt = false }) { Text("CANCEL", color = TextSecondary) }
+            },
+            containerColor = DarkSurface
+        )
     }
 
     Card(
@@ -2369,7 +2405,7 @@ fun AbilityCard(
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Ability", tint = GoldAccent, modifier = Modifier.size(18.dp))
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { showDeletePrompt = true }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete Ability", tint = CrimsonPrimary, modifier = Modifier.size(18.dp))
                     }
                 }
@@ -2409,8 +2445,29 @@ fun AbilityCard(
 @Composable
 fun EffectItemRow(
     effect: CharacterEffect,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showDeletePrompt by remember { mutableStateOf(false) }
+
+    if (showDeletePrompt) {
+        AlertDialog(
+            onDismissRequest = { showDeletePrompt = false },
+            title = { Text("Remove Effect?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text("Are you sure you want to remove ${effect.name}?") },
+            confirmButton = {
+                Button(
+                    onClick = { showDeletePrompt = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary, contentColor = TextPrimary)
+                ) { Text("REMOVE", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePrompt = false }) { Text("CANCEL", color = TextSecondary) }
+            },
+            containerColor = DarkSurface
+        )
+    }
+
     Surface(
         color = DarkSurfaceVariant,
         shape = RoundedCornerShape(8.dp),
@@ -2431,29 +2488,60 @@ fun EffectItemRow(
                     color = TextPrimary
                 )
 
-                val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
-                val desc = when (effect.effectType) {
-                    EffectType.STAT_MODIFIER -> "${effect.targetStat?.uppercase()}: $valStr"
-                    EffectType.HP_CHANGE_PER_ROUND -> {
-                        if (effect.value < 0) {
-                            val typeLabel = when (effect.damageType) {
-                                DamageType.PHYSICAL -> "Physical 🛡️"
-                                DamageType.MAGICAL -> "Magical ✨"
-                                DamageType.UNSAVEABLE -> "Unsaveable 💥"
+                val annotatedDesc = buildAnnotatedString {
+                    when (effect.effectType) {
+                        EffectType.STAT_MODIFIER -> {
+                            val allMods = mutableMapOf<String, Int>()
+                            if (effect.targetStat != null && effect.value != 0) {
+                                allMods[effect.targetStat] = effect.value
                             }
-                            "$valStr $typeLabel HP / round"
-                        } else {
-                            "$valStr HP / round"
+                            effect.statModifiers.forEach { (k, v) ->
+                                allMods[k] = (allMods[k] ?: 0) + v
+                            }
+                            val entries = allMods.entries.toList()
+                            entries.forEachIndexed { index, entry ->
+                                val valStr = if (entry.value > 0) "+${entry.value}" else "${entry.value}"
+                                val color = if (entry.value >= 0) GreenHp else CrimsonPrimary
+                                withStyle(style = SpanStyle(color = color)) {
+                                    append("${entry.key.uppercase()}: $valStr")
+                                }
+                                if (index < entries.size - 1) {
+                                    withStyle(style = SpanStyle(color = TextSecondary)) {
+                                        append(", ")
+                                    }
+                                }
+                            }
+                        }
+                        EffectType.HP_CHANGE_PER_ROUND -> {
+                            val color = if (effect.value >= 0) GreenHp else CrimsonPrimary
+                            withStyle(style = SpanStyle(color = color)) {
+                                val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
+                                if (effect.value < 0) {
+                                    val typeLabel = when (effect.damageType) {
+                                        DamageType.PHYSICAL -> "Physical 🛡️"
+                                        DamageType.MAGICAL -> "Magical ✨"
+                                        DamageType.UNSAVEABLE -> "Unsaveable 💥"
+                                    }
+                                    append("$valStr $typeLabel HP / round")
+                                } else {
+                                    append("$valStr HP / round")
+                                }
+                            }
+                        }
+                        EffectType.MP_CHANGE_PER_ROUND -> {
+                            val color = if (effect.value >= 0) GreenHp else CrimsonPrimary
+                            withStyle(style = SpanStyle(color = color)) {
+                                val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
+                                append("$valStr MP / round")
+                            }
                         }
                     }
-                    EffectType.MP_CHANGE_PER_ROUND -> "$valStr MP / round"
                 }
 
                 Text(
-                    text = desc,
+                    text = annotatedDesc,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (effect.value >= 0) GreenHp else CrimsonPrimary
+                    fontWeight = FontWeight.SemiBold
                 )
 
                 val durationText = if (effect.roundsRemaining == 0) "Duration: Unlimited" else "Duration: ${effect.roundsRemaining} Rounds left"
@@ -2464,12 +2552,21 @@ fun EffectItemRow(
                 )
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Remove Effect",
-                    tint = CrimsonPrimary.copy(alpha = 0.8f)
-                )
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Effect",
+                        tint = GoldAccent.copy(alpha = 0.8f)
+                    )
+                }
+                IconButton(onClick = { showDeletePrompt = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Remove Effect",
+                        tint = CrimsonPrimary.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
     }
@@ -2529,21 +2626,22 @@ fun EquipmentItemCard(
     onMoveDown: () -> Unit,
     onUpdateConsumable: (Int) -> Unit = {}
 ) {
-    var showDeletePrompt by remember { mutableStateOf(false) }
+    var showDeletePrompt by remember { mutableStateOf<String?>(null) }
 
-    if (showDeletePrompt) {
+    val promptText = showDeletePrompt
+    if (promptText != null) {
         AlertDialog(
-            onDismissRequest = { showDeletePrompt = false },
-            title = { Text("Delete Consumable?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
-            text = { Text("Amount reached 0. Do you want to delete ${item.name} from your inventory?") },
+            onDismissRequest = { showDeletePrompt = null },
+            title = { Text(if (promptText.contains("Amount reached 0")) "Delete Consumable?" else "Delete Item?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text(promptText) },
             confirmButton = {
                 Button(
-                    onClick = { showDeletePrompt = false; onDelete() },
+                    onClick = { showDeletePrompt = null; onDelete() },
                     colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary, contentColor = TextPrimary)
                 ) { Text("DELETE", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeletePrompt = false }) { Text("CANCEL", color = TextSecondary) }
+                TextButton(onClick = { showDeletePrompt = null }) { Text("CANCEL", color = TextSecondary) }
             },
             containerColor = DarkSurface
         )
@@ -2600,7 +2698,7 @@ fun EquipmentItemCard(
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Item", tint = GoldAccent, modifier = Modifier.size(18.dp))
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { showDeletePrompt = "Are you sure you want to delete ${item.name}?" }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete Item", tint = CrimsonPrimary, modifier = Modifier.size(18.dp))
                     }
                 }
@@ -2723,7 +2821,7 @@ fun EquipmentItemCard(
                                 val newAmount = item.consumableAmount - 1
                                 if (newAmount <= 0) {
                                     onUpdateConsumable(0)
-                                    showDeletePrompt = true
+                                    showDeletePrompt = "Amount reached 0. Do you want to delete ${item.name} from your inventory?"
                                 } else {
                                     onUpdateConsumable(newAmount)
                                 }
@@ -2784,6 +2882,7 @@ fun NoteCard(
     onMoveDown: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    var showDeletePrompt by remember { mutableStateOf(false) }
     val maxCharLimit = 130
     val isLong = note.content.length > maxCharLimit
 
@@ -2791,6 +2890,24 @@ fun NoteCard(
         note.content.take(maxCharLimit) + "..."
     } else {
         note.content
+    }
+
+    if (showDeletePrompt) {
+        AlertDialog(
+            onDismissRequest = { showDeletePrompt = false },
+            title = { Text("Delete Note?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
+            text = { Text("Are you sure you want to delete this note?") },
+            confirmButton = {
+                Button(
+                    onClick = { showDeletePrompt = false; onDelete() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary, contentColor = TextPrimary)
+                ) { Text("DELETE", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeletePrompt = false }) { Text("CANCEL", color = TextSecondary) }
+            },
+            containerColor = DarkSurface
+        )
     }
 
     Card(
@@ -2879,7 +2996,7 @@ fun NoteCard(
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit Note", tint = GoldAccent, modifier = Modifier.size(18.dp))
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { showDeletePrompt = true }, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete Note", tint = CrimsonPrimary, modifier = Modifier.size(18.dp))
                     }
                 }
