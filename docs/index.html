@@ -2854,7 +2854,7 @@
       
       document.getElementById('itemInputName').value = '';
       document.getElementById('itemInputCategory').value = '';
-      document.getElementById('itemInputEquipped').value = 'true';
+      document.getElementById('itemInputEquipped').value = currentSessionTab === 'inventory' ? 'false' : 'true';
 
       document.getElementById('chkHasArmor').checked = false;
       document.getElementById('itemInputArmorSave').value = '0';
