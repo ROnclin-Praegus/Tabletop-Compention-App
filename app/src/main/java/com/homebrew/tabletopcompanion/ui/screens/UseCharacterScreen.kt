@@ -2493,9 +2493,9 @@ fun EffectItemRow(
                         EffectType.STAT_MODIFIER -> {
                             val allMods = mutableMapOf<String, Int>()
                             if (effect.targetStat != null && effect.value != 0) {
-                                allMods[effect.targetStat] = effect.value
+                                allMods[effect.targetStat] = (allMods[effect.targetStat] ?: 0) + effect.value
                             }
-                            effect.statModifiers.forEach { (k, v) ->
+                            effect.statModifiers?.forEach { (k, v) ->
                                 allMods[k] = (allMods[k] ?: 0) + v
                             }
                             val entries = allMods.entries.toList()
@@ -2673,19 +2673,7 @@ fun EquipmentItemCard(
                         fontSize = 16.sp,
                         color = TextPrimary
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        color = DarkBackground,
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            text = item.category.uppercase(),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = GoldAccent,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
+
                 }
 
                 Row {
@@ -2742,8 +2730,8 @@ fun EquipmentItemCard(
                     }
                 }
 
-                if (item.hasStatModifiers && item.statModifiers.isNotEmpty()) {
-                    item.statModifiers.forEach { (stat, valMod) ->
+                if (item.hasStatModifiers && item.statModifiers?.isNotEmpty() == true) {
+                    item.statModifiers?.forEach { (stat, valMod) ->
                         if (valMod != 0) {
                             val color = if (valMod > 0) GreenHp else CrimsonPrimary
                             val valStr = if (valMod > 0) "+$valMod" else "$valMod"

@@ -12,7 +12,7 @@ data class EquipmentItem(
     val hasWard: Boolean = false,
     val wardSave: Int = 0,  // Integer points (e.g. 1, 5, 10)
     val hasStatModifiers: Boolean = false,
-    val statModifiers: Map<String, Int> = emptyMap(), // Key: "strength", "intelligence", etc., Value: +2, -1
+    val statModifiers: Map<String, Int>? = emptyMap(), // Key: "strength", "intelligence", etc., Value: +2, -1
     val hasAttacks: Boolean = false,
     val attackCount: Int = 1,
     val attackDamage: String = "",
