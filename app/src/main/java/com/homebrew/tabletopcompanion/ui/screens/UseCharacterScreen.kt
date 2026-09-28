@@ -30,6 +30,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.window.Dialog
@@ -83,6 +84,11 @@ fun UseCharacterScreen(
     var abilityToEdit by remember { mutableStateOf<CharacterAbility?>(null) }
     var noteToEdit by remember { mutableStateOf<CharacterNote?>(null) }
     var effectToEdit by remember { mutableStateOf<CharacterEffect?>(null) }
+
+    var recentDamageArmor by remember { mutableStateOf<Int?>(null) }
+    var recentDamageWard by remember { mutableStateOf<Int?>(null) }
+    var recentDamageHp by remember { mutableStateOf<Int?>(null) }
+    var recentDamageTrigger by remember { mutableLongStateOf(0L) }
 
     var activeExpiredNotification by remember { mutableStateOf<String?>(null) }
 
@@ -324,6 +330,17 @@ fun UseCharacterScreen(
 
         if (remainingDamage > 0) {
             newCurrentHp = (newCurrentHp - remainingDamage).coerceAtLeast(0)
+        }
+
+        val dmgArmor = (currentArmor + activeCharacter.boostArmor) - (newArmor + newBoostArmor)
+        val dmgWard = (currentWard + activeCharacter.boostWard) - (newWard + newBoostWard)
+        val dmgHp = (activeCharacter.currentHp + activeCharacter.boostHp) - (newCurrentHp + newBoostHp)
+
+        if (dmgArmor > 0 || dmgWard > 0 || dmgHp > 0) {
+            recentDamageArmor = if (dmgArmor > 0) dmgArmor else null
+            recentDamageWard = if (dmgWard > 0) dmgWard else null
+            recentDamageHp = if (dmgHp > 0) dmgHp else null
+            recentDamageTrigger = System.currentTimeMillis()
         }
 
         val updated = activeCharacter.copy(
@@ -885,15 +902,29 @@ fun UseCharacterScreen(
                                         }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
-                                        LinearProgressIndicator(
-                                            progress = (currentArmor.toFloat() / totalArmor.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(8.dp)
-                                                .clip(RoundedCornerShape(4.dp)),
-                                            color = GoldAccent,
-                                            trackColor = DarkSurfaceVariant
-                                        )
+                                        val armorProgress by animateFloatAsState(targetValue = (currentArmor.toFloat() / totalArmor.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f), animationSpec = tween(500))
+                                        Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.fillMaxWidth()) {
+                                            LinearProgressIndicator(
+                                                progress = { armorProgress },
+                                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                                color = GoldAccent,
+                                                trackColor = DarkSurfaceVariant
+                                            )
+                                            key(recentDamageTrigger) {
+                                                if (recentDamageArmor != null) {
+                                                    var visible by remember { mutableStateOf(true) }
+                                                    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                    AnimatedVisibility(
+                                                        visible = visible,
+                                                        enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                                                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                                                        modifier = Modifier.offset(y = (-10).dp).padding(end = 8.dp)
+                                                    ) {
+                                                        Text("-${recentDamageArmor}", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
 
                                     Divider(color = DarkSurfaceVariant, thickness = 1.dp)
@@ -948,15 +979,29 @@ fun UseCharacterScreen(
                                         }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
-                                        LinearProgressIndicator(
-                                            progress = (currentWard.toFloat() / totalWard.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(8.dp)
-                                                .clip(RoundedCornerShape(4.dp)),
-                                            color = CyanAccent,
-                                            trackColor = DarkSurfaceVariant
-                                        )
+                                        val wardProgress by animateFloatAsState(targetValue = (currentWard.toFloat() / totalWard.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f), animationSpec = tween(500))
+                                        Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.fillMaxWidth()) {
+                                            LinearProgressIndicator(
+                                                progress = { wardProgress },
+                                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                                color = CyanAccent,
+                                                trackColor = DarkSurfaceVariant
+                                            )
+                                            key(recentDamageTrigger) {
+                                                if (recentDamageWard != null) {
+                                                    var visible by remember { mutableStateOf(true) }
+                                                    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                    AnimatedVisibility(
+                                                        visible = visible,
+                                                        enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                                                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                                                        modifier = Modifier.offset(y = (-10).dp).padding(end = 8.dp)
+                                                    ) {
+                                                        Text("-${recentDamageWard}", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
 
                                     Divider(color = DarkSurfaceVariant, thickness = 1.dp)
@@ -1010,15 +1055,29 @@ fun UseCharacterScreen(
                                         }
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    LinearProgressIndicator(
-                                        progress = (activeCharacter.currentHp.toFloat() / effectiveMaxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(10.dp)
-                                            .clip(RoundedCornerShape(5.dp)),
-                                        color = GreenHp,
-                                        trackColor = DarkSurfaceVariant
-                                    )
+                                    val hpProgress by animateFloatAsState(targetValue = (activeCharacter.currentHp.toFloat() / effectiveMaxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f), animationSpec = tween(500))
+                                    Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.fillMaxWidth()) {
+                                        LinearProgressIndicator(
+                                            progress = { hpProgress },
+                                            modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
+                                            color = GreenHp,
+                                            trackColor = DarkSurfaceVariant
+                                        )
+                                        key(recentDamageTrigger) {
+                                            if (recentDamageHp != null) {
+                                                var visible by remember { mutableStateOf(true) }
+                                                LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                AnimatedVisibility(
+                                                    visible = visible,
+                                                    enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                                                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                                                    modifier = Modifier.offset(y = (-12).dp).padding(end = 8.dp)
+                                                ) {
+                                                    Text("-${recentDamageHp}", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                                }
+                                            }
+                                        }
+                                    }
                                     Spacer(modifier = Modifier.height(12.dp))
 
                                     // HP Action Buttons
