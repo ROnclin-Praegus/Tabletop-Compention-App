@@ -912,8 +912,11 @@ fun UseCharacterScreen(
                                             )
                                             key(recentDamageTrigger) {
                                                 if (recentDamageArmor != null) {
-                                                    var visible by remember { mutableStateOf(true) }
-                                                    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                    val isRecent = (System.currentTimeMillis() - recentDamageTrigger) < 2000L
+                                                    var visible by remember { mutableStateOf(isRecent) }
+                                                    if (isRecent) {
+                                                        LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                    }
                                                     androidx.compose.animation.AnimatedVisibility(
                                                         visible = visible,
                                                         enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
@@ -989,8 +992,11 @@ fun UseCharacterScreen(
                                             )
                                             key(recentDamageTrigger) {
                                                 if (recentDamageWard != null) {
-                                                    var visible by remember { mutableStateOf(true) }
-                                                    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                    val isRecent = (System.currentTimeMillis() - recentDamageTrigger) < 2000L
+                                                    var visible by remember { mutableStateOf(isRecent) }
+                                                    if (isRecent) {
+                                                        LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                    }
                                                     androidx.compose.animation.AnimatedVisibility(
                                                         visible = visible,
                                                         enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
@@ -1065,8 +1071,11 @@ fun UseCharacterScreen(
                                         )
                                         key(recentDamageTrigger) {
                                             if (recentDamageHp != null) {
-                                                var visible by remember { mutableStateOf(true) }
-                                                LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                val isRecent = (System.currentTimeMillis() - recentDamageTrigger) < 2000L
+                                                var visible by remember { mutableStateOf(isRecent) }
+                                                if (isRecent) {
+                                                    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                }
                                                 androidx.compose.animation.AnimatedVisibility(
                                                     visible = visible,
                                                     enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
