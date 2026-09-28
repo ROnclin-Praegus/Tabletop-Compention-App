@@ -309,6 +309,7 @@
 
     .bar-group {
       flex: 1;
+      position: relative;
     }
 
     .bar-header {
@@ -659,6 +660,23 @@
     }
 
     .hidden { display: none !important; }
+    
+    @keyframes floatUpFadeOut {
+      0% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-20px); }
+    }
+    .floating-damage {
+      position: absolute;
+      right: 0;
+      bottom: 20px;
+      color: var(--crimson-primary);
+      font-weight: bold;
+      font-size: 16px;
+      animation: floatUpFadeOut 1.5s forwards;
+      pointer-events: none;
+      z-index: 10;
+    }
+
     /* Level Up Glitch */
     @keyframes glitch-anim {
       0% { transform: translate(0, 0); }
@@ -2172,6 +2190,21 @@
       document.getElementById('damageModal').classList.add('hidden');
     }
 
+    function showFloatingDamage(fillId, amount) {
+      if (amount <= 0) return;
+      const fillEl = document.getElementById(fillId);
+      if (!fillEl) return;
+      // .bar-bg is parent, .bar-group is grandparent
+      const container = fillEl.parentElement.parentElement;
+      const floatEl = document.createElement('div');
+      floatEl.className = 'floating-damage';
+      floatEl.innerText = '-' + amount;
+      container.appendChild(floatEl);
+      setTimeout(() => {
+        if (floatEl.parentElement) floatEl.remove();
+      }, 1500);
+    }
+
     function confirmApplyDamage() {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
@@ -2191,9 +2224,11 @@
       if (selectedType === 'physical') {
         if (curArmor > 0) {
           if (rem <= curArmor) {
+            showFloatingDamage('useArmorFill', rem);
             curArmor -= rem;
             rem = 0;
           } else {
+            showFloatingDamage('useArmorFill', curArmor);
             rem -= curArmor;
             curArmor = 0;
           }
@@ -2201,15 +2236,18 @@
       } else if (selectedType === 'magical') {
         if (curWard > 0) {
           if (rem <= curWard) {
+            showFloatingDamage('useWardFill', rem);
             curWard -= rem;
             rem = 0;
           } else {
+            showFloatingDamage('useWardFill', curWard);
             rem -= curWard;
             curWard = 0;
           }
         }
       }
 
+      let hpDmg = rem;
       if (rem > 0 && c.boostHp > 0) {
         if (rem <= c.boostHp) {
           c.boostHp -= rem;
@@ -2222,6 +2260,10 @@
 
       if (rem > 0) {
         c.currentHp = Math.max(0, c.currentHp - rem);
+      }
+      
+      if (hpDmg > 0) {
+        showFloatingDamage('useHpFill', hpDmg);
       }
 
       c.currentArmor = curArmor;
