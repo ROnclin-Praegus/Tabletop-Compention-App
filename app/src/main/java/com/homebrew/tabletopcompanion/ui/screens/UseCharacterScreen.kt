@@ -240,6 +240,17 @@ fun UseCharacterScreen(
             activeExpiredNotification = expiredList.joinToString("\n")
         }
 
+        val dmgArmor = (totalArmor + activeCharacter.boostArmor) - (newArmor + newBoostArmor)
+        val dmgWard = (totalWard + activeCharacter.boostWard) - (newWard + newBoostWard)
+        val dmgHp = (activeCharacter.currentHp + activeCharacter.boostHp) - (newHp + newBoostHp)
+
+        if (dmgArmor > 0 || dmgWard > 0 || dmgHp > 0) {
+            recentDamageArmor = if (dmgArmor > 0) dmgArmor else null
+            recentDamageWard = if (dmgWard > 0) dmgWard else null
+            recentDamageHp = if (dmgHp > 0) dmgHp else null
+            recentDamageTrigger = System.currentTimeMillis()
+        }
+
         val updated = activeCharacter.copy(
             currentHp = newHp,
             currentMp = newMp,

@@ -1628,9 +1628,11 @@
               if (dmgType === "physical") {
                 if (c.currentArmor > 0) {
                   if (rem <= c.currentArmor) {
+                    showFloatingDamage('useArmorFill', rem);
                     c.currentArmor -= rem;
                     rem = 0;
                   } else {
+                    showFloatingDamage('useArmorFill', c.currentArmor);
                     rem -= c.currentArmor;
                     c.currentArmor = 0;
                   }
@@ -1638,15 +1640,18 @@
               } else if (dmgType === "magical") {
                 if (c.currentWard > 0) {
                   if (rem <= c.currentWard) {
+                    showFloatingDamage('useWardFill', rem);
                     c.currentWard -= rem;
                     rem = 0;
                   } else {
+                    showFloatingDamage('useWardFill', c.currentWard);
                     rem -= c.currentWard;
                     c.currentWard = 0;
                   }
                 }
               }
 
+              let hpDmg = rem;
               // Boost HP is affected FIRST before current HP!
               if (rem > 0 && c.boostHp > 0) {
                 if (rem <= c.boostHp) {
@@ -1660,6 +1665,10 @@
 
               if (rem > 0) {
                 c.currentHp = Math.max(0, c.currentHp - rem);
+              }
+              
+              if (hpDmg > 0) {
+                showFloatingDamage('useHpFill', hpDmg);
               }
             }
           }
