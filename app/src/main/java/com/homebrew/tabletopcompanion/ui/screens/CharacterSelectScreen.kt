@@ -2,6 +2,8 @@ package com.homebrew.tabletopcompanion.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.core.*
+import androidx.compose.animation.animateColor
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -490,13 +492,25 @@ fun CharacterCard(
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
+                    val isLowHp = (character.currentHp.toFloat() / character.maxHp.coerceAtLeast(1).toFloat()) <= 0.25f && character.boostHp <= 0
+                    val hpTransition = rememberInfiniteTransition(label = "listHpBlink")
+                    val listBlinkColor by hpTransition.animateColor(
+                        initialValue = CrimsonPrimary,
+                        targetValue = Color(0xFF550000),
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(750, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "listHpBlinkColor"
+                    )
+                    val hpColor = if (character.boostHp > 0) GoldAccent else if (isLowHp) listBlinkColor else GreenHp
                     LinearProgressIndicator(
-                        progress = (character.currentHp.toFloat() / character.maxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
+                        progress = { (character.currentHp.toFloat() / character.maxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp)),
-                        color = if (character.boostHp > 0) GoldAccent else GreenHp,
+                        color = hpColor,
                         trackColor = DarkSurfaceVariant
                     )
                 }
@@ -518,7 +532,7 @@ fun CharacterCard(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         LinearProgressIndicator(
-                            progress = (character.currentMp.toFloat() / character.maxMp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
+                            progress = { (character.currentMp.toFloat() / character.maxMp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(6.dp)

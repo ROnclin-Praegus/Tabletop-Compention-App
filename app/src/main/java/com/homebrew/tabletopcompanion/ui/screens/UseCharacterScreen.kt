@@ -1090,12 +1090,25 @@ fun UseCharacterScreen(
                                         }
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
+                                    val isLowHp = (activeCharacter.currentHp.toFloat() / effectiveMaxHp.coerceAtLeast(1).toFloat()) <= 0.25f && activeCharacter.boostHp <= 0
+                                    val infiniteTransition = rememberInfiniteTransition(label = "hpBlink")
+                                    val blinkColor by infiniteTransition.animateColor(
+                                        initialValue = CrimsonPrimary,
+                                        targetValue = Color(0xFF550000),
+                                        animationSpec = infiniteRepeatable(
+                                            animation = tween(750, easing = LinearEasing),
+                                            repeatMode = RepeatMode.Reverse
+                                        ),
+                                        label = "hpBlinkColor"
+                                    )
+                                    val hpBarColor = if (activeCharacter.boostHp > 0) Color(0xFFFFA500) else if (isLowHp) blinkColor else GreenHp
+
                                     val hpProgress by animateFloatAsState(targetValue = (activeCharacter.currentHp.toFloat() / effectiveMaxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f), animationSpec = tween(500))
                                     Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.fillMaxWidth()) {
                                         LinearProgressIndicator(
                                             progress = { hpProgress },
                                             modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
-                                            color = GreenHp,
+                                            color = hpBarColor,
                                             trackColor = DarkSurfaceVariant
                                         )
                                         key(recentDamageTrigger) {

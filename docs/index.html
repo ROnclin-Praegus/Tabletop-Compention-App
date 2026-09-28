@@ -336,6 +336,15 @@
     .fill-armor { background-color: var(--gold-accent); }
     .fill-ward { background-color: var(--cyan-accent); }
     .fill-hp { background-color: var(--green-hp); }
+    @keyframes blinkRed {
+      0% { background-color: var(--crimson-primary); }
+      50% { background-color: #550000; }
+      100% { background-color: var(--crimson-primary); }
+    }
+    .fill-hp-low {
+      background-color: var(--crimson-primary);
+      animation: blinkRed 1.5s infinite ease-in-out;
+    }
     .fill-boost { background-color: #ff9800; }
     .fill-mp { background-color: var(--blue-mp); }
 
@@ -1816,7 +1825,7 @@
                 <span style="color:var(--green-hp);">HP</span>
                 <span style="color:var(--green-hp);">${c.currentHp} / ${maxHp} ${c.boostHp > 0 ? `<span class="boost-tag boost-tag-hp">+${c.boostHp} Boost</span>` : ''}</span>
               </div>
-              <div class="bar-bg"><div class="bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}" style="width:${(c.currentHp / Math.max(1, maxHp)) * 100}%"></div></div>
+              <div class="bar-bg"><div class="bar-fill ${c.boostHp > 0 ? 'fill-boost' : (c.currentHp / Math.max(1, maxHp) <= 0.25 ? 'fill-hp-low' : 'fill-hp')}" style="width:${(c.currentHp / Math.max(1, maxHp)) * 100}%"></div></div>
             </div>
 
             ${maxMp > 0 ? `
@@ -1974,7 +1983,9 @@
       document.getElementById('useHpText').innerHTML = hpText;
         document.getElementById('useHpText').style.color = 'var(--green-hp)';
       document.getElementById('useHpFill').style.width = `${(c.currentHp / Math.max(1, maxHp)) * 100}%`;
-      document.getElementById('useHpFill').className = `bar-fill ${c.boostHp > 0 ? 'fill-boost' : 'fill-hp'}`;
+      const hpRatio = c.currentHp / Math.max(1, maxHp);
+      const isHpLow = hpRatio <= 0.25 && c.boostHp <= 0;
+      document.getElementById('useHpFill').className = `bar-fill ${c.boostHp > 0 ? 'fill-boost' : (isHpLow ? 'fill-hp-low' : 'fill-hp')}`;
 
       if (maxMp > 0) {
         document.getElementById('useMpBlock').classList.remove('hidden');
