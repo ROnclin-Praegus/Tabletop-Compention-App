@@ -1620,7 +1620,10 @@
           if (e.effectType === "HP_CHANGE_PER_ROUND") {
             const val = parseInt(e.value) || 0;
             if (val > 0) {
+              let oldHp = c.currentHp;
               c.currentHp = Math.max(0, Math.min(maxHp, c.currentHp + val));
+              let change = c.currentHp - oldHp;
+              if (change > 0) showFloatingDamage('useHpFill', change, true);
             } else if (val < 0) {
               let rem = Math.abs(val);
               const dmgType = e.damageType || "unsaveable";
@@ -2199,7 +2202,7 @@
       document.getElementById('damageModal').classList.add('hidden');
     }
 
-    function showFloatingDamage(fillId, amount) {
+    function showFloatingDamage(fillId, amount, isHeal = false) {
       if (amount <= 0) return;
       const fillEl = document.getElementById(fillId);
       if (!fillEl) return;
@@ -2207,7 +2210,13 @@
       const container = fillEl.parentElement.parentElement;
       const floatEl = document.createElement('div');
       floatEl.className = 'floating-damage';
-      floatEl.innerText = '-' + amount;
+      if (isHeal) {
+        floatEl.innerText = '+' + amount;
+        floatEl.style.color = 'var(--green-hp)';
+      } else {
+        floatEl.innerText = '-' + amount;
+        floatEl.style.color = 'var(--crimson-primary)';
+      }
       container.appendChild(floatEl);
       setTimeout(() => {
         if (floatEl.parentElement) floatEl.remove();
@@ -3110,13 +3119,22 @@
 
       if (target === 'HP') {
         const maxHp = getEffectiveMaxHp(c);
+        let oldHp = c.currentHp;
         c.currentHp = Math.min(maxHp, c.currentHp + amount);
+        let change = c.currentHp - oldHp;
+        if (change > 0) showFloatingDamage('useHpFill', change, true);
       } else if (target === 'Armor') {
         const maxArmor = getTotalArmor(c);
-        c.currentArmor = Math.min(maxArmor, (c.currentArmor != null ? c.currentArmor : maxArmor) + amount);
+        let oldArmor = c.currentArmor != null ? c.currentArmor : maxArmor;
+        c.currentArmor = Math.min(maxArmor, oldArmor + amount);
+        let change = c.currentArmor - oldArmor;
+        if (change > 0) showFloatingDamage('useArmorFill', change, true);
       } else if (target === 'Ward Save') {
         const maxWard = getTotalWard(c);
-        c.currentWard = Math.min(maxWard, (c.currentWard != null ? c.currentWard : maxWard) + amount);
+        let oldWard = c.currentWard != null ? c.currentWard : maxWard;
+        c.currentWard = Math.min(maxWard, oldWard + amount);
+        let change = c.currentWard - oldWard;
+        if (change > 0) showFloatingDamage('useWardFill', change, true);
       }
       
       saveData();

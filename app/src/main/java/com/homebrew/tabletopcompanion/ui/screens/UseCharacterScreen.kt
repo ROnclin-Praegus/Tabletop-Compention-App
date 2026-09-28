@@ -85,9 +85,9 @@ fun UseCharacterScreen(
     var noteToEdit by remember { mutableStateOf<CharacterNote?>(null) }
     var effectToEdit by remember { mutableStateOf<CharacterEffect?>(null) }
 
-    var recentDamageArmor by remember { mutableStateOf<Int?>(null) }
-    var recentDamageWard by remember { mutableStateOf<Int?>(null) }
-    var recentDamageHp by remember { mutableStateOf<Int?>(null) }
+    var recentChangeArmor by remember { mutableStateOf<Int?>(null) }
+    var recentChangeWard by remember { mutableStateOf<Int?>(null) }
+    var recentChangeHp by remember { mutableStateOf<Int?>(null) }
     var recentDamageTrigger by remember { mutableLongStateOf(0L) }
 
     var activeExpiredNotification by remember { mutableStateOf<String?>(null) }
@@ -240,14 +240,14 @@ fun UseCharacterScreen(
             activeExpiredNotification = expiredList.joinToString("\n")
         }
 
-        val dmgArmor = (totalArmor + activeCharacter.boostArmor) - (newArmor + newBoostArmor)
-        val dmgWard = (totalWard + activeCharacter.boostWard) - (newWard + newBoostWard)
-        val dmgHp = (activeCharacter.currentHp + activeCharacter.boostHp) - (newHp + newBoostHp)
+        val changeArmor = (newArmor + newBoostArmor) - (totalArmor + activeCharacter.boostArmor)
+        val changeWard = (newWard + newBoostWard) - (totalWard + activeCharacter.boostWard)
+        val changeHp = (newHp + newBoostHp) - (activeCharacter.currentHp + activeCharacter.boostHp)
 
-        if (dmgArmor > 0 || dmgWard > 0 || dmgHp > 0) {
-            recentDamageArmor = if (dmgArmor > 0) dmgArmor else null
-            recentDamageWard = if (dmgWard > 0) dmgWard else null
-            recentDamageHp = if (dmgHp > 0) dmgHp else null
+        if (changeArmor != 0 || changeWard != 0 || changeHp != 0) {
+            recentChangeArmor = if (changeArmor != 0) changeArmor else null
+            recentChangeWard = if (changeWard != 0) changeWard else null
+            recentChangeHp = if (changeHp != 0) changeHp else null
             recentDamageTrigger = System.currentTimeMillis()
         }
 
@@ -343,14 +343,14 @@ fun UseCharacterScreen(
             newCurrentHp = (newCurrentHp - remainingDamage).coerceAtLeast(0)
         }
 
-        val dmgArmor = (currentArmor + activeCharacter.boostArmor) - (newArmor + newBoostArmor)
-        val dmgWard = (currentWard + activeCharacter.boostWard) - (newWard + newBoostWard)
-        val dmgHp = (activeCharacter.currentHp + activeCharacter.boostHp) - (newCurrentHp + newBoostHp)
+        val changeArmor = (newArmor + newBoostArmor) - (currentArmor + activeCharacter.boostArmor)
+        val changeWard = (newWard + newBoostWard) - (currentWard + activeCharacter.boostWard)
+        val changeHp = (newCurrentHp + newBoostHp) - (activeCharacter.currentHp + activeCharacter.boostHp)
 
-        if (dmgArmor > 0 || dmgWard > 0 || dmgHp > 0) {
-            recentDamageArmor = if (dmgArmor > 0) dmgArmor else null
-            recentDamageWard = if (dmgWard > 0) dmgWard else null
-            recentDamageHp = if (dmgHp > 0) dmgHp else null
+        if (changeArmor != 0 || changeWard != 0 || changeHp != 0) {
+            recentChangeArmor = if (changeArmor != 0) changeArmor else null
+            recentChangeWard = if (changeWard != 0) changeWard else null
+            recentChangeHp = if (changeHp != 0) changeHp else null
             recentDamageTrigger = System.currentTimeMillis()
         }
 
@@ -369,22 +369,34 @@ fun UseCharacterScreen(
     fun applyHeal(target: String, amount: Int) {
         if (amount <= 0) return
         var updated = activeCharacter
+        var changeArmor = 0
+        var changeWard = 0
+        var changeHp = 0
         when (target) {
             "HP" -> {
                 val maxHp = activeCharacter.getEffectiveMaxHp()
                 val newCurrentHp = (activeCharacter.currentHp + amount).coerceAtMost(maxHp)
+                changeHp = newCurrentHp - activeCharacter.currentHp
                 updated = updated.copy(currentHp = newCurrentHp)
             }
             "Armor" -> {
                 val maxArmor = activeCharacter.getTotalArmor()
                 val newArmor = (activeCharacter.getEffectiveCurrentArmor() + amount).coerceAtMost(maxArmor)
+                changeArmor = newArmor - activeCharacter.getEffectiveCurrentArmor()
                 updated = updated.copy(currentArmor = newArmor)
             }
             "Ward Save" -> {
                 val maxWard = activeCharacter.getTotalWard()
                 val newWard = (activeCharacter.getEffectiveCurrentWard() + amount).coerceAtMost(maxWard)
+                changeWard = newWard - activeCharacter.getEffectiveCurrentWard()
                 updated = updated.copy(currentWard = newWard)
             }
+        }
+        if (changeArmor != 0 || changeWard != 0 || changeHp != 0) {
+            recentChangeArmor = if (changeArmor != 0) changeArmor else null
+            recentChangeWard = if (changeWard != 0) changeWard else null
+            recentChangeHp = if (changeHp != 0) changeHp else null
+            recentDamageTrigger = System.currentTimeMillis()
         }
         activeCharacter = updated
         onCharacterUpdated(updated)
@@ -922,7 +934,7 @@ fun UseCharacterScreen(
                                                 trackColor = DarkSurfaceVariant
                                             )
                                             key(recentDamageTrigger) {
-                                                if (recentDamageArmor != null) {
+                                                if (recentChangeArmor != null) {
                                                     val isRecent = (System.currentTimeMillis() - recentDamageTrigger) < 2000L
                                                     var visible by remember { mutableStateOf(isRecent) }
                                                     if (isRecent) {
@@ -934,7 +946,10 @@ fun UseCharacterScreen(
                                                         exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
                                                         modifier = Modifier.offset(y = (-10).dp).padding(end = 8.dp)
                                                     ) {
-                                                        Text("-${recentDamageArmor}", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                        val amt = recentChangeArmor!!
+                                                        val txt = if (amt > 0) "+$amt" else "$amt"
+                                                        val col = if (amt > 0) Color.Green else Color.Red
+                                                        Text(txt, color = col, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                                     }
                                                 }
                                             }
@@ -1002,7 +1017,7 @@ fun UseCharacterScreen(
                                                 trackColor = DarkSurfaceVariant
                                             )
                                             key(recentDamageTrigger) {
-                                                if (recentDamageWard != null) {
+                                                if (recentChangeWard != null) {
                                                     val isRecent = (System.currentTimeMillis() - recentDamageTrigger) < 2000L
                                                     var visible by remember { mutableStateOf(isRecent) }
                                                     if (isRecent) {
@@ -1014,7 +1029,10 @@ fun UseCharacterScreen(
                                                         exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
                                                         modifier = Modifier.offset(y = (-10).dp).padding(end = 8.dp)
                                                     ) {
-                                                        Text("-${recentDamageWard}", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                        val amt = recentChangeWard!!
+                                                        val txt = if (amt > 0) "+$amt" else "$amt"
+                                                        val col = if (amt > 0) Color.Green else Color.Red
+                                                        Text(txt, color = col, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                                     }
                                                 }
                                             }
@@ -1081,7 +1099,7 @@ fun UseCharacterScreen(
                                             trackColor = DarkSurfaceVariant
                                         )
                                         key(recentDamageTrigger) {
-                                            if (recentDamageHp != null) {
+                                            if (recentChangeHp != null) {
                                                 val isRecent = (System.currentTimeMillis() - recentDamageTrigger) < 2000L
                                                 var visible by remember { mutableStateOf(isRecent) }
                                                 if (isRecent) {
@@ -1093,7 +1111,10 @@ fun UseCharacterScreen(
                                                     exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
                                                     modifier = Modifier.offset(y = (-12).dp).padding(end = 8.dp)
                                                 ) {
-                                                    Text("-${recentDamageHp}", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                                    val amt = recentChangeHp!!
+                                                    val txt = if (amt > 0) "+$amt" else "$amt"
+                                                    val col = if (amt > 0) Color.Green else Color.Red
+                                                    Text(txt, color = col, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                                 }
                                             }
                                         }
