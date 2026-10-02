@@ -61,14 +61,19 @@ object GameServerManager {
     }
 
     fun getLocalIpAddress(context: Context): String {
-        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val ipAddress = wifiManager.connectionInfo.ipAddress
-        return String.format(
-            "%d.%d.%d.%d",
-            ipAddress and 0xff,
-            ipAddress shr 8 and 0xff,
-            ipAddress shr 16 and 0xff,
-            ipAddress shr 24 and 0xff
-        )
+        return try {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val ipAddress = wifiManager.connectionInfo.ipAddress
+            String.format(
+                "%d.%d.%d.%d",
+                ipAddress and 0xff,
+                ipAddress shr 8 and 0xff,
+                ipAddress shr 16 and 0xff,
+                ipAddress shr 24 and 0xff
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "127.0.0.1"
+        }
     }
 }
