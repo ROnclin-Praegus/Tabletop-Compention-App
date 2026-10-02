@@ -900,8 +900,9 @@ fun UseCharacterScreen(
                                     }
                                 }
 
-                                // 1. ARMOR BAR (Rendered ABOVE HP bar if equipped totalArmor > 0)
-                                if (totalArmor > 0) {
+                                // 1. ARMOR BAR (Rendered ABOVE HP bar if equipped totalArmor > 0 or boosted)
+                                val effTotalArmorForUI = totalArmor + activeCharacter.maxBoostArmor
+                                if (effTotalArmorForUI > 0) {
                                     Column {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
@@ -983,8 +984,9 @@ fun UseCharacterScreen(
                                     Divider(color = DarkSurfaceVariant, thickness = 1.dp)
                                 }
 
-                                // 2. WARD SAVE BAR (Rendered ABOVE HP bar if equipped totalWard > 0)
-                                if (totalWard > 0) {
+                                // 2. WARD SAVE BAR (Rendered ABOVE HP bar if equipped totalWard > 0 or boosted)
+                                val effTotalWardForUI = totalWard + activeCharacter.maxBoostWard
+                                if (effTotalWardForUI > 0) {
                                     Column {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
