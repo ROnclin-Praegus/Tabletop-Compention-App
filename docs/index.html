@@ -3760,50 +3760,95 @@
       apiSyncInterval = null;
     }
 
-    async function manualApiSync(silent = false) {
-      if (!activeCharId) return;
-      const c = characters.find(item => item.id === activeCharId);
-      if (!c) return;
-
-      const url = document.getElementById('apiServerUrl').value.trim() || localStorage.getItem('apiServerUrl');
-      const key = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem('apiKeyInput');
-
-      if (!url) {
-        if (!silent) alert('Please enter a Server URL (e.g. 192.168.1.5:8080)');
-        return;
-      }
-
-      let fetchUrl = url;
-      if (!fetchUrl.startsWith('http')) fetchUrl = 'http://' + fetchUrl;
-      if (!fetchUrl.endsWith('/api/sync')) fetchUrl = fetchUrl.replace(/\/?$/, '/api/sync');
-
-      try {
-        const payload = new URLSearchParams();
-        payload.append('postData', JSON.stringify(c));
-
-        const res = await fetch(fetchUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': 'Bearer ' + key
-          },
-          body: payload
-        });
-
-        if (res.ok) {
-          if (!silent) {
-            alert('Character synced successfully to local Android app!');
-            closeApiModal();
-          }
-        } else {
-          if (!silent) alert('Sync failed! Status: ' + res.status);
+        let pendingSyncTimeout = null;
+    
+    function showToast(message, color) {
+        let toast = document.getElementById('syncToastMsg');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'syncToastMsg';
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.padding = '8px 16px';
+            toast.style.borderRadius = '20px';
+            toast.style.zIndex = '99999';
+            toast.style.fontWeight = 'bold';
+            toast.style.fontSize = '12px';
+            toast.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+            document.body.appendChild(toast);
         }
-      } catch (err) {
-        if (!silent) alert('Sync failed! Could not reach the server: ' + err.message);
-      }
+        toast.innerText = message;
+        toast.style.backgroundColor = color;
+        toast.style.color = '#000';
+        
+        setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 4000);
     }
 
-    // Initialize Auto Sync on load
+    async function manualApiSync(silent = false) {
+        if (!activeCharId) return;
+        const c = characters.find(item => item.id === activeCharId);
+        if (!c) return;
+
+        if (silent) {
+           const hasOpenDialog = Array.from(document.querySelectorAll('.modal-overlay')).some(modal => !modal.classList.contains('hidden'));
+           if (hasOpenDialog) {
+             if (pendingSyncTimeout) clearTimeout(pendingSyncTimeout);
+             showToast("Website is waiting for you to finish to Sync...", "var(--gold-accent)");
+             
+             pendingSyncTimeout = setTimeout(() => {
+                 manualApiSync(true);
+             }, 3000);
+             return;
+           }
+        }
+
+        const url = document.getElementById('apiServerUrl').value.trim() || localStorage.getItem('apiServerUrl');
+        const key = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem('apiKeyInput');
+
+        if (!url) {
+          if (!silent) alert('Please enter a Server URL (e.g. 192.168.1.5:8080)');
+          return;
+        }
+
+        let fetchUrl = url;
+        if (!fetchUrl.startsWith('http')) fetchUrl = 'http://' + fetchUrl;
+        if (!fetchUrl.endsWith('/api/sync')) fetchUrl = fetchUrl.replace(/\/?$/, '/api/sync');
+
+        try {
+          const payload = new URLSearchParams();
+          payload.append('postData', JSON.stringify(c));
+
+          const res = await fetch(fetchUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Authorization': 'Bearer ' + key
+            },
+            body: payload
+          });
+
+          if (res.ok) {
+            if (!silent) {
+              alert('Character synced successfully to local Android app!');
+              closeApiModal();
+            } else {
+              showToast("Auto-sync successful!", "var(--green-hp)");
+            }
+          } else {
+            if (!silent) alert('Sync failed! Status: ' + res.status);
+            else showToast('Sync failed! Status: ' + res.status, "var(--crimson-primary)");
+          }
+        } catch (err) {
+          if (!silent) alert('Sync failed! Could not reach the server: ' + err.message);
+          else showToast('Sync failed! Server unreachable.', "var(--crimson-primary)");
+        }
+      }
+
+      // Initialize Auto Sync on load
     window.addEventListener('load', () => {
       if (localStorage.getItem('apiAutoSync') === 'true') {
         startAutoSync();
@@ -3875,6 +3920,7 @@
   </script>
 </body>
 </html>
+
 
 
 
