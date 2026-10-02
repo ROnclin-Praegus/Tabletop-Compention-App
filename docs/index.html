@@ -354,6 +354,8 @@
       padding: 2px 6px;
       border-radius: 4px;
       margin-left: 6px;
+      cursor: pointer;
+      user-select: none;
     }
     .boost-tag-armor {
       background: rgba(255, 193, 7, 0.2);
@@ -2028,7 +2030,7 @@
       if (effTotalArmor > 0) {
         document.getElementById('armorBarBlock').classList.remove('hidden');
         const turnsTagArmor = c.boostArmorTurns > 0 ? ` (${c.boostArmorTurns}t)` : (c.boostArmorResetOnNextRound !== false ? ' (R)' : '');
-        const boostTag = (c.boostArmor > 0) ? ` <span class="boost-tag" ondblclick="removeBoost('Armor')">+${c.boostArmor} Boost${turnsTagArmor}</span>` : '';
+        const boostTag = (c.boostArmor > 0) ? ` <span class="boost-tag boost-tag-armor" ondblclick="removeBoost('Armor')">+${c.boostArmor} Boost${turnsTagArmor}</span>` : '';
         document.getElementById('useArmorText').innerHTML = `${curArmor} / ${totalArmor}${boostTag}`;
         document.getElementById('useArmorFill').style.width = `${(curArmor / Math.max(1, totalArmor)) * 100}%`;
         document.getElementById('useArmorFill').className = `bar-fill ${c.boostArmor > 0 ? 'fill-boost' : 'fill-armor'}`;
@@ -2039,7 +2041,7 @@
       if (effTotalWard > 0) {
         document.getElementById('wardBarBlock').classList.remove('hidden');
         const turnsTagWard = c.boostWardTurns > 0 ? ` (${c.boostWardTurns}t)` : (c.boostWardResetOnNextRound !== false ? ' (R)' : '');
-        const boostTag = (c.boostWard > 0) ? ` <span class="boost-tag" ondblclick="removeBoost('Ward Save')">+${c.boostWard} Boost${turnsTagWard}</span>` : '';
+        const boostTag = (c.boostWard > 0) ? ` <span class="boost-tag boost-tag-ward" ondblclick="removeBoost('Ward Save')">+${c.boostWard} Boost${turnsTagWard}</span>` : '';
         document.getElementById('useWardText').innerHTML = `${curWard} / ${totalWard}${boostTag}`;
         document.getElementById('useWardFill').style.width = `${(curWard / Math.max(1, totalWard)) * 100}%`;
         document.getElementById('useWardFill').className = `bar-fill ${c.boostWard > 0 ? 'fill-boost' : 'fill-ward'}`;
@@ -2049,7 +2051,7 @@
 
       const turnsTag = c.boostHpTurns > 0 ? ` (${c.boostHpTurns}t)` : (c.boostHpResetOnNextRound !== false ? ' (R)' : '');
       const hpText = c.boostHp > 0 
-        ? `${c.currentHp} / ${maxHp} <span class="boost-tag" ondblclick="removeBoost('HP')">+${c.boostHp} Boost${turnsTag}</span>`
+        ? `${c.currentHp} / ${maxHp} <span class="boost-tag boost-tag-hp" ondblclick="removeBoost('HP')">+${c.boostHp} Boost${turnsTag}</span>`
         : `${c.currentHp} / ${maxHp}`;
 
       document.getElementById('useHpText').innerHTML = hpText;
