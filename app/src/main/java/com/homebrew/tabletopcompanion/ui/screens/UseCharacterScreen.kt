@@ -69,8 +69,12 @@ fun UseCharacterScreen(
     // Dialog states
     var pendingAdjustmentType by remember { mutableStateOf<AdjustmentType?>(null) }
     var showAddEquipmentDialog by remember { mutableStateOf(false) }
-    var collapsedEquippedCategories by remember { mutableStateOf(setOf<String>()) }
-    var collapsedUnequippedCategories by remember { mutableStateOf(setOf<String>()) }
+    var collapsedEquippedCategories by remember {
+        mutableStateOf(character.inventory.filter { it.isEquipped }.map { it.category }.toSet())
+    }
+    var collapsedUnequippedCategories by remember {
+        mutableStateOf(character.inventory.filter { !it.isEquipped }.map { it.category }.toSet())
+    }
     var showEditCharacterDialog by remember { mutableStateOf(false) }
     var showAddEffectDialog by remember { mutableStateOf(false) }
     var showAddAbilityDialog by remember { mutableStateOf(false) }
@@ -1473,14 +1477,39 @@ fun UseCharacterScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         item {
-                            Button(
-                                onClick = { showAddEquipmentDialog = true },
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            val allEquipCategories = equippedItems.map { it.category }.toSet()
+                            val allEquipCollapsed = allEquipCategories.isNotEmpty() && allEquipCategories.all { collapsedEquippedCategories.contains(it) }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add")
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("ADD EQUIPMENT", fontWeight = FontWeight.Bold)
+                                Button(
+                                    onClick = { showAddEquipmentDialog = true },
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add")
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("ADD EQUIPMENT", fontWeight = FontWeight.Bold)
+                                }
+                                Button(
+                                    onClick = {
+                                        collapsedEquippedCategories = if (allEquipCollapsed) {
+                                            emptySet()
+                                        } else {
+                                            allEquipCategories
+                                        }
+                                    },
+                                    modifier = Modifier.height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = DarkSurfaceVariant,
+                                        contentColor = TextPrimary
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary),
+                                    contentPadding = PaddingValues(horizontal = 12.dp)
+                                ) {
+                                    Text(if (allEquipCollapsed) "▶ ALL" else "▼ ALL", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                         if (equippedItems.isEmpty()) {
@@ -1562,14 +1591,39 @@ fun UseCharacterScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         item {
-                            Button(
-                                onClick = { showAddEquipmentDialog = true },
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            val allInvCategories = unequippedItems.map { it.category }.toSet()
+                            val allInvCollapsed = allInvCategories.isNotEmpty() && allInvCategories.all { collapsedUnequippedCategories.contains(it) }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add")
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("ADD INVENTORY ITEM", fontWeight = FontWeight.Bold)
+                                Button(
+                                    onClick = { showAddEquipmentDialog = true },
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add")
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("ADD INVENTORY ITEM", fontWeight = FontWeight.Bold)
+                                }
+                                Button(
+                                    onClick = {
+                                        collapsedUnequippedCategories = if (allInvCollapsed) {
+                                            emptySet()
+                                        } else {
+                                            allInvCategories
+                                        }
+                                    },
+                                    modifier = Modifier.height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = DarkSurfaceVariant,
+                                        contentColor = TextPrimary
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary),
+                                    contentPadding = PaddingValues(horizontal = 12.dp)
+                                ) {
+                                    Text(if (allInvCollapsed) "▶ ALL" else "▼ ALL", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                         if (unequippedItems.isEmpty()) {

@@ -83,12 +83,15 @@ object GameServerManager {
         }
     }
 
-    private fun addUpload(jsonData: String) {
+        private fun addUpload(jsonData: String) {
         val record = UploadRecord(System.currentTimeMillis(), jsonData)
         val gson = com.google.gson.Gson()
         val characterId = try {
             gson.fromJson(jsonData, com.homebrew.tabletopcompanion.model.Character::class.java)?.id
         } catch(e: Exception) { null }
+        val charName = try {
+            gson.fromJson(jsonData, com.homebrew.tabletopcompanion.model.Character::class.java)?.name
+        } catch(e: Exception) { "Hero" }
         
         uploads.add(0, record)
         
@@ -102,6 +105,27 @@ object GameServerManager {
             }
         } else {
              if (uploads.size > 50) uploads = uploads.take(50).toMutableList()
+        }
+        
+        appContext?.let { ctx ->
+            try {
+                val notificationIntent = android.content.Intent(ctx, com.homebrew.tabletopcompanion.MainActivity::class.java)
+                val pendingIntent = android.app.PendingIntent.getActivity(
+                    ctx, 0, notificationIntent, android.app.PendingIntent.FLAG_IMMUTABLE
+                )
+                val notification = androidx.core.app.NotificationCompat.Builder(ctx, "ApiServerChannel")
+                    .setContentTitle("Character Sync Received!")
+                    .setContentText("Successfully synced $charName from the Web")
+                    .setSmallIcon(com.homebrew.tabletopcompanion.R.mipmap.ic_launcher)
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(true)
+                    .build()
+                    
+                val manager = ctx.getSystemService(android.app.NotificationManager::class.java)
+                manager.notify(System.currentTimeMillis().toInt(), notification)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
         
         saveUploads()
@@ -125,3 +149,4 @@ object GameServerManager {
         }
     }
 }
+

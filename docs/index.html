@@ -878,17 +878,27 @@
 
       <!-- TAB 3: EQUIPMENT (EQUIPPED ITEMS ONLY) -->
       <div id="equipmentTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
-        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddItemModal()">
-          <span style="font-size: 16px;">+</span> ADD EQUIPMENT
-        </button>
+        <div style="display:flex; gap:8px;">
+          <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px; flex:1;" onclick="openAddItemModal()">
+            <span style="font-size: 16px;">+</span> ADD EQUIPMENT
+          </button>
+          <button class="use-btn" style="background-color:var(--surface-variant); color:var(--text-primary); padding: 14px; font-size: 14px; flex:none; width:auto; border: 1px solid var(--border-color);" onclick="toggleAllCategories('equipment')">
+            &#9660; ALL
+          </button>
+        </div>
         <div id="equipmentList"></div>
       </div>
 
       <!-- TAB 4: INVENTORY (CARRIED UNEQUIPPED ITEMS ONLY) -->
       <div id="inventoryTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
-        <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px;" onclick="openAddItemModal()">
-          <span style="font-size: 16px;">+</span> ADD INVENTORY ITEM
-        </button>
+        <div style="display:flex; gap:8px;">
+          <button class="use-btn" style="background-color:var(--gold-accent); color:var(--bg-dark); padding: 14px; font-size: 14px; flex:1;" onclick="openAddItemModal()">
+            <span style="font-size: 16px;">+</span> ADD INVENTORY ITEM
+          </button>
+          <button class="use-btn" style="background-color:var(--surface-variant); color:var(--text-primary); padding: 14px; font-size: 14px; flex:none; width:auto; border: 1px solid var(--border-color);" onclick="toggleAllCategories('inventory')">
+            &#9660; ALL
+          </button>
+        </div>
         <div id="inventoryList"></div>
       </div>
 
@@ -2780,7 +2790,7 @@
         const items = grouped[cat];
         if (!items || items.length === 0) return;
         
-        const isCollapsed = c.equipmentCategoryCollapsed && c.equipmentCategoryCollapsed[cat];
+        const isCollapsed = !c.equipmentCategoryCollapsed || c.equipmentCategoryCollapsed[cat] !== false;
         
         htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
         htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('equipment', '${cat}')">`;
@@ -2854,7 +2864,7 @@
         const items = grouped[cat];
         if (!items || items.length === 0) return;
         
-        const isCollapsed = c.inventoryCategoryCollapsed && c.inventoryCategoryCollapsed[cat];
+        const isCollapsed = !c.inventoryCategoryCollapsed || c.inventoryCategoryCollapsed[cat] !== false;
         
         htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
         htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('inventory', '${cat}')">`;
@@ -2935,14 +2945,37 @@
       switchSessionTab(currentSessionTab);
     }
 
+        function toggleAllCategories(type) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const isEquip = type === 'equipment';
+      const items = (c.inventory || []).filter(i => isEquip ? i.isEquipped : !i.isEquipped);
+      const categories = [...new Set(items.map(i => i.category || 'Misc'))];
+      
+      let collapseState = isEquip ? c.equipmentCategoryCollapsed : c.inventoryCategoryCollapsed;
+      if (!collapseState) collapseState = {};
+      
+      const anyExpanded = categories.some(cat => collapseState[cat] === false);
+      const newState = anyExpanded ? true : false;
+      
+      categories.forEach(cat => { collapseState[cat] = newState; });
+      if (isEquip) c.equipmentCategoryCollapsed = collapseState;
+      else c.inventoryCategoryCollapsed = collapseState;
+      
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
     function toggleCategoryCollapse(type, catName) {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
       if (type === 'equipment') {
         if (!c.equipmentCategoryCollapsed) c.equipmentCategoryCollapsed = {};
+        if (c.equipmentCategoryCollapsed[catName] === undefined) c.equipmentCategoryCollapsed[catName] = true;
         c.equipmentCategoryCollapsed[catName] = !c.equipmentCategoryCollapsed[catName];
       } else {
         if (!c.inventoryCategoryCollapsed) c.inventoryCategoryCollapsed = {};
+        if (c.inventoryCategoryCollapsed[catName] === undefined) c.inventoryCategoryCollapsed[catName] = true;
         c.inventoryCategoryCollapsed[catName] = !c.inventoryCategoryCollapsed[catName];
       }
       saveData();
@@ -3920,6 +3953,7 @@
   </script>
 </body>
 </html>
+
 
 
 
