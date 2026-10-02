@@ -33,7 +33,8 @@ class LocalGameServer(port: Int, private val onDataReceived: (String) -> Unit) :
             val map = HashMap<String, String>()
             try {
                 session.parseBody(map)
-                val bodyData = map["postData"]
+                // NanoHTTPD places parsed application/x-www-form-urlencoded fields into session.parms, not the map
+                val bodyData = session.parms["postData"] ?: map["postData"]
                 if (bodyData != null) {
                     onDataReceived(bodyData)
                     return corsResponse(newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"success\"}"))
