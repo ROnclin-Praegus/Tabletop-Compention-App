@@ -104,13 +104,17 @@ fun ApiConfigDialog(
                     if (uploads.isEmpty()) {
                         Text("No characters uploaded yet.", color = TextSecondary, modifier = Modifier.padding(16.dp))
                     } else {
+                                                val gson = remember { Gson() }
+                        val groupedUploads = remember(uploads) {
+                            uploads.groupBy { upload ->
+                                try {
+                                    gson.fromJson(upload.jsonData, com.homebrew.tabletopcompanion.model.Character::class.java)?.name ?: "Unknown Hero"
+                                } catch (e: Exception) { "Unknown Hero" }
+                            }
+                        }
+                        
                         LazyColumn(modifier = Modifier.height(250.dp)) {
-                            items(uploads) { upload ->
-                                val gson = Gson()
-                                val character = try {
-                                    gson.fromJson(upload.jsonData, com.homebrew.tabletopcompanion.model.Character::class.java)
-                                } catch (e: Exception) { null }
-                                
+                            items(groupedUploads.entries.toList()) { (characterName, charUploads) ->
                                 var expanded by remember { mutableStateOf(false) }
                                 
                                 Card(
@@ -124,9 +128,8 @@ fun ApiConfigDialog(
                                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                                         ) {
                                             Column {
-                                                Text(character?.name ?: "Unknown Hero", fontWeight = FontWeight.Bold, color = TextPrimary)
-                                                val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-                                                Text("Received: ${sdf.format(Date(upload.timestamp))}", color = GoldAccent, fontSize = 12.sp)
+                                                Text(characterName, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                                Text("${charUploads.size} version(s)", color = GoldAccent, fontSize = 12.sp)
                                             }
                                             Icon(
                                                 imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -136,30 +139,50 @@ fun ApiConfigDialog(
                                         }
                                         
                                         if (expanded) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                Button(
-                                                    onClick = {
-                                                        if (character != null) {
-                                                            onExport(character)
-                                                            GameServerManager.uploads.remove(upload)
-                                                            uploads = GameServerManager.uploads.toList()
+                                            charUploads.forEachIndexed { index, upload ->
+                                                val character = try {
+                                                    gson.fromJson(upload.jsonData, com.homebrew.tabletopcompanion.model.Character::class.java)
+                                                } catch (e: Exception) { null }
+                                                
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                                ) {
+                                                    val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+                                                    Text("Received: ${sdf.format(java.util.Date(upload.timestamp))}", color = CyanAccent, fontSize = 12.sp)
+                                                    
+                                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                        Button(
+                                                            onClick = {
+                                                                if (character != null) {
+                                                                    onExport(character)
+                                                                    GameServerManager.removeUpload(upload)
+                                                                    uploads = GameServerManager.uploads.toList()
+                                                                }
+                                                            },
+                                                            colors = ButtonDefaults.buttonColors(containerColor = CyanAccent),
+                                                            modifier = Modifier.height(30.dp),
+                                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                                        ) {
+                                                            Text("EXPORT", fontSize = 10.sp, color = DarkBackground)
                                                         }
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = CyanAccent),
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Text("EXPORT JSON", fontSize = 12.sp, color = DarkBackground)
+                                                        Button(
+                                                            onClick = {
+                                                                GameServerManager.removeUpload(upload)
+                                                                uploads = GameServerManager.uploads.toList()
+                                                            },
+                                                            colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary),
+                                                            modifier = Modifier.height(30.dp),
+                                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                                        ) {
+                                                            Text("DEL", fontSize = 10.sp)
+                                                        }
+                                                    }
                                                 }
-                                                Button(
-                                                    onClick = {
-                                                        GameServerManager.uploads.remove(upload)
-                                                        uploads = GameServerManager.uploads.toList()
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary),
-                                                    modifier = Modifier.weight(1f)
-                                                ) {
-                                                    Text("DELETE", fontSize = 12.sp)
+                                                if (index < charUploads.size - 1) {
+                                                    Divider(color = TextSecondary.copy(alpha = 0.3f), thickness = 1.dp)
                                                 }
                                             }
                                         }
@@ -203,3 +226,4 @@ fun ApiConfigDialog(
         }
     )
 }
+
