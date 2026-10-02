@@ -12,6 +12,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.gson.Gson
+import android.widget.Toast
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.foundation.clickable
 import com.homebrew.tabletopcompanion.server.GameServerManager
 import com.homebrew.tabletopcompanion.ui.theme.*
 import java.text.SimpleDateFormat
@@ -21,7 +27,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApiConfigDialog(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSave: (com.homebrew.tabletopcompanion.data.Character) -> Unit
 ) {
     val context = LocalContext.current
     var isRunning by remember { mutableStateOf(GameServerManager.isRunning) }
@@ -99,14 +106,64 @@ fun ApiConfigDialog(
                     } else {
                         LazyColumn(modifier = Modifier.height(250.dp)) {
                             items(uploads) { upload ->
+                                val gson = Gson()
+                                val character = try {
+                                    gson.fromJson(upload.jsonData, com.homebrew.tabletopcompanion.data.Character::class.java)
+                                } catch (e: Exception) { null }
+                                
+                                var expanded by remember { mutableStateOf(false) }
+                                
                                 Card(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { expanded = !expanded },
                                     colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant)
                                 ) {
                                     Column(modifier = Modifier.padding(8.dp)) {
-                                        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                                        Text("Time: ${sdf.format(Date(upload.timestamp))}", color = GoldAccent, fontSize = 12.sp)
-                                        Text("ID: ${upload.id}", color = TextSecondary, fontSize = 10.sp)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                        ) {
+                                            Column {
+                                                Text(character?.name ?: "Unknown Hero", fontWeight = FontWeight.Bold, color = TextPrimary)
+                                                val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                                                Text("Received: ${sdf.format(Date(upload.timestamp))}", color = GoldAccent, fontSize = 12.sp)
+                                            }
+                                            Icon(
+                                                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                                contentDescription = null,
+                                                tint = TextSecondary
+                                            )
+                                        }
+                                        
+                                        if (expanded) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(
+                                                    onClick = {
+                                                        if (character != null) {
+                                                            onSave(character)
+                                                            Toast.makeText(context, "${character.name} saved!", Toast.LENGTH_SHORT).show()
+                                                            GameServerManager.uploads.remove(upload)
+                                                            uploads = GameServerManager.uploads.toList()
+                                                        }
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = GreenHp),
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Text("SAVE TO APP", fontSize = 12.sp)
+                                                }
+                                                Button(
+                                                    onClick = {
+                                                        GameServerManager.uploads.remove(upload)
+                                                        uploads = GameServerManager.uploads.toList()
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = CrimsonPrimary),
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Text("DELETE", fontSize = 12.sp)
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

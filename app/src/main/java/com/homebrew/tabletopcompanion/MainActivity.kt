@@ -57,14 +57,8 @@ class MainActivity : ComponentActivity() {
                             try {
                                 val gson = com.google.gson.Gson()
                                 val syncedChar = gson.fromJson(jsonData, Character::class.java)
-                                if (characters.any { it.id == syncedChar.id }) {
-                                    repository.updateCharacter(syncedChar)
-                                } else {
-                                    repository.addCharacter(syncedChar)
-                                }
-                                characters = repository.getCharacters()
                                 runOnUiThread {
-                                    Toast.makeText(this@MainActivity, "Character ${syncedChar.name} synced via API!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(this@MainActivity, "Upload received: ${syncedChar.name}!", Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
                                 e.printStackTrace()
