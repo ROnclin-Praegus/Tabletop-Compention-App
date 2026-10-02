@@ -2027,25 +2027,29 @@
 
       if (effTotalArmor > 0) {
         document.getElementById('armorBarBlock').classList.remove('hidden');
-        const boostTag = (c.boostArmor > 0) ? ` <span class="boost-tag">+${c.boostArmor} Boost</span>` : '';
-        document.getElementById('useArmorText').innerHTML = `${effCurArmor} / ${effTotalArmor}${boostTag}`;
-        document.getElementById('useArmorFill').style.width = `${(effCurArmor / effTotalArmor) * 100}%`;
+        const turnsTagArmor = c.boostArmorTurns > 0 ? ` (${c.boostArmorTurns}t)` : (c.boostArmorResetOnNextRound !== false ? ' (R)' : '');
+        const boostTag = (c.boostArmor > 0) ? ` <span class="boost-tag" ondblclick="removeBoost('Armor')">+${c.boostArmor} Boost${turnsTagArmor}</span>` : '';
+        document.getElementById('useArmorText').innerHTML = `${curArmor} / ${totalArmor}${boostTag}`;
+        document.getElementById('useArmorFill').style.width = `${(curArmor / Math.max(1, totalArmor)) * 100}%`;
+        document.getElementById('useArmorFill').className = `bar-fill ${c.boostArmor > 0 ? 'fill-boost' : 'fill-armor'}`;
       } else {
         document.getElementById('armorBarBlock').classList.add('hidden');
       }
 
       if (effTotalWard > 0) {
         document.getElementById('wardBarBlock').classList.remove('hidden');
-        const boostTag = (c.boostWard > 0) ? ` <span class="boost-tag">+${c.boostWard} Boost</span>` : '';
-        document.getElementById('useWardText').innerHTML = `${effCurWard} / ${effTotalWard}${boostTag}`;
-        document.getElementById('useWardFill').style.width = `${(effCurWard / effTotalWard) * 100}%`;
+        const turnsTagWard = c.boostWardTurns > 0 ? ` (${c.boostWardTurns}t)` : (c.boostWardResetOnNextRound !== false ? ' (R)' : '');
+        const boostTag = (c.boostWard > 0) ? ` <span class="boost-tag" ondblclick="removeBoost('Ward Save')">+${c.boostWard} Boost${turnsTagWard}</span>` : '';
+        document.getElementById('useWardText').innerHTML = `${curWard} / ${totalWard}${boostTag}`;
+        document.getElementById('useWardFill').style.width = `${(curWard / Math.max(1, totalWard)) * 100}%`;
+        document.getElementById('useWardFill').className = `bar-fill ${c.boostWard > 0 ? 'fill-boost' : 'fill-ward'}`;
       } else {
         document.getElementById('wardBarBlock').classList.add('hidden');
       }
 
       const turnsTag = c.boostHpTurns > 0 ? ` (${c.boostHpTurns}t)` : (c.boostHpResetOnNextRound !== false ? ' (R)' : '');
       const hpText = c.boostHp > 0 
-        ? `${c.currentHp} / ${maxHp} <span class="boost-tag">+${c.boostHp} Boost${turnsTag}</span>`
+        ? `${c.currentHp} / ${maxHp} <span class="boost-tag" ondblclick="removeBoost('HP')">+${c.boostHp} Boost${turnsTag}</span>`
         : `${c.currentHp} / ${maxHp}`;
 
       document.getElementById('useHpText').innerHTML = hpText;
