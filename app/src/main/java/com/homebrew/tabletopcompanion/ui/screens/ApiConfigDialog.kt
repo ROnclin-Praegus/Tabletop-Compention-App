@@ -28,7 +28,7 @@ import java.util.Locale
 @Composable
 fun ApiConfigDialog(
     onDismiss: () -> Unit,
-    onSave: (com.homebrew.tabletopcompanion.data.Character) -> Unit
+    onSave: (com.homebrew.tabletopcompanion.model.Character) -> Unit
 ) {
     val context = LocalContext.current
     var isRunning by remember { mutableStateOf(GameServerManager.isRunning) }
@@ -108,7 +108,7 @@ fun ApiConfigDialog(
                             items(uploads) { upload ->
                                 val gson = Gson()
                                 val character = try {
-                                    gson.fromJson(upload.jsonData, com.homebrew.tabletopcompanion.data.Character::class.java)
+                                    gson.fromJson(upload.jsonData, com.homebrew.tabletopcompanion.model.Character::class.java)
                                 } catch (e: Exception) { null }
                                 
                                 var expanded by remember { mutableStateOf(false) }
