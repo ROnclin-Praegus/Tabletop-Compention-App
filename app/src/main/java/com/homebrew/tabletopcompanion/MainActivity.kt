@@ -1,5 +1,8 @@
 package com.homebrew.tabletopcompanion
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -35,6 +38,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val requestPermissionLauncher = registerForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean -> }
+            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
         repository = CharacterRepository(this)
         com.homebrew.tabletopcompanion.server.GameServerManager.init(this)
 
@@ -196,3 +205,4 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+

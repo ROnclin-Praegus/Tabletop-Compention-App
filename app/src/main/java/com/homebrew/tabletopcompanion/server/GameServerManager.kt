@@ -49,6 +49,19 @@ object GameServerManager {
 
     fun startServer(context: Context) {
         if (isRunning) return
+        val intent = android.content.Intent(context, ApiServerService::class.java)
+        androidx.core.content.ContextCompat.startForegroundService(context, intent)
+    }
+
+    fun stopServer() {
+        if (!isRunning) return
+        appContext?.let {
+            val intent = android.content.Intent(it, ApiServerService::class.java)
+            it.stopService(intent)
+        }
+    }
+
+    fun startServerInternal() {
         try {
             server = LocalGameServer(8080) { jsonData ->
                 addUpload(jsonData)
@@ -60,8 +73,7 @@ object GameServerManager {
         }
     }
 
-    fun stopServer() {
-        if (!isRunning) return
+    fun stopServerInternal() {
         try {
             server?.stop()
             server = null
