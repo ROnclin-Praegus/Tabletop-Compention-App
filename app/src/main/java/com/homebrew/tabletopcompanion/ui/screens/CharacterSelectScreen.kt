@@ -37,6 +37,8 @@ import java.util.UUID
 import android.widget.Toast
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
+import com.homebrew.tabletopcompanion.ui.screens.ApiConfigDialog
+import androidx.compose.material.icons.filled.Settings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +53,7 @@ fun CharacterSelectScreen(
     onCheckForUpdates: () -> Unit = {}
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showApiDialog by remember { mutableStateOf(false) }
     var showPremiumDialog by remember { mutableStateOf(false) }
     var characterToEdit by remember { mutableStateOf<Character?>(null) }
     var characterToDelete by remember { mutableStateOf<Character?>(null) }
@@ -160,7 +163,7 @@ fun CharacterSelectScreen(
         },
         containerColor = DarkBackground
     ) { paddingValues ->
-
+        Box(modifier = Modifier.fillMaxSize()) {
         if (showPremiumDialog) {
             var inputCode by remember { mutableStateOf("") }
             var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -293,6 +296,22 @@ fun CharacterSelectScreen(
                 }
             }
         }
+        
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
+            FloatingActionButton(
+                onClick = { showApiDialog = true },
+                containerColor = DarkSurfaceVariant,
+                contentColor = GoldAccent,
+                modifier = Modifier.padding(start = 16.dp, bottom = 16.dp)
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = "API Settings")
+            }
+        }
+        }
+    }
+
+    if (showApiDialog) {
+        ApiConfigDialog(onDismiss = { showApiDialog = false })
     }
 
         }

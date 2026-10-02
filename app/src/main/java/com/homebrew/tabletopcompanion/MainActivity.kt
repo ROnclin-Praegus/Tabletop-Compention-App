@@ -50,6 +50,26 @@ class MainActivity : ComponentActivity() {
                     var characters by remember { mutableStateOf(repository.getCharacters()) }
                     var updateInfoState by remember { mutableStateOf<UpdateInfo?>(null) }
                     var isPremium by remember { mutableStateOf(repository.isPremium()) }
+
+                    LaunchedEffect(Unit) {
+                        com.homebrew.tabletopcompanion.server.GameServerManager.onSyncReceived = { jsonData ->
+                            try {
+                                val gson = com.google.gson.Gson()
+                                val syncedChar = gson.fromJson(jsonData, Character::class.java)
+                                if (characters.any { it.id == syncedChar.id }) {
+                                    repository.updateCharacter(syncedChar)
+                                } else {
+                                    repository.addCharacter(syncedChar)
+                                }
+                                characters = repository.getCharacters()
+                                runOnUiThread {
+                                    Toast.makeText(this@MainActivity, "Character ${syncedChar.name} synced via API!", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    }
                     var showPremiumImage by remember { mutableStateOf(false) }
                     var currentPremiumImageResId by remember { mutableStateOf(R.drawable.images1) }
 

@@ -748,6 +748,7 @@
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
+        <button id="headerApiBtn" class="action-icon-btn" title="API Sync" onclick="openApiModal()">📡</button>
         <button id="headerRefreshBtn" class="action-icon-btn" title="Hard Refresh" onclick="location.reload(true)">🔄</button>
         <button id="headerLvlBtn" class="gold-header-btn hidden" title="Level Up" onclick="openLevelUpModal()" style="color:var(--text-primary); font-weight:bold;">
           LVL <span id="headerLvlText">1</span>
@@ -999,6 +1000,32 @@
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
         <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeDamageModal()">CANCEL</button>
         <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--crimson-primary); color:var(--text-primary);" onclick="confirmApplyDamage()">APPLY DAMAGE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Modal -->
+  <div id="apiModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 style="color:var(--cyan-accent)">API SYNC</h2>
+      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Sync your character to the Local Android App Server.</p>
+      
+      <div class="form-group">
+        <label>Server URL (e.g. 192.168.1.5:8080)</label>
+        <input id="apiServerUrl" type="text" placeholder="192.168.1.5:8080">
+      </div>
+      <div class="form-group">
+        <label>API Key</label>
+        <input id="apiKeyInput" type="text" placeholder="Enter API Key">
+      </div>
+      <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+        <input id="apiAutoSync" type="checkbox" onchange="toggleAutoSync()">
+        <label style="margin:0;">Auto-sync every 3 mins (Requires open tab)</label>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeApiModal()">CLOSE</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--green-hp); color:var(--bg-dark);" onclick="manualApiSync()">SYNC NOW</button>
       </div>
     </div>
   </div>
@@ -3688,6 +3715,93 @@
     }
 
     window.onload = init;
+    let apiSyncInterval = null;
+
+    function openApiModal() {
+      document.getElementById('apiServerUrl').value = localStorage.getItem('apiServerUrl') || '';
+      document.getElementById('apiKeyInput').value = localStorage.getItem('apiKeyInput') || '';
+      document.getElementById('apiAutoSync').checked = localStorage.getItem('apiAutoSync') === 'true';
+      document.getElementById('apiModal').classList.remove('hidden');
+    }
+
+    function closeApiModal() {
+      localStorage.setItem('apiServerUrl', document.getElementById('apiServerUrl').value.trim());
+      localStorage.setItem('apiKeyInput', document.getElementById('apiKeyInput').value.trim());
+      document.getElementById('apiModal').classList.add('hidden');
+    }
+
+    function toggleAutoSync() {
+      const isAuto = document.getElementById('apiAutoSync').checked;
+      localStorage.setItem('apiAutoSync', isAuto);
+      if (isAuto) {
+        startAutoSync();
+      } else {
+        stopAutoSync();
+      }
+    }
+
+    function startAutoSync() {
+      if (apiSyncInterval) clearInterval(apiSyncInterval);
+      apiSyncInterval = setInterval(() => {
+        manualApiSync(true);
+      }, 3 * 60 * 1000); // 3 minutes
+    }
+
+    function stopAutoSync() {
+      if (apiSyncInterval) clearInterval(apiSyncInterval);
+      apiSyncInterval = null;
+    }
+
+    async function manualApiSync(silent = false) {
+      if (!activeCharId) return;
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const url = document.getElementById('apiServerUrl').value.trim() || localStorage.getItem('apiServerUrl');
+      const key = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem('apiKeyInput');
+
+      if (!url) {
+        if (!silent) alert('Please enter a Server URL (e.g. 192.168.1.5:8080)');
+        return;
+      }
+
+      let fetchUrl = url;
+      if (!fetchUrl.startsWith('http')) fetchUrl = 'http://' + fetchUrl;
+      if (!fetchUrl.endsWith('/api/sync')) fetchUrl = fetchUrl.replace(/\\/?$/, '/api/sync');
+
+      try {
+        const payload = new URLSearchParams();
+        payload.append('postData', JSON.stringify(c));
+
+        const res = await fetch(fetchUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Bearer ' + key
+          },
+          body: payload
+        });
+
+        if (res.ok) {
+          if (!silent) {
+            alert('Character synced successfully to local Android app!');
+            closeApiModal();
+          }
+        } else {
+          if (!silent) alert('Sync failed! Status: ' + res.status);
+        }
+      } catch (err) {
+        if (!silent) alert('Sync failed! Could not reach the server: ' + err.message);
+      }
+    }
+
+    // Initialize Auto Sync on load
+    window.addEventListener('load', () => {
+      if (localStorage.getItem('apiAutoSync') === 'true') {
+        startAutoSync();
+      }
+    });
+
     /* Level Up Logic */
     function openLevelUpModal() {
       const c = characters.find(item => item.id === activeCharId);
