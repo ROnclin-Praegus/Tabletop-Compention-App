@@ -28,7 +28,7 @@ import java.util.Locale
 @Composable
 fun ApiConfigDialog(
     onDismiss: () -> Unit,
-    onSave: (com.homebrew.tabletopcompanion.model.Character) -> Unit
+    onExport: (com.homebrew.tabletopcompanion.model.Character) -> Unit
 ) {
     val context = LocalContext.current
     var isRunning by remember { mutableStateOf(GameServerManager.isRunning) }
@@ -141,16 +141,15 @@ fun ApiConfigDialog(
                                                 Button(
                                                     onClick = {
                                                         if (character != null) {
-                                                            onSave(character)
-                                                            Toast.makeText(context, "${character.name} saved!", Toast.LENGTH_SHORT).show()
+                                                            onExport(character)
                                                             GameServerManager.uploads.remove(upload)
                                                             uploads = GameServerManager.uploads.toList()
                                                         }
                                                     },
-                                                    colors = ButtonDefaults.buttonColors(containerColor = GreenHp),
+                                                    colors = ButtonDefaults.buttonColors(containerColor = CyanAccent),
                                                     modifier = Modifier.weight(1f)
                                                 ) {
-                                                    Text("SAVE TO APP", fontSize = 12.sp)
+                                                    Text("EXPORT JSON", fontSize = 12.sp, color = DarkBackground)
                                                 }
                                                 Button(
                                                     onClick = {

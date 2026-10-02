@@ -314,12 +314,9 @@ fun CharacterSelectScreen(
     if (showApiDialog) {
         ApiConfigDialog(
             onDismiss = { showApiDialog = false },
-            onSave = { c -> 
-                if (characters.any { it.id == c.id }) {
-                    onUpdateCharacter(c)
-                } else {
-                    onCreateCharacter(c)
-                }
+            onExport = { c ->
+                characterToExport = c
+                exportLauncher.launch("${c.name}.json")
             }
         )
     }
