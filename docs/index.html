@@ -3769,7 +3769,7 @@
 
       let fetchUrl = url;
       if (!fetchUrl.startsWith('http')) fetchUrl = 'http://' + fetchUrl;
-      if (!fetchUrl.endsWith('/api/sync')) fetchUrl = fetchUrl.replace(/\\/?$/, '/api/sync');
+      if (!fetchUrl.endsWith('/api/sync')) fetchUrl = fetchUrl.replace(/\/?$/, '/api/sync');
 
       try {
         const payload = new URLSearchParams();
