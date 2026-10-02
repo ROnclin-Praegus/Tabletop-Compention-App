@@ -30,6 +30,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.window.Dialog
@@ -68,8 +69,12 @@ fun UseCharacterScreen(
     // Dialog states
     var pendingAdjustmentType by remember { mutableStateOf<AdjustmentType?>(null) }
     var showAddEquipmentDialog by remember { mutableStateOf(false) }
-    var collapsedEquippedCategories by remember { mutableStateOf(setOf<String>()) }
-    var collapsedUnequippedCategories by remember { mutableStateOf(setOf<String>()) }
+    var collapsedEquippedCategories by remember {
+        mutableStateOf(character.inventory.filter { it.isEquipped }.map { it.category }.toSet())
+    }
+    var collapsedUnequippedCategories by remember {
+        mutableStateOf(character.inventory.filter { !it.isEquipped }.map { it.category }.toSet())
+    }
     var showEditCharacterDialog by remember { mutableStateOf(false) }
     var showAddEffectDialog by remember { mutableStateOf(false) }
     var showAddAbilityDialog by remember { mutableStateOf(false) }
@@ -83,6 +88,11 @@ fun UseCharacterScreen(
     var abilityToEdit by remember { mutableStateOf<CharacterAbility?>(null) }
     var noteToEdit by remember { mutableStateOf<CharacterNote?>(null) }
     var effectToEdit by remember { mutableStateOf<CharacterEffect?>(null) }
+
+    var recentChangeArmor by remember { mutableStateOf<Int?>(null) }
+    var recentChangeWard by remember { mutableStateOf<Int?>(null) }
+    var recentChangeHp by remember { mutableStateOf<Int?>(null) }
+    var recentDamageTrigger by remember { mutableLongStateOf(0L) }
 
     var activeExpiredNotification by remember { mutableStateOf<String?>(null) }
 
@@ -130,6 +140,12 @@ fun UseCharacterScreen(
         if (newMaxBoostHp > 0 && activeCharacter.boostHpResetOnNextRound && (newBoostHpTurns > 0 || (newBoostHpTurns == 0 && newBoostHp > 0))) {
             newBoostHp = newMaxBoostHp
         }
+        if (newMaxBoostArmor > 0 && activeCharacter.boostArmorResetOnNextRound && (newBoostArmorTurns > 0 || (newBoostArmorTurns == 0 && newBoostArmor > 0))) {
+            newBoostArmor = newMaxBoostArmor
+        }
+        if (newMaxBoostWard > 0 && activeCharacter.boostWardResetOnNextRound && (newBoostWardTurns > 0 || (newBoostWardTurns == 0 && newBoostWard > 0))) {
+            newBoostWard = newMaxBoostWard
+        }
 
         // 2. Spirit MP recharge on Next Round (1 point in Spirit = +1 MP recharge)
         if (effectiveMaxMp > 0 && effectiveSpirit > 0) {
@@ -146,7 +162,16 @@ fun UseCharacterScreen(
                     var remainingDamage = kotlin.math.abs(effect.value)
                     when (effect.damageType) {
                         DamageType.PHYSICAL -> {
-                            if (newArmor > 0) {
+                            if (remainingDamage > 0 && newBoostArmor > 0) {
+                                if (remainingDamage <= newBoostArmor) {
+                                    newBoostArmor -= remainingDamage
+                                    remainingDamage = 0
+                                } else {
+                                    remainingDamage -= newBoostArmor
+                                    newBoostArmor = 0
+                                }
+                            }
+                            if (remainingDamage > 0 && newArmor > 0) {
                                 if (remainingDamage <= newArmor) {
                                     newArmor -= remainingDamage
                                     remainingDamage = 0
@@ -157,7 +182,16 @@ fun UseCharacterScreen(
                             }
                         }
                         DamageType.MAGICAL -> {
-                            if (newWard > 0) {
+                            if (remainingDamage > 0 && newBoostWard > 0) {
+                                if (remainingDamage <= newBoostWard) {
+                                    newBoostWard -= remainingDamage
+                                    remainingDamage = 0
+                                } else {
+                                    remainingDamage -= newBoostWard
+                                    newBoostWard = 0
+                                }
+                            }
+                            if (remainingDamage > 0 && newWard > 0) {
                                 if (remainingDamage <= newWard) {
                                     newWard -= remainingDamage
                                     remainingDamage = 0
@@ -232,6 +266,17 @@ fun UseCharacterScreen(
 
         if (expiredList.isNotEmpty()) {
             activeExpiredNotification = expiredList.joinToString("\n")
+        }
+
+        val changeArmor = (newArmor + newBoostArmor) - (totalArmor + activeCharacter.boostArmor)
+        val changeWard = (newWard + newBoostWard) - (totalWard + activeCharacter.boostWard)
+        val changeHp = (newHp + newBoostHp) - (activeCharacter.currentHp + activeCharacter.boostHp)
+
+        if (changeArmor != 0 || changeWard != 0 || changeHp != 0) {
+            recentChangeArmor = if (changeArmor != 0) changeArmor else null
+            recentChangeWard = if (changeWard != 0) changeWard else null
+            recentChangeHp = if (changeHp != 0) changeHp else null
+            recentDamageTrigger = System.currentTimeMillis()
         }
 
         val updated = activeCharacter.copy(
@@ -326,6 +371,17 @@ fun UseCharacterScreen(
             newCurrentHp = (newCurrentHp - remainingDamage).coerceAtLeast(0)
         }
 
+        val changeArmor = (newArmor + newBoostArmor) - (currentArmor + activeCharacter.boostArmor)
+        val changeWard = (newWard + newBoostWard) - (currentWard + activeCharacter.boostWard)
+        val changeHp = (newCurrentHp + newBoostHp) - (activeCharacter.currentHp + activeCharacter.boostHp)
+
+        if (changeArmor != 0 || changeWard != 0 || changeHp != 0) {
+            recentChangeArmor = if (changeArmor != 0) changeArmor else null
+            recentChangeWard = if (changeWard != 0) changeWard else null
+            recentChangeHp = if (changeHp != 0) changeHp else null
+            recentDamageTrigger = System.currentTimeMillis()
+        }
+
         val updated = activeCharacter.copy(
             currentHp = newCurrentHp,
             boostHp = newBoostHp,
@@ -341,22 +397,34 @@ fun UseCharacterScreen(
     fun applyHeal(target: String, amount: Int) {
         if (amount <= 0) return
         var updated = activeCharacter
+        var changeArmor = 0
+        var changeWard = 0
+        var changeHp = 0
         when (target) {
             "HP" -> {
                 val maxHp = activeCharacter.getEffectiveMaxHp()
                 val newCurrentHp = (activeCharacter.currentHp + amount).coerceAtMost(maxHp)
+                changeHp = newCurrentHp - activeCharacter.currentHp
                 updated = updated.copy(currentHp = newCurrentHp)
             }
             "Armor" -> {
                 val maxArmor = activeCharacter.getTotalArmor()
                 val newArmor = (activeCharacter.getEffectiveCurrentArmor() + amount).coerceAtMost(maxArmor)
+                changeArmor = newArmor - activeCharacter.getEffectiveCurrentArmor()
                 updated = updated.copy(currentArmor = newArmor)
             }
             "Ward Save" -> {
                 val maxWard = activeCharacter.getTotalWard()
                 val newWard = (activeCharacter.getEffectiveCurrentWard() + amount).coerceAtMost(maxWard)
+                changeWard = newWard - activeCharacter.getEffectiveCurrentWard()
                 updated = updated.copy(currentWard = newWard)
             }
+        }
+        if (changeArmor != 0 || changeWard != 0 || changeHp != 0) {
+            recentChangeArmor = if (changeArmor != 0) changeArmor else null
+            recentChangeWard = if (changeWard != 0) changeWard else null
+            recentChangeHp = if (changeHp != 0) changeHp else null
+            recentDamageTrigger = System.currentTimeMillis()
         }
         activeCharacter = updated
         onCharacterUpdated(updated)
@@ -836,8 +904,9 @@ fun UseCharacterScreen(
                                     }
                                 }
 
-                                // 1. ARMOR BAR (Rendered ABOVE HP bar if equipped totalArmor > 0)
-                                if (totalArmor > 0) {
+                                // 1. ARMOR BAR (Rendered ABOVE HP bar if equipped totalArmor > 0 or boosted)
+                                val effTotalArmorForUI = totalArmor + activeCharacter.maxBoostArmor
+                                if (effTotalArmorForUI > 0) {
                                     Column {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
@@ -885,22 +954,43 @@ fun UseCharacterScreen(
                                         }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
-                                        LinearProgressIndicator(
-                                            progress = (currentArmor.toFloat() / totalArmor.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(8.dp)
-                                                .clip(RoundedCornerShape(4.dp)),
-                                            color = GoldAccent,
-                                            trackColor = DarkSurfaceVariant
-                                        )
+                                        val armorProgress by animateFloatAsState(targetValue = (currentArmor.toFloat() / totalArmor.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f), animationSpec = tween(500))
+                                        Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.fillMaxWidth()) {
+                                            LinearProgressIndicator(
+                                                progress = { armorProgress },
+                                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                                color = GoldAccent,
+                                                trackColor = DarkSurfaceVariant
+                                            )
+                                            key(recentDamageTrigger) {
+                                                if (recentChangeArmor != null) {
+                                                    val isRecent = (System.currentTimeMillis() - recentDamageTrigger) < 2000L
+                                                    var visible by remember { mutableStateOf(isRecent) }
+                                                    if (isRecent) {
+                                                        LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                    }
+                                                    androidx.compose.animation.AnimatedVisibility(
+                                                        visible = visible,
+                                                        enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                                                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                                                        modifier = Modifier.offset(y = (-10).dp).padding(end = 8.dp)
+                                                    ) {
+                                                        val amt = recentChangeArmor!!
+                                                        val txt = if (amt > 0) "+$amt" else "$amt"
+                                                        val col = if (amt > 0) Color.Green else Color.Red
+                                                        Text(txt, color = col, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
 
                                     Divider(color = DarkSurfaceVariant, thickness = 1.dp)
                                 }
 
-                                // 2. WARD SAVE BAR (Rendered ABOVE HP bar if equipped totalWard > 0)
-                                if (totalWard > 0) {
+                                // 2. WARD SAVE BAR (Rendered ABOVE HP bar if equipped totalWard > 0 or boosted)
+                                val effTotalWardForUI = totalWard + activeCharacter.maxBoostWard
+                                if (effTotalWardForUI > 0) {
                                     Column {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
@@ -948,15 +1038,35 @@ fun UseCharacterScreen(
                                         }
                                         }
                                         Spacer(modifier = Modifier.height(6.dp))
-                                        LinearProgressIndicator(
-                                            progress = (currentWard.toFloat() / totalWard.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(8.dp)
-                                                .clip(RoundedCornerShape(4.dp)),
-                                            color = CyanAccent,
-                                            trackColor = DarkSurfaceVariant
-                                        )
+                                        val wardProgress by animateFloatAsState(targetValue = (currentWard.toFloat() / totalWard.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f), animationSpec = tween(500))
+                                        Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.fillMaxWidth()) {
+                                            LinearProgressIndicator(
+                                                progress = { wardProgress },
+                                                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                                                color = CyanAccent,
+                                                trackColor = DarkSurfaceVariant
+                                            )
+                                            key(recentDamageTrigger) {
+                                                if (recentChangeWard != null) {
+                                                    val isRecent = (System.currentTimeMillis() - recentDamageTrigger) < 2000L
+                                                    var visible by remember { mutableStateOf(isRecent) }
+                                                    if (isRecent) {
+                                                        LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                    }
+                                                    androidx.compose.animation.AnimatedVisibility(
+                                                        visible = visible,
+                                                        enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                                                        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                                                        modifier = Modifier.offset(y = (-10).dp).padding(end = 8.dp)
+                                                    ) {
+                                                        val amt = recentChangeWard!!
+                                                        val txt = if (amt > 0) "+$amt" else "$amt"
+                                                        val col = if (amt > 0) Color.Green else Color.Red
+                                                        Text(txt, color = col, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
 
                                     Divider(color = DarkSurfaceVariant, thickness = 1.dp)
@@ -1010,15 +1120,48 @@ fun UseCharacterScreen(
                                         }
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    LinearProgressIndicator(
-                                        progress = (activeCharacter.currentHp.toFloat() / effectiveMaxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(10.dp)
-                                            .clip(RoundedCornerShape(5.dp)),
-                                        color = GreenHp,
-                                        trackColor = DarkSurfaceVariant
+                                    val isLowHp = (activeCharacter.currentHp.toFloat() / effectiveMaxHp.coerceAtLeast(1).toFloat()) <= 0.25f && activeCharacter.boostHp <= 0
+                                    val infiniteTransition = rememberInfiniteTransition(label = "hpBlink")
+                                    val blinkColor by infiniteTransition.animateColor(
+                                        initialValue = CrimsonPrimary,
+                                        targetValue = Color(0xFF550000),
+                                        animationSpec = infiniteRepeatable(
+                                            animation = tween(750, easing = LinearEasing),
+                                            repeatMode = RepeatMode.Reverse
+                                        ),
+                                        label = "hpBlinkColor"
                                     )
+                                    val hpBarColor = if (activeCharacter.boostHp > 0) Color(0xFFFFA500) else if (isLowHp) blinkColor else GreenHp
+
+                                    val hpProgress by animateFloatAsState(targetValue = (activeCharacter.currentHp.toFloat() / effectiveMaxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f), animationSpec = tween(500))
+                                    Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.fillMaxWidth()) {
+                                        LinearProgressIndicator(
+                                            progress = { hpProgress },
+                                            modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
+                                            color = hpBarColor,
+                                            trackColor = DarkSurfaceVariant
+                                        )
+                                        key(recentDamageTrigger) {
+                                            if (recentChangeHp != null) {
+                                                val isRecent = (System.currentTimeMillis() - recentDamageTrigger) < 2000L
+                                                var visible by remember { mutableStateOf(isRecent) }
+                                                if (isRecent) {
+                                                    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1500); visible = false }
+                                                }
+                                                androidx.compose.animation.AnimatedVisibility(
+                                                    visible = visible,
+                                                    enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                                                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                                                    modifier = Modifier.offset(y = (-12).dp).padding(end = 8.dp)
+                                                ) {
+                                                    val amt = recentChangeHp!!
+                                                    val txt = if (amt > 0) "+$amt" else "$amt"
+                                                    val col = if (amt > 0) Color.Green else Color.Red
+                                                    Text(txt, color = col, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                                }
+                                            }
+                                        }
+                                    }
                                     Spacer(modifier = Modifier.height(12.dp))
 
                                     // HP Action Buttons
@@ -1334,14 +1477,39 @@ fun UseCharacterScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         item {
-                            Button(
-                                onClick = { showAddEquipmentDialog = true },
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            val allEquipCategories = equippedItems.map { it.category }.toSet()
+                            val allEquipCollapsed = allEquipCategories.isNotEmpty() && allEquipCategories.all { collapsedEquippedCategories.contains(it) }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add")
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("ADD EQUIPMENT", fontWeight = FontWeight.Bold)
+                                Button(
+                                    onClick = { showAddEquipmentDialog = true },
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add")
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("ADD EQUIPMENT", fontWeight = FontWeight.Bold)
+                                }
+                                Button(
+                                    onClick = {
+                                        collapsedEquippedCategories = if (allEquipCollapsed) {
+                                            emptySet()
+                                        } else {
+                                            allEquipCategories
+                                        }
+                                    },
+                                    modifier = Modifier.height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = DarkSurfaceVariant,
+                                        contentColor = TextPrimary
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary),
+                                    contentPadding = PaddingValues(horizontal = 12.dp)
+                                ) {
+                                    Text(if (allEquipCollapsed) "▶ ALL" else "▼ ALL", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                         if (equippedItems.isEmpty()) {
@@ -1423,14 +1591,39 @@ fun UseCharacterScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         item {
-                            Button(
-                                onClick = { showAddEquipmentDialog = true },
-                                modifier = Modifier.fillMaxWidth().height(48.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                            val allInvCategories = unequippedItems.map { it.category }.toSet()
+                            val allInvCollapsed = allInvCategories.isNotEmpty() && allInvCategories.all { collapsedUnequippedCategories.contains(it) }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "Add")
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("ADD INVENTORY ITEM", fontWeight = FontWeight.Bold)
+                                Button(
+                                    onClick = { showAddEquipmentDialog = true },
+                                    modifier = Modifier.weight(1f).height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Add")
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("ADD INVENTORY ITEM", fontWeight = FontWeight.Bold)
+                                }
+                                Button(
+                                    onClick = {
+                                        collapsedUnequippedCategories = if (allInvCollapsed) {
+                                            emptySet()
+                                        } else {
+                                            allInvCategories
+                                        }
+                                    },
+                                    modifier = Modifier.height(48.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = DarkSurfaceVariant,
+                                        contentColor = TextPrimary
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary),
+                                    contentPadding = PaddingValues(horizontal = 12.dp)
+                                ) {
+                                    Text(if (allInvCollapsed) "▶ ALL" else "▼ ALL", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                         if (unequippedItems.isEmpty()) {

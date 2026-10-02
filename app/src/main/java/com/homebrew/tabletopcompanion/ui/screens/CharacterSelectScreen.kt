@@ -2,6 +2,9 @@ package com.homebrew.tabletopcompanion.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.core.*
+import androidx.compose.animation.animateColor
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +37,8 @@ import java.util.UUID
 import android.widget.Toast
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
+import com.homebrew.tabletopcompanion.ui.screens.ApiConfigDialog
+import androidx.compose.material.icons.filled.Settings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +53,7 @@ fun CharacterSelectScreen(
     onCheckForUpdates: () -> Unit = {}
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showApiDialog by remember { mutableStateOf(false) }
     var showPremiumDialog by remember { mutableStateOf(false) }
     var characterToEdit by remember { mutableStateOf<Character?>(null) }
     var characterToDelete by remember { mutableStateOf<Character?>(null) }
@@ -157,7 +163,7 @@ fun CharacterSelectScreen(
         },
         containerColor = DarkBackground
     ) { paddingValues ->
-
+        Box(modifier = Modifier.fillMaxSize()) {
         if (showPremiumDialog) {
             var inputCode by remember { mutableStateOf("") }
             var errorMsg by remember { mutableStateOf<String?>(null) }
@@ -290,9 +296,31 @@ fun CharacterSelectScreen(
                 }
             }
         }
+        } // Close the Column here!
+        
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
+            FloatingActionButton(
+                onClick = { showApiDialog = true },
+                containerColor = DarkSurfaceVariant,
+                contentColor = GoldAccent,
+                modifier = Modifier.padding(start = 16.dp, bottom = 16.dp)
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = "API Settings")
+            }
+        }
+        }
     }
 
-        }
+    if (showApiDialog) {
+        ApiConfigDialog(
+            onDismiss = { showApiDialog = false },
+            onExport = { c ->
+                characterToExport = c
+                exportLauncher.launch("${c.name}.json")
+            }
+        )
+    }
+
     // Create Hero Dialog
     if (showCreateDialog) {
         CreateCharacterDialog(
@@ -490,13 +518,25 @@ fun CharacterCard(
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
+                    val isLowHp = (character.currentHp.toFloat() / character.maxHp.coerceAtLeast(1).toFloat()) <= 0.25f && character.boostHp <= 0
+                    val hpTransition = rememberInfiniteTransition(label = "listHpBlink")
+                    val listBlinkColor by hpTransition.animateColor(
+                        initialValue = CrimsonPrimary,
+                        targetValue = Color(0xFF550000),
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(750, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "listHpBlinkColor"
+                    )
+                    val hpColor = if (character.boostHp > 0) GoldAccent else if (isLowHp) listBlinkColor else GreenHp
                     LinearProgressIndicator(
-                        progress = (character.currentHp.toFloat() / character.maxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
+                        progress = { (character.currentHp.toFloat() / character.maxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp)),
-                        color = if (character.boostHp > 0) GoldAccent else GreenHp,
+                        color = hpColor,
                         trackColor = DarkSurfaceVariant
                     )
                 }
@@ -518,7 +558,7 @@ fun CharacterCard(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         LinearProgressIndicator(
-                            progress = (character.currentMp.toFloat() / character.maxMp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
+                            progress = { (character.currentMp.toFloat() / character.maxMp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(6.dp)

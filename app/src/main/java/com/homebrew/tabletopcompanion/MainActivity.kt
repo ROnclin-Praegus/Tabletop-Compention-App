@@ -1,5 +1,8 @@
 package com.homebrew.tabletopcompanion
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -35,7 +38,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val requestPermissionLauncher = registerForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean -> }
+            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
         repository = CharacterRepository(this)
+        com.homebrew.tabletopcompanion.server.GameServerManager.init(this)
 
         setContent {
             HomebrewRPGTheme {
@@ -50,6 +60,20 @@ class MainActivity : ComponentActivity() {
                     var characters by remember { mutableStateOf(repository.getCharacters()) }
                     var updateInfoState by remember { mutableStateOf<UpdateInfo?>(null) }
                     var isPremium by remember { mutableStateOf(repository.isPremium()) }
+
+                    LaunchedEffect(Unit) {
+                        com.homebrew.tabletopcompanion.server.GameServerManager.onSyncReceived = { jsonData ->
+                            try {
+                                val gson = com.google.gson.Gson()
+                                val syncedChar = gson.fromJson(jsonData, Character::class.java)
+                                runOnUiThread {
+                                    Toast.makeText(this@MainActivity, "Upload received: ${syncedChar.name}!", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    }
                     var showPremiumImage by remember { mutableStateOf(false) }
                     var currentPremiumImageResId by remember { mutableStateOf(R.drawable.images1) }
 
@@ -181,3 +205,4 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
