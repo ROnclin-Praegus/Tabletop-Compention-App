@@ -30,7 +30,7 @@ object GameServerManager {
     fun startServer(context: Context) {
         if (isRunning) return
         try {
-            server = LocalGameServer(8080, apiKey) { jsonData ->
+            server = LocalGameServer(8080) { jsonData ->
                 addUpload(jsonData)
             }
             server?.start()

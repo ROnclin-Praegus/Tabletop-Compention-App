@@ -5,7 +5,7 @@ import java.util.UUID
 
 data class UploadRecord(val timestamp: Long, val jsonData: String, val id: String = UUID.randomUUID().toString())
 
-class LocalGameServer(port: Int, private val apiKey: String, private val onDataReceived: (String) -> Unit) : NanoHTTPD(port) {
+class LocalGameServer(port: Int, private val onDataReceived: (String) -> Unit) : NanoHTTPD(port) {
 
     override fun serve(session: IHTTPSession): Response {
         val method = session.method
@@ -24,7 +24,9 @@ class LocalGameServer(port: Int, private val apiKey: String, private val onDataR
             val headers = session.headers
             val authHeader = headers["authorization"]
             
-            if (authHeader != "Bearer $apiKey") {
+            val currentKey = GameServerManager.apiKey
+            if (authHeader == null || !authHeader.equals("Bearer $currentKey", ignoreCase = true)) {
+                println("Auth failed. Expected: Bearer $currentKey, Got: $authHeader")
                 return corsResponse(newFixedLengthResponse(Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "Unauthorized"))
             }
 
