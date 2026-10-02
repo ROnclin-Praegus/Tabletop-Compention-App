@@ -296,6 +296,7 @@ fun CharacterSelectScreen(
                 }
             }
         }
+        } // Close the Column here!
         
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
             FloatingActionButton(
@@ -314,7 +315,6 @@ fun CharacterSelectScreen(
         ApiConfigDialog(onDismiss = { showApiDialog = false })
     }
 
-        }
     // Create Hero Dialog
     if (showCreateDialog) {
         CreateCharacterDialog(
