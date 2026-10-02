@@ -1977,7 +1977,7 @@
       }
 
       document.getElementById('appTitle').innerText = c.name;
-      document.getElementById('appSubtitle').innerText = `${c.race} • Active Session`;
+      document.getElementById('appSubtitle').innerText = `${c.race}`;
 
       switchSessionTab('vitals');
     }
@@ -3535,7 +3535,7 @@
         const c = characters.find(item => item.id === activeCharId);
         if (c) {
           document.getElementById('appTitle').innerText = c.name;
-          document.getElementById('appSubtitle').innerText = `${c.race} • Active Session`;
+          document.getElementById('appSubtitle').innerText = `${c.race}`;
           if (c.imageUri) {
             document.getElementById('headerAvatarBox').innerHTML = `<img src="${c.imageUri}">`;
           }
@@ -3723,18 +3723,23 @@
       document.getElementById('apiServerUrl').value = localStorage.getItem('apiServerUrl') || '';
       document.getElementById('apiKeyInput').value = localStorage.getItem('apiKeyInput') || '';
       document.getElementById('apiAutoSync').checked = localStorage.getItem('apiAutoSync') === 'true';
+      document.getElementById('apiSyncIntervalMins').value = localStorage.getItem('apiSyncIntervalMins') || '3';
       document.getElementById('apiModal').classList.remove('hidden');
     }
 
     function closeApiModal() {
       localStorage.setItem('apiServerUrl', document.getElementById('apiServerUrl').value.trim());
       localStorage.setItem('apiKeyInput', document.getElementById('apiKeyInput').value.trim());
+      const mins = parseInt(document.getElementById('apiSyncIntervalMins').value) || 3;
+      localStorage.setItem('apiSyncIntervalMins', mins);
       document.getElementById('apiModal').classList.add('hidden');
     }
 
     function toggleAutoSync() {
       const isAuto = document.getElementById('apiAutoSync').checked;
+      const mins = parseInt(document.getElementById('apiSyncIntervalMins').value) || 3;
       localStorage.setItem('apiAutoSync', isAuto);
+      localStorage.setItem('apiSyncIntervalMins', mins);
       if (isAuto) {
         startAutoSync();
       } else {
@@ -3744,9 +3749,10 @@
 
     function startAutoSync() {
       if (apiSyncInterval) clearInterval(apiSyncInterval);
+      const mins = parseInt(localStorage.getItem('apiSyncIntervalMins')) || 3;
       apiSyncInterval = setInterval(() => {
         manualApiSync(true);
-      }, 3 * 60 * 1000); // 3 minutes
+      }, mins * 60 * 1000);
     }
 
     function stopAutoSync() {
@@ -3869,3 +3875,7 @@
   </script>
 </body>
 </html>
+
+
+
+
