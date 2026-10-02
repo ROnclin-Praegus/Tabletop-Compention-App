@@ -136,6 +136,12 @@ fun UseCharacterScreen(
         if (newMaxBoostHp > 0 && activeCharacter.boostHpResetOnNextRound && (newBoostHpTurns > 0 || (newBoostHpTurns == 0 && newBoostHp > 0))) {
             newBoostHp = newMaxBoostHp
         }
+        if (newMaxBoostArmor > 0 && activeCharacter.boostArmorResetOnNextRound && (newBoostArmorTurns > 0 || (newBoostArmorTurns == 0 && newBoostArmor > 0))) {
+            newBoostArmor = newMaxBoostArmor
+        }
+        if (newMaxBoostWard > 0 && activeCharacter.boostWardResetOnNextRound && (newBoostWardTurns > 0 || (newBoostWardTurns == 0 && newBoostWard > 0))) {
+            newBoostWard = newMaxBoostWard
+        }
 
         // 2. Spirit MP recharge on Next Round (1 point in Spirit = +1 MP recharge)
         if (effectiveMaxMp > 0 && effectiveSpirit > 0) {
@@ -152,7 +158,16 @@ fun UseCharacterScreen(
                     var remainingDamage = kotlin.math.abs(effect.value)
                     when (effect.damageType) {
                         DamageType.PHYSICAL -> {
-                            if (newArmor > 0) {
+                            if (remainingDamage > 0 && newBoostArmor > 0) {
+                                if (remainingDamage <= newBoostArmor) {
+                                    newBoostArmor -= remainingDamage
+                                    remainingDamage = 0
+                                } else {
+                                    remainingDamage -= newBoostArmor
+                                    newBoostArmor = 0
+                                }
+                            }
+                            if (remainingDamage > 0 && newArmor > 0) {
                                 if (remainingDamage <= newArmor) {
                                     newArmor -= remainingDamage
                                     remainingDamage = 0
@@ -163,7 +178,16 @@ fun UseCharacterScreen(
                             }
                         }
                         DamageType.MAGICAL -> {
-                            if (newWard > 0) {
+                            if (remainingDamage > 0 && newBoostWard > 0) {
+                                if (remainingDamage <= newBoostWard) {
+                                    newBoostWard -= remainingDamage
+                                    remainingDamage = 0
+                                } else {
+                                    remainingDamage -= newBoostWard
+                                    newBoostWard = 0
+                                }
+                            }
+                            if (remainingDamage > 0 && newWard > 0) {
                                 if (remainingDamage <= newWard) {
                                     newWard -= remainingDamage
                                     remainingDamage = 0
