@@ -4157,7 +4157,7 @@
       updateTestBtnUI('Testing...', true, 'var(--surface-variant)', '', 'var(--text-primary)');
 
       try {
-        const headers = { 'Accept': 'application/json' };
+        const headers = { 'Accept': 'image/*, application/json' };
         if (key) headers['Authorization'] = 'Bearer ' + key;
 
         const controller = new AbortController();
@@ -4245,15 +4245,23 @@
         if (modal && !modal.classList.contains('hidden')) return;
 
         try {
-          const headers = { 'Accept': 'application/json' };
+          const headers = { 'Accept': 'image/*, application/json' };
           if (photoApiKey) headers['Authorization'] = 'Bearer ' + photoApiKey;
 
           const res = await fetch(photoApiUrl, { method: 'GET', headers });
           if (res.ok) {
-            const json = await res.json();
-            const imageUrl = extractImageUrl(json);
-            if (imageUrl) {
-              showPremiumPhotoViewer(imageUrl);
+            const contentType = res.headers.get('content-type') || '';
+            if (contentType.includes('json')) {
+              const json = await res.json();
+              const imageUrl = extractImageUrl(json);
+              if (imageUrl) {
+                showPremiumPhotoViewer(imageUrl);
+              }
+            } else {
+              // Endpoint returns the photo directly (image binary/blob)
+              const blob = await res.blob();
+              const objectUrl = URL.createObjectURL(blob);
+              showPremiumPhotoViewer(objectUrl);
             }
           }
         } catch (e) {
@@ -4280,7 +4288,12 @@
       const modal = document.getElementById('premiumPhotoViewerModal');
       if (modal) modal.classList.add('hidden');
       const img = document.getElementById('premiumPhotoImg');
-      if (img) img.src = '';
+      if (img) {
+        if (img.src && img.src.startsWith('blob:')) {
+          URL.revokeObjectURL(img.src);
+        }
+        img.src = '';
+      }
     }
   </script>
 </body>

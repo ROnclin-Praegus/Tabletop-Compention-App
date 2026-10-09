@@ -102,21 +102,34 @@ class MainActivity : ComponentActivity() {
                             val delayMs = photoIntervalMinutes.toLong() * 60_000L
                             kotlinx.coroutines.delay(delayMs)
 
-                            // Fetch a random photo URL from the user-configured endpoint
+                            // Fetch a random photo from the user-configured endpoint
                             val fetchedUrl = withContext(Dispatchers.IO) {
                                 try {
                                     val conn = URL(photoApiUrl).openConnection() as HttpURLConnection
                                     conn.requestMethod = "GET"
-                                    conn.setRequestProperty("Accept", "application/json")
+                                    conn.setRequestProperty("Accept", "image/*, application/json")
                                     if (photoApiKey.isNotBlank()) {
                                         conn.setRequestProperty("Authorization", "Bearer $photoApiKey")
                                     }
                                     conn.connectTimeout = 10_000
                                     conn.readTimeout = 10_000
-                                    if (conn.responseCode == 200) {
-                                        val json = conn.inputStream.bufferedReader().readText()
-                                        // Try common fields: "url", "src", "download_url", "urls.regular"
-                                        extractImageUrl(json)
+                                    conn.instanceFollowRedirects = true
+
+                                    if (conn.responseCode in 200..299) {
+                                        val contentType = conn.contentType ?: ""
+                                        if (contentType.contains("json", ignoreCase = true)) {
+                                            val json = conn.inputStream.bufferedReader().readText()
+                                            extractImageUrl(json)
+                                        } else {
+                                            // The API returned raw image bytes directly
+                                            val tempFile = java.io.File(context.cacheDir, "premium_photo_${System.currentTimeMillis()}.jpg")
+                                            conn.inputStream.use { input ->
+                                                tempFile.outputStream().use { output ->
+                                                    input.copyTo(output)
+                                                }
+                                            }
+                                            tempFile.absolutePath
+                                        }
                                     } else null
                                 } catch (e: Exception) {
                                     e.printStackTrace()

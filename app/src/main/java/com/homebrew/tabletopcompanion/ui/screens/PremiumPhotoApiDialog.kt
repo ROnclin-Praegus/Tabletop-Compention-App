@@ -172,12 +172,13 @@ fun PremiumPhotoApiDialog(
                                     try {
                                         val conn = URL(trimmedUrl).openConnection() as HttpURLConnection
                                         conn.requestMethod = "GET"
-                                        conn.setRequestProperty("Accept", "application/json")
+                                        conn.setRequestProperty("Accept", "image/*, application/json")
                                         if (apiKey.trim().isNotBlank()) {
                                             conn.setRequestProperty("Authorization", "Bearer ${apiKey.trim()}")
                                         }
                                         conn.connectTimeout = 8_000
                                         conn.readTimeout   = 8_000
+                                        conn.instanceFollowRedirects = true
                                         val code = conn.responseCode
                                         conn.disconnect()
                                         code
