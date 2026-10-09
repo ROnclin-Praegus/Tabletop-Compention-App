@@ -11,6 +11,9 @@ class CharacterRepository(context: Context) {
     private val gson = Gson()
     private val KEY_CHARACTERS = "characters_json"
     private val KEY_PREMIUM = "is_premium"
+    private val KEY_PHOTO_API_URL = "photo_api_url"
+    private val KEY_PHOTO_API_KEY = "photo_api_key"
+    private val KEY_PHOTO_INTERVAL_MINUTES = "photo_interval_minutes"
 
     fun isPremium(): Boolean {
         return prefs.getBoolean(KEY_PREMIUM, false)
@@ -18,6 +21,30 @@ class CharacterRepository(context: Context) {
 
     fun setPremium(premium: Boolean) {
         prefs.edit().putBoolean(KEY_PREMIUM, premium).apply()
+    }
+
+    fun getPhotoApiUrl(): String {
+        return prefs.getString(KEY_PHOTO_API_URL, "") ?: ""
+    }
+
+    fun setPhotoApiUrl(url: String) {
+        prefs.edit().putString(KEY_PHOTO_API_URL, url).apply()
+    }
+
+    fun getPhotoApiKey(): String {
+        return prefs.getString(KEY_PHOTO_API_KEY, "") ?: ""
+    }
+
+    fun setPhotoApiKey(key: String) {
+        prefs.edit().putString(KEY_PHOTO_API_KEY, key).apply()
+    }
+
+    fun getPhotoIntervalMinutes(): Int {
+        return prefs.getInt(KEY_PHOTO_INTERVAL_MINUTES, 15)
+    }
+
+    fun setPhotoIntervalMinutes(minutes: Int) {
+        prefs.edit().putInt(KEY_PHOTO_INTERVAL_MINUTES, minutes).apply()
     }
 
     fun getCharacters(): List<Character> {

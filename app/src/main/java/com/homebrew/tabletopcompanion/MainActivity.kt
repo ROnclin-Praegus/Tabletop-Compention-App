@@ -18,15 +18,21 @@ import com.homebrew.tabletopcompanion.model.Character
 import com.homebrew.tabletopcompanion.ui.screens.CharacterSelectScreen
 import com.homebrew.tabletopcompanion.ui.screens.UpdateAvailableDialog
 import com.homebrew.tabletopcompanion.ui.screens.UseCharacterScreen
+import com.homebrew.tabletopcompanion.ui.screens.PremiumPhotoApiDialog
 import com.homebrew.tabletopcompanion.ui.theme.DarkBackground
 import com.homebrew.tabletopcompanion.ui.theme.GoldAccent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import com.homebrew.tabletopcompanion.ui.theme.HomebrewRPGTheme
 import com.homebrew.tabletopcompanion.utils.GitHubUpdateChecker
 import com.homebrew.tabletopcompanion.utils.UpdateInfo
-import com.homebrew.tabletopcompanion.R
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 sealed class Screen {
     object Select : Screen()
@@ -41,7 +47,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val requestPermissionLauncher = registerForActivityResult(
                 ActivityResultContracts.RequestPermission()
-            ) { isGranted: Boolean -> }
+            ) { _: Boolean -> }
             requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         repository = CharacterRepository(this)
@@ -61,6 +67,18 @@ class MainActivity : ComponentActivity() {
                     var updateInfoState by remember { mutableStateOf<UpdateInfo?>(null) }
                     var isPremium by remember { mutableStateOf(repository.isPremium()) }
 
+                    // Premium photo API settings (persisted)
+                    var photoApiUrl by remember { mutableStateOf(repository.getPhotoApiUrl()) }
+                    var photoApiKey by remember { mutableStateOf(repository.getPhotoApiKey()) }
+                    var photoIntervalMinutes by remember { mutableStateOf(repository.getPhotoIntervalMinutes()) }
+
+                    // Controls whether the "set up photo API" dialog is shown
+                    var showPhotoApiSetupDialog by remember { mutableStateOf(false) }
+
+                    // Premium image display state
+                    var showPremiumImage by remember { mutableStateOf(false) }
+                    var currentPremiumImageUrl by remember { mutableStateOf<String?>(null) }
+
                     LaunchedEffect(Unit) {
                         com.homebrew.tabletopcompanion.server.GameServerManager.onSyncReceived = { jsonData ->
                             try {
@@ -74,22 +92,42 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-                    var showPremiumImage by remember { mutableStateOf(false) }
-                    var currentPremiumImageResId by remember { mutableStateOf(R.drawable.images1) }
 
-                    LaunchedEffect(isPremium, showPremiumImage) {
-                        if (isPremium && !showPremiumImage) {
-                            // Delay 15 seconds for debug
-                            kotlinx.coroutines.delay(900000L) // 15 minutes
-                            val images = listOf(
-                                R.drawable.images1,
-                                R.drawable.images2,
-                                R.drawable.images3,
-                                R.drawable.images4,
-                                R.drawable.images5
-                            )
-                            currentPremiumImageResId = images.random()
-                            showPremiumImage = true
+                    // ── Premium photo timer ─────────────────────────────────────────────────
+                    // Restarts whenever isPremium, photoApiUrl, photoApiKey, or the interval
+                    // changes.  Only runs when the API is fully configured.
+                    val apiConfigured = isPremium && photoApiUrl.isNotBlank()
+                    LaunchedEffect(apiConfigured, photoIntervalMinutes, showPremiumImage) {
+                        if (apiConfigured && !showPremiumImage) {
+                            val delayMs = photoIntervalMinutes.toLong() * 60_000L
+                            kotlinx.coroutines.delay(delayMs)
+
+                            // Fetch a random photo URL from the user-configured endpoint
+                            val fetchedUrl = withContext(Dispatchers.IO) {
+                                try {
+                                    val conn = URL(photoApiUrl).openConnection() as HttpURLConnection
+                                    conn.requestMethod = "GET"
+                                    conn.setRequestProperty("Accept", "application/json")
+                                    if (photoApiKey.isNotBlank()) {
+                                        conn.setRequestProperty("Authorization", "Bearer $photoApiKey")
+                                    }
+                                    conn.connectTimeout = 10_000
+                                    conn.readTimeout = 10_000
+                                    if (conn.responseCode == 200) {
+                                        val json = conn.inputStream.bufferedReader().readText()
+                                        // Try common fields: "url", "src", "download_url", "urls.regular"
+                                        extractImageUrl(json)
+                                    } else null
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    null
+                                }
+                            }
+
+                            if (fetchedUrl != null) {
+                                currentPremiumImageUrl = fetchedUrl
+                                showPremiumImage = true
+                            }
                         }
                     }
 
@@ -118,9 +156,13 @@ class MainActivity : ComponentActivity() {
                             CharacterSelectScreen(
                                 characters = characters,
                                 isPremium = isPremium,
-                                onSetPremium = { 
-                                    repository.setPremium(it)
-                                    isPremium = it 
+                                onSetPremium = { value ->
+                                    repository.setPremium(value)
+                                    isPremium = value
+                                    // When activating premium, ask the user to configure the photo API
+                                    if (value) {
+                                        showPhotoApiSetupDialog = true
+                                    }
                                 },
                                 onSelectCharacter = { char ->
                                     currentScreen = Screen.Use(char)
@@ -139,7 +181,12 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onCheckForUpdates = {
                                     runUpdateCheck(manual = true)
-                                }
+                                },
+                                onOpenPhotoApiSettings = {
+                                    showPhotoApiSetupDialog = true
+                                },
+                                photoApiUrl = photoApiUrl,
+                                photoIntervalMinutes = photoIntervalMinutes
                             )
                         }
                         is Screen.Use -> {
@@ -156,17 +203,40 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (showPremiumImage) {
+                    // ── Photo API setup dialog ──────────────────────────────────────────────
+                    if (showPhotoApiSetupDialog) {
+                        PremiumPhotoApiDialog(
+                            initialApiUrl = photoApiUrl,
+                            initialApiKey = photoApiKey,
+                            initialIntervalMinutes = photoIntervalMinutes,
+                            onDismiss = { showPhotoApiSetupDialog = false },
+                            onSave = { url, key, minutes ->
+                                repository.setPhotoApiUrl(url)
+                                repository.setPhotoApiKey(key)
+                                repository.setPhotoIntervalMinutes(minutes)
+                                photoApiUrl = url
+                                photoApiKey = key
+                                photoIntervalMinutes = minutes
+                                showPhotoApiSetupDialog = false
+                                Toast.makeText(context, "Photo feed configured! First photo in $minutes min.", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+
+                    // ── Premium photo full-screen dialog ────────────────────────────────────
+                    if (showPremiumImage && currentPremiumImageUrl != null) {
                         androidx.compose.ui.window.Dialog(
                             onDismissRequest = { showPremiumImage = false },
                             properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
                         ) {
-                            androidx.compose.foundation.layout.Box(
-                                modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(androidx.compose.ui.graphics.Color.Black)
                             ) {
-                                androidx.compose.foundation.Image(
-                                    painter = androidx.compose.ui.res.painterResource(id = currentPremiumImageResId),
-                                    contentDescription = "Premium Image",
+                                coil.compose.AsyncImage(
+                                    model = currentPremiumImageUrl,
+                                    contentDescription = "Premium Photo",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = androidx.compose.ui.layout.ContentScale.Fit
                                 )
@@ -176,11 +246,14 @@ class MainActivity : ComponentActivity() {
                                         .align(androidx.compose.ui.Alignment.BottomCenter)
                                         .padding(32.dp),
                                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                        containerColor = GoldAccent, 
+                                        containerColor = GoldAccent,
                                         contentColor = DarkBackground
                                     )
                                 ) {
-                                    androidx.compose.material3.Text("Close", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    androidx.compose.material3.Text(
+                                        "Close",
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                    )
                                 }
                             }
                         }
@@ -192,7 +265,7 @@ class MainActivity : ComponentActivity() {
                         } catch (e: Exception) {
                             "Unknown"
                         }
-                        
+
                         UpdateAvailableDialog(
                             updateInfo = info,
                             currentVersion = "v$currentAppVersion",
@@ -206,3 +279,40 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Heuristically extracts an image URL from a JSON response string.
+ * Supports common photo-API patterns:
+ *  - `{ "url": "..." }`
+ *  - `{ "download_url": "..." }` (picsum.photos)
+ *  - `{ "src": { "original": "..." } }` (Pexels)
+ *  - `{ "urls": { "regular": "..." } }` (Unsplash)
+ *  - `{ "link": "..." }`
+ *  - `{ "image_url": "..." }`
+ */
+private fun extractImageUrl(json: String): String? {
+    return try {
+        val obj = JSONObject(json)
+        // Direct string fields
+        for (key in listOf("url", "download_url", "link", "image_url", "photo_url", "file_url")) {
+            if (obj.has(key) && !obj.isNull(key)) {
+                val v = obj.optString(key)
+                if (v.startsWith("http")) return v
+            }
+        }
+        // Nested: urls.regular / urls.full (Unsplash)
+        if (obj.has("urls")) {
+            val urls = obj.optJSONObject("urls")
+            val v = urls?.optString("regular") ?: urls?.optString("full") ?: ""
+            if (v.startsWith("http")) return v
+        }
+        // Nested: src.original / src.large (Pexels)
+        if (obj.has("src")) {
+            val src = obj.optJSONObject("src")
+            val v = src?.optString("original") ?: src?.optString("large") ?: ""
+            if (v.startsWith("http")) return v
+        }
+        null
+    } catch (e: Exception) {
+        null
+    }
+}

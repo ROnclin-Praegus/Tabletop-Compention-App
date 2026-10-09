@@ -50,7 +50,10 @@ fun CharacterSelectScreen(
     onCreateCharacter: (Character) -> Unit,
     onUpdateCharacter: (Character) -> Unit,
     onDeleteCharacter: (String) -> Unit,
-    onCheckForUpdates: () -> Unit = {}
+    onCheckForUpdates: () -> Unit = {},
+    onOpenPhotoApiSettings: () -> Unit = {},
+    photoApiUrl: String = "",
+    photoIntervalMinutes: Int = 15
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var showApiDialog by remember { mutableStateOf(false) }
@@ -240,7 +243,44 @@ fun CharacterSelectScreen(
                         Text("UPGRADE TO PREMIUM", fontWeight = FontWeight.Bold, color = GoldAccent)
                     }
                 }
+            } else {
+                // Premium is active — show photo feed status and a configure button
+                Surface(
+                    color = GoldAccent.copy(alpha = 0.10f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("⭐ PREMIUM ACTIVE", fontWeight = FontWeight.Bold, color = GoldAccent, fontSize = 13.sp)
+                            if (photoApiUrl.isNotBlank()) {
+                                Text(
+                                    "📸 Photo feed: every $photoIntervalMinutes min",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp
+                                )
+                            } else {
+                                Text(
+                                    "📸 Photo feed: not configured",
+                                    color = CrimsonPrimary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                        TextButton(onClick = onOpenPhotoApiSettings) {
+                            Text("Configure", color = GoldAccent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
             }
+
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (characters.isEmpty()) {
