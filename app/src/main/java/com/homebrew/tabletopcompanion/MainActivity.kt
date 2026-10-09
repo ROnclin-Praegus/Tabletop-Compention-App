@@ -99,12 +99,14 @@ class MainActivity : ComponentActivity() {
                     val apiConfigured = isPremium && photoApiUrl.isNotBlank()
                     LaunchedEffect(apiConfigured, photoIntervalMinutes, showPremiumImage) {
                         if (apiConfigured && !showPremiumImage) {
+                            android.util.Log.d("PhotoAPI", "Photo timer active: next fetch from '$photoApiUrl' in $photoIntervalMinutes min")
                             val delayMs = photoIntervalMinutes.toLong() * 60_000L
                             kotlinx.coroutines.delay(delayMs)
 
-                            // Fetch a random photo from the user-configured endpoint
+                            android.util.Log.d("PhotoAPI", "Timer elapsed! Initiating photo GET request to: $photoApiUrl")
                             val fetchedUrl = withContext(Dispatchers.IO) {
                                 try {
+                                    android.util.Log.d("PhotoAPI", "Opening connection to $photoApiUrl (Auth header: ${if (photoApiKey.isNotBlank()) "Bearer present (${photoApiKey.length} chars)" else "none"})")
                                     val conn = URL(photoApiUrl).openConnection() as HttpURLConnection
                                     conn.requestMethod = "GET"
                                     conn.setRequestProperty("Accept", "image/*, application/json")
@@ -115,31 +117,45 @@ class MainActivity : ComponentActivity() {
                                     conn.readTimeout = 10_000
                                     conn.instanceFollowRedirects = true
 
-                                    if (conn.responseCode in 200..299) {
-                                        val contentType = conn.contentType ?: ""
+                                    val code = conn.responseCode
+                                    val contentType = conn.contentType ?: "unknown"
+                                    val contentLength = conn.contentLengthLong
+                                    android.util.Log.d("PhotoAPI", "Received response: HTTP $code | Content-Type: $contentType | Content-Length: ${if (contentLength >= 0) "$contentLength bytes" else "unknown"}")
+
+                                    if (code in 200..299) {
                                         if (contentType.contains("json", ignoreCase = true)) {
                                             val json = conn.inputStream.bufferedReader().readText()
-                                            extractImageUrl(json)
+                                            android.util.Log.d("PhotoAPI", "JSON response received (${json.length} chars): $json")
+                                            val extracted = extractImageUrl(json)
+                                            android.util.Log.d("PhotoAPI", "Extracted image URL from JSON: $extracted")
+                                            extracted
                                         } else {
-                                            // The API returned raw image bytes directly
                                             val tempFile = java.io.File(context.cacheDir, "premium_photo_${System.currentTimeMillis()}.jpg")
+                                            var bytesWritten = 0L
                                             conn.inputStream.use { input ->
                                                 tempFile.outputStream().use { output ->
-                                                    input.copyTo(output)
+                                                    bytesWritten = input.copyTo(output)
                                                 }
                                             }
+                                            android.util.Log.d("PhotoAPI", "Direct image downloaded successfully ($bytesWritten bytes) -> saved to ${tempFile.absolutePath}")
                                             tempFile.absolutePath
                                         }
-                                    } else null
+                                    } else {
+                                        android.util.Log.e("PhotoAPI", "Photo fetch FAILED: HTTP $code ($contentType) for $photoApiUrl")
+                                        null
+                                    }
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    android.util.Log.e("PhotoAPI", "Photo fetch EXCEPTION for $photoApiUrl: ${e.message}", e)
                                     null
                                 }
                             }
 
                             if (fetchedUrl != null) {
+                                android.util.Log.d("PhotoAPI", "Displaying photo modal overlay with image: $fetchedUrl")
                                 currentPremiumImageUrl = fetchedUrl
                                 showPremiumImage = true
+                            } else {
+                                android.util.Log.w("PhotoAPI", "Photo fetch resulted in null image path; modal will not open.")
                             }
                         }
                     }
@@ -238,8 +254,25 @@ class MainActivity : ComponentActivity() {
 
                     // ── Premium photo full-screen dialog ────────────────────────────────────
                     if (showPremiumImage && currentPremiumImageUrl != null) {
+                        val closePhoto = {
+                            val pathToDelete = currentPremiumImageUrl
+                            currentPremiumImageUrl = null
+                            showPremiumImage = false
+                            if (pathToDelete != null && pathToDelete.startsWith(context.cacheDir.absolutePath)) {
+                                try {
+                                    val f = java.io.File(pathToDelete)
+                                    if (f.exists()) {
+                                        val deleted = f.delete()
+                                        android.util.Log.d("PhotoAPI", "Cleaned up temp photo file from cache ($deleted): $pathToDelete")
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("PhotoAPI", "Error cleaning up temp file: ${e.message}")
+                                }
+                            }
+                        }
+
                         androidx.compose.ui.window.Dialog(
-                            onDismissRequest = { showPremiumImage = false },
+                            onDismissRequest = closePhoto,
                             properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
                         ) {
                             Box(
@@ -254,7 +287,7 @@ class MainActivity : ComponentActivity() {
                                     contentScale = androidx.compose.ui.layout.ContentScale.Fit
                                 )
                                 androidx.compose.material3.Button(
-                                    onClick = { showPremiumImage = false },
+                                    onClick = closePhoto,
                                     modifier = Modifier
                                         .align(androidx.compose.ui.Alignment.BottomCenter)
                                         .padding(32.dp),
