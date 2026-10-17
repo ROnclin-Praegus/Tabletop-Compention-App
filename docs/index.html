@@ -4213,6 +4213,9 @@
 
       closePhotoApiModal();
       renderSelectScreen();
+      if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
       startPhotoTimer();
     }
 
@@ -4235,6 +4238,16 @@
       return null;
     }
 
+    function notifyUser(message) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification("🖼 Premium Photo Feed", { body: message });
+        } catch (e) {
+          console.warn("Notification error:", e);
+        }
+      }
+    }
+
     function startPhotoTimer() {
       stopPhotoTimer();
       if (!isPremium || !photoApiUrl || photoIntervalMinutes < 1) return;
@@ -4251,21 +4264,27 @@
           const res = await fetch(photoApiUrl, { method: 'GET', headers });
           if (res.ok) {
             const contentType = res.headers.get('content-type') || '';
+            let fetchedUrl = null;
             if (contentType.includes('json')) {
               const json = await res.json();
-              const imageUrl = extractImageUrl(json);
-              if (imageUrl) {
-                showPremiumPhotoViewer(imageUrl);
-              }
+              fetchedUrl = extractImageUrl(json);
             } else {
-              // Endpoint returns the photo directly (image binary/blob)
               const blob = await res.blob();
-              const objectUrl = URL.createObjectURL(blob);
-              showPremiumPhotoViewer(objectUrl);
+              fetchedUrl = URL.createObjectURL(blob);
             }
+
+            if (fetchedUrl) {
+              notifyUser("a suprise is ready for you");
+              showPremiumPhotoViewer(fetchedUrl);
+            } else {
+              notifyUser("no photo was found");
+            }
+          } else {
+            notifyUser("no photo was found");
           }
         } catch (e) {
           console.warn("Photo API fetch error:", e);
+          notifyUser("no photo was found");
         }
       }, ms);
     }

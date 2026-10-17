@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.padding
 import com.homebrew.tabletopcompanion.ui.theme.HomebrewRPGTheme
 import com.homebrew.tabletopcompanion.utils.GitHubUpdateChecker
 import com.homebrew.tabletopcompanion.utils.UpdateInfo
+import android.content.Intent
+import com.homebrew.tabletopcompanion.worker.PhotoApiWorker
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -41,9 +43,30 @@ sealed class Screen {
 
 class MainActivity : ComponentActivity() {
     private lateinit var repository: CharacterRepository
+    private var pendingPhotoPathState = mutableStateOf<String?>(null)
+    private var openPendingPhotoState = mutableStateOf(false)
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        intent?.let {
+            if (it.getBooleanExtra(PhotoApiWorker.EXTRA_OPEN_PHOTO, false)) {
+                val path = it.getStringExtra(PhotoApiWorker.EXTRA_PHOTO_PATH)
+                if (!path.isNullOrBlank()) {
+                    pendingPhotoPathState.value = path
+                    openPendingPhotoState.value = true
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PhotoApiWorker.createNotificationChannel(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val requestPermissionLauncher = registerForActivityResult(
                 ActivityResultContracts.RequestPermission()
@@ -52,6 +75,12 @@ class MainActivity : ComponentActivity() {
         }
         repository = CharacterRepository(this)
         com.homebrew.tabletopcompanion.server.GameServerManager.init(this)
+
+        handleNotificationIntent(intent)
+
+        if (repository.isPremium() && repository.getPhotoApiUrl().isNotBlank()) {
+            PhotoApiWorker.scheduleNext(this, repository.getPhotoIntervalMinutes())
+        }
 
         setContent {
             HomebrewRPGTheme {
@@ -93,9 +122,19 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // ── Premium photo timer ─────────────────────────────────────────────────
-                    // Restarts whenever isPremium, photoApiUrl, photoApiKey, or the interval
-                    // changes.  Only runs when the API is fully configured.
+                    LaunchedEffect(openPendingPhotoState.value) {
+                        if (openPendingPhotoState.value) {
+                            val path = pendingPhotoPathState.value
+                            if (!path.isNullOrBlank()) {
+                                currentPremiumImageUrl = path
+                                showPremiumImage = true
+                            }
+                            openPendingPhotoState.value = false
+                            pendingPhotoPathState.value = null
+                        }
+                    }
+
+                    // ── Premium photo timer (Foreground fallback & background WorkManager) ─────
                     val apiConfigured = isPremium && photoApiUrl.isNotBlank()
                     LaunchedEffect(apiConfigured, photoIntervalMinutes, showPremiumImage) {
                         if (apiConfigured && !showPremiumImage) {
@@ -188,9 +227,10 @@ class MainActivity : ComponentActivity() {
                                 onSetPremium = { value ->
                                     repository.setPremium(value)
                                     isPremium = value
-                                    // When activating premium, ask the user to configure the photo API
                                     if (value) {
                                         showPhotoApiSetupDialog = true
+                                    } else {
+                                        PhotoApiWorker.cancelWork(this@MainActivity)
                                     }
                                 },
                                 onSelectCharacter = { char ->
@@ -247,6 +287,7 @@ class MainActivity : ComponentActivity() {
                                 photoApiKey = key
                                 photoIntervalMinutes = minutes
                                 showPhotoApiSetupDialog = false
+                                PhotoApiWorker.scheduleNext(this@MainActivity, minutes)
                                 Toast.makeText(context, "Photo feed configured! First photo in $minutes min.", Toast.LENGTH_SHORT).show()
                             }
                         )
