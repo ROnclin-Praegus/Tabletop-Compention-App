@@ -743,7 +743,7 @@
         <button id="backBtn" class="back-btn hidden" onclick="showSelectScreen()">←</button>
         <div id="headerAvatarBox" class="avatar-circle hidden" style="width:34px; height:34px; border-width:1px;"></div>
         <div>
-          <h1 id="appTitle">HOMEBREW RPG</h1>
+          <h1 id="appTitle" onclick="handleHeaderTitleClick()" style="cursor:pointer;">HOMEBREW RPG</h1>
           <div id="appSubtitle" class="header-subtitle">Character Selection</div>
         </div>
       </div>
@@ -1443,8 +1443,97 @@
     </div>
   </div>
 
+  <!-- Premium Activation Modal -->
+  <div id="premiumModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width:360px;">
+      <h2 style="color:var(--gold-accent)">PREMIUM FEATURES</h2>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <p style="color:var(--text-primary); font-weight:bold;">Unlock the ultimate experience with Premium!</p>
+        <div style="color:var(--text-secondary); font-size:13px;">
+          • Quick support<br>
+          • Ad-free experience<br>
+          • High-five from the dev<br>
+          • And so much more!
+        </div>
+        <p style="color:var(--crimson-primary); font-size:12px; font-weight:600; margin-top:4px;">
+          To upgrade, please pay 13,37 EUR to the dev in-cash to receive your code.
+        </p>
+        <div class="form-group" style="margin-top:8px;">
+          <label>Activation Code</label>
+          <input id="premiumCodeInput" type="text" placeholder="Enter activation code" class="form-input">
+        </div>
+        <div id="premiumErrorMsg" style="color:var(--crimson-primary); font-size:12px;" class="hidden"></div>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closePremiumModal()">CANCEL</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="activatePremiumCode()">ACTIVATE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Premium Photo API Modal -->
+  <div id="photoApiModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2 style="color:var(--gold-accent)">🖼 Premium Photo Feed</h2>
+      <p style="font-size:13px; color:var(--text-secondary);">
+        Configure a custom API endpoint that returns a random photo. The app will make a GET request and display the image at the set interval.
+      </p>
+
+      <div class="form-group">
+        <label>API Endpoint URL</label>
+        <input id="photoApiUrlInput" type="url" placeholder="https://your-api.com/photos/random" class="form-input" oninput="onPhotoApiUrlInputChanged()">
+        <div id="photoApiUrlError" style="color:var(--crimson-primary); font-size:12px;" class="hidden"></div>
+      </div>
+
+      <div class="form-group">
+        <label>API Key</label>
+        <input id="photoApiKeyInput" type="text" placeholder="your-api-key (sent as Authorization header)" class="form-input">
+        <span style="font-size:11px; color:var(--text-secondary);">Sent as: Authorization: Bearer &lt;key&gt;</span>
+      </div>
+
+      <div class="form-group">
+        <label>Show Photo Every (minutes)</label>
+        <input id="photoIntervalInput" type="number" min="1" value="15" placeholder="15" class="form-input">
+        <div id="photoIntervalError" style="color:var(--crimson-primary); font-size:12px;" class="hidden"></div>
+      </div>
+
+      <hr style="border:none; border-top:1px solid rgba(160,160,176,0.2); margin:4px 0;">
+
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button id="photoTestBtn" class="prompt-btn" style="flex:none; width:auto; background:var(--surface-variant); color:var(--text-primary);" onclick="testPhotoApiConnection()">Test Connection</button>
+        <div id="photoTestMsg" style="font-size:12px; flex:1;"></div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closePhotoApiModal()">SKIP FOR NOW</button>
+        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="savePhotoApiSettings()">SAVE &amp; ENABLE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Premium Photo Viewer Modal -->
+  <div id="premiumPhotoViewerModal" class="modal-overlay hidden" style="background: black; z-index: 10000; padding:0;">
+    <div style="position:relative; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+      <img id="premiumPhotoImg" src="" style="max-width:100%; max-height:calc(100% - 80px); object-fit:contain;">
+      <button class="prompt-btn" style="position:absolute; bottom:32px; width:auto; padding:12px 32px; background:var(--gold-accent); color:var(--bg-dark); font-weight:bold; font-size:14px; border-radius:24px;" onclick="closePremiumPhotoViewerModal()">Close</button>
+    </div>
+  </div>
+
   <script>
     const STORAGE_KEY = "rpg_homebrew_characters_v14";
+    const PREMIUM_KEY = "rpg_is_premium";
+    const PHOTO_API_URL_KEY = "rpg_photo_api_url";
+    const PHOTO_API_KEY_KEY = "rpg_photo_api_key";
+    const PHOTO_INTERVAL_KEY = "rpg_photo_interval_minutes";
+
+
+
+    let isPremium = false;
+    let photoApiUrl = "";
+    let photoApiKey = "";
+    let photoIntervalMinutes = 15;
+    let photoTimerId = null;
+    let testConnectionState = 'IDLE';
     let characters = [];
     let activeCharId = null;
     let editingCharId = null;
@@ -1534,6 +1623,13 @@
       }
       renderSelectScreen();
       checkIosPrompt();
+      isPremium = localStorage.getItem(PREMIUM_KEY) === "true";
+      photoApiUrl = localStorage.getItem(PHOTO_API_URL_KEY) || "";
+      photoApiKey = localStorage.getItem(PHOTO_API_KEY_KEY) || "";
+      photoIntervalMinutes = parseInt(localStorage.getItem(PHOTO_INTERVAL_KEY)) || 15;
+      if (isPremium && photoApiUrl) {
+        startPhotoTimer();
+      }
     }
 
     function saveData() {
@@ -1884,10 +1980,27 @@
       document.getElementById('headerEditBtn').classList.add('hidden');
       document.getElementById('createFab').classList.remove('hidden');
       document.getElementById('appTitle').innerText = "HOMEBREW RPG";
+      document.getElementById('appTitle').style.color = isPremium ? "var(--gold-accent)" : "var(--text-primary)";
       document.getElementById('appSubtitle').innerText = "Character Selection";
 
+      const premiumBannerHTML = !isPremium ? `
+        <div style="background: rgba(255, 193, 7, 0.15); border: 1px solid var(--gold-accent); border-radius: 8px; padding: 12px; margin-bottom: 12px; text-align: center; cursor: pointer;" onclick="openPremiumModal()">
+          <span style="font-weight: bold; color: var(--gold-accent); font-size: 13px;">UPGRADE TO PREMIUM</span>
+        </div>
+      ` : `
+        <div style="background: rgba(255, 193, 7, 0.10); border: 1px solid rgba(255, 193, 7, 0.5); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div style="font-weight: bold; color: var(--gold-accent); font-size: 13px;">⭐ PREMIUM ACTIVE</div>
+            <div style="font-size: 11px; color: ${photoApiUrl ? 'var(--text-secondary)' : 'var(--crimson-primary)'};">
+              📸 Photo feed: ${photoApiUrl ? 'every ' + photoIntervalMinutes + ' min' : 'not configured'}
+            </div>
+          </div>
+          <button class="prompt-btn" style="width: auto; padding: 4px 10px; font-size: 12px; color: var(--gold-accent);" onclick="openPhotoApiModal()">Configure</button>
+        </div>
+      `;
+
       const container = document.getElementById('characterList');
-      const headerHTML = `
+      const headerHTML = premiumBannerHTML + `
         <div style="display:flex; justify-content:space-between; margin-bottom: 12px; gap:8px;">
           <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
           <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)" multiple>
@@ -3949,6 +4062,257 @@
           overlay.classList.add('hidden');
         }, 2000);
       }, 1200);
+    }
+    /* --- PREMIUM & PHOTO API FUNCTIONS --- */
+    function handleHeaderTitleClick() {
+      if (activeCharId !== null) return;
+      if (isPremium) {
+        if (confirm("Deactivate Premium?")) {
+          isPremium = false;
+          localStorage.setItem(PREMIUM_KEY, "false");
+          stopPhotoTimer();
+          renderSelectScreen();
+        }
+      } else {
+        openPremiumModal();
+      }
+    }
+
+    function openPremiumModal() {
+      document.getElementById('premiumCodeInput').value = "";
+      document.getElementById('premiumErrorMsg').classList.add('hidden');
+      document.getElementById('premiumErrorMsg').innerText = "";
+      document.getElementById('premiumModal').classList.remove('hidden');
+    }
+
+    function closePremiumModal() {
+      document.getElementById('premiumModal').classList.add('hidden');
+    }
+
+    function activatePremiumCode() {
+      const code = document.getElementById('premiumCodeInput').value.trim();
+      const errorMsg = document.getElementById('premiumErrorMsg');
+      if (code === "8008135") {
+        isPremium = true;
+        localStorage.setItem(PREMIUM_KEY, "true");
+        closePremiumModal();
+        renderSelectScreen();
+        openPhotoApiModal();
+      } else {
+        errorMsg.innerText = "Invalid code. Please pay the dev.";
+        errorMsg.classList.remove('hidden');
+      }
+    }
+
+    function openPhotoApiModal() {
+      document.getElementById('photoApiUrlInput').value = photoApiUrl;
+      document.getElementById('photoApiKeyInput').value = photoApiKey;
+      document.getElementById('photoIntervalInput').value = photoIntervalMinutes || 15;
+      document.getElementById('photoApiUrlError').classList.add('hidden');
+      document.getElementById('photoIntervalError').classList.add('hidden');
+      
+      testConnectionState = 'IDLE';
+      updateTestBtnUI('Test Connection', false, 'var(--surface-variant)', '', 'var(--text-primary)');
+
+      document.getElementById('photoApiModal').classList.remove('hidden');
+    }
+
+    function closePhotoApiModal() {
+      document.getElementById('photoApiModal').classList.add('hidden');
+    }
+
+    function onPhotoApiUrlInputChanged() {
+      document.getElementById('photoApiUrlError').classList.add('hidden');
+      if (testConnectionState === 'SUCCESS' || testConnectionState === 'FAILURE') {
+        testConnectionState = 'IDLE';
+        updateTestBtnUI('Test Connection', false, 'var(--surface-variant)', '', 'var(--text-primary)');
+      }
+    }
+
+    function updateTestBtnUI(text, disabled, bgColor, msgText, msgColor) {
+      const btn = document.getElementById('photoTestBtn');
+      const msg = document.getElementById('photoTestMsg');
+      if (!btn || !msg) return;
+      btn.innerText = text;
+      btn.disabled = disabled;
+      btn.style.background = bgColor;
+      btn.style.opacity = disabled ? '0.6' : '1';
+      msg.innerText = msgText || '';
+      msg.style.color = msgColor || 'var(--text-primary)';
+    }
+
+    async function testPhotoApiConnection() {
+      const url = document.getElementById('photoApiUrlInput').value.trim();
+      const key = document.getElementById('photoApiKeyInput').value.trim();
+      const urlError = document.getElementById('photoApiUrlError');
+
+      if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+        urlError.innerText = "Please enter a valid http(s) URL first";
+        urlError.classList.remove('hidden');
+        return;
+      }
+      urlError.classList.add('hidden');
+
+      testConnectionState = 'TESTING';
+      updateTestBtnUI('Testing...', true, 'var(--surface-variant)', '', 'var(--text-primary)');
+
+      try {
+        const headers = { 'Accept': 'image/*, application/json' };
+        if (key) headers['Authorization'] = 'Bearer ' + key;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const res = await fetch(url, { method: 'GET', headers, signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          testConnectionState = 'SUCCESS';
+          updateTestBtnUI('Connection OK ✓', true, 'var(--green-hp)', '✅ Connected! (HTTP ' + res.status + ')', 'var(--green-hp)');
+        } else {
+          testConnectionState = 'FAILURE';
+          updateTestBtnUI('Retry Test', false, 'var(--crimson-primary)', '❌ Server returned HTTP ' + res.status, 'var(--crimson-primary)');
+        }
+      } catch (e) {
+        testConnectionState = 'FAILURE';
+        updateTestBtnUI('Retry Test', false, 'var(--crimson-primary)', '❌ Could not reach the server', 'var(--crimson-primary)');
+      }
+    }
+
+    function savePhotoApiSettings() {
+      const url = document.getElementById('photoApiUrlInput').value.trim();
+      const key = document.getElementById('photoApiKeyInput').value.trim();
+      const mins = parseInt(document.getElementById('photoIntervalInput').value.trim());
+
+      const urlError = document.getElementById('photoApiUrlError');
+      const intervalError = document.getElementById('photoIntervalError');
+      urlError.classList.add('hidden');
+      intervalError.classList.add('hidden');
+
+      let valid = true;
+      if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+        urlError.innerText = "Please enter a valid http(s) URL";
+        urlError.classList.remove('hidden');
+        valid = false;
+      }
+      if (isNaN(mins) || mins < 1) {
+        intervalError.innerText = "Please enter a number ≥ 1";
+        intervalError.classList.remove('hidden');
+        valid = false;
+      }
+
+      if (!valid) return;
+
+      photoApiUrl = url;
+      photoApiKey = key;
+      photoIntervalMinutes = mins;
+
+      localStorage.setItem(PHOTO_API_URL_KEY, url);
+      localStorage.setItem(PHOTO_API_KEY_KEY, key);
+      localStorage.setItem(PHOTO_INTERVAL_KEY, mins.toString());
+
+      closePhotoApiModal();
+      renderSelectScreen();
+      if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission();
+      }
+      startPhotoTimer();
+    }
+
+    function extractImageUrl(obj) {
+      if (!obj || typeof obj !== 'object') return null;
+      const directKeys = ['url', 'download_url', 'link', 'image_url', 'photo_url', 'file_url'];
+      for (const k of directKeys) {
+        if (obj[k] && typeof obj[k] === 'string' && obj[k].startsWith('http')) {
+          return obj[k];
+        }
+      }
+      if (obj.urls && typeof obj.urls === 'object') {
+        if (obj.urls.regular && typeof obj.urls.regular === 'string' && obj.urls.regular.startsWith('http')) return obj.urls.regular;
+        if (obj.urls.full && typeof obj.urls.full === 'string' && obj.urls.full.startsWith('http')) return obj.urls.full;
+      }
+      if (obj.src && typeof obj.src === 'object') {
+        if (obj.src.original && typeof obj.src.original === 'string' && obj.src.original.startsWith('http')) return obj.src.original;
+        if (obj.src.large && typeof obj.src.large === 'string' && obj.src.large.startsWith('http')) return obj.src.large;
+      }
+      return null;
+    }
+
+    function notifyUser(message) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification("🖼 Premium Photo Feed", { body: message });
+        } catch (e) {
+          console.warn("Notification error:", e);
+        }
+      }
+    }
+
+    function startPhotoTimer() {
+      stopPhotoTimer();
+      if (!isPremium || !photoApiUrl || photoIntervalMinutes < 1) return;
+
+      const ms = photoIntervalMinutes * 60 * 1000;
+      photoTimerId = setInterval(async () => {
+        const modal = document.getElementById('premiumPhotoViewerModal');
+        if (modal && !modal.classList.contains('hidden')) return;
+
+        try {
+          const headers = { 'Accept': 'image/*, application/json' };
+          if (photoApiKey) headers['Authorization'] = 'Bearer ' + photoApiKey;
+
+          const res = await fetch(photoApiUrl, { method: 'GET', headers });
+          if (res.ok) {
+            const contentType = res.headers.get('content-type') || '';
+            let fetchedUrl = null;
+            if (contentType.includes('json')) {
+              const json = await res.json();
+              fetchedUrl = extractImageUrl(json);
+            } else {
+              const blob = await res.blob();
+              fetchedUrl = URL.createObjectURL(blob);
+            }
+
+            if (fetchedUrl) {
+              notifyUser("a suprise is ready for you");
+              showPremiumPhotoViewer(fetchedUrl);
+            } else {
+              notifyUser("no photo was found");
+            }
+          } else {
+            notifyUser("no photo was found");
+          }
+        } catch (e) {
+          console.warn("Photo API fetch error:", e);
+          notifyUser("no photo was found");
+        }
+      }, ms);
+    }
+
+    function stopPhotoTimer() {
+      if (photoTimerId) {
+        clearInterval(photoTimerId);
+        photoTimerId = null;
+      }
+    }
+
+    function showPremiumPhotoViewer(url) {
+      const img = document.getElementById('premiumPhotoImg');
+      if (img) img.src = url;
+      const modal = document.getElementById('premiumPhotoViewerModal');
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closePremiumPhotoViewerModal() {
+      const modal = document.getElementById('premiumPhotoViewerModal');
+      if (modal) modal.classList.add('hidden');
+      const img = document.getElementById('premiumPhotoImg');
+      if (img) {
+        if (img.src && img.src.startsWith('blob:')) {
+          URL.revokeObjectURL(img.src);
+        }
+        img.src = '';
+      }
     }
   </script>
 </body>

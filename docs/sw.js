@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rpg-companion-v1';
+const CACHE_NAME = 'rpg-companion-v1.5.1';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

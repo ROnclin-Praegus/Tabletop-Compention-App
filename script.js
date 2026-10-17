@@ -1,0 +1,2457 @@
+
+    const STORAGE_KEY = "rpg_homebrew_characters_v14";
+    let characters = [];
+    let activeCharId = null;
+    let editingCharId = null;
+    let editingItemId = null;
+    let deletingCharId = null;
+    let uploadedImageBase64 = null;
+    let currentSessionTab = "vitals";
+    let showBaseStatsMap = {};
+
+    const defaultStats = {
+      strength: 0,
+      intelligence: 0,
+      endurance: 0,
+      spirit: 0,
+      finesse: 0,
+      charisma: 0
+    };
+
+    let tempStats = { ...defaultStats };
+    let tempStatMods = { ...defaultStats };
+
+    function init() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        characters = JSON.parse(saved);
+      } else {
+        characters = [
+          {
+            id: "1",
+            name: "Ignis Firebrand",
+            race: "Dragonkin",
+            level: 1,
+            maxHp: 50,
+            currentHp: 50,
+            boostHp: 10,
+            maxBoostHp: 10,
+            boostHpTurns: 0,
+            boostHpResetOnNextRound: true,
+            currentArmor: null,
+            currentWard: null,
+            maxMp: 40,
+            currentMp: 40,
+            gold: 150,
+            imageUri: null,
+            strength: 5,
+            intelligence: 3,
+            endurance: 4,
+            spirit: 2,
+            finesse: 1,
+            charisma: 3,
+            inventory: [
+              { id: "i1", name: "Dragon Cuirass", category: "Armor", isEquipped: true, hasArmor: true, armorSave: 10, hasWard: true, wardSave: 5, hasStatModifiers: true, statModifiers: { strength: 2 } },
+              { id: "i2", name: "Flame Blade", category: "Weapon", isEquipped: true, hasArmor: false, armorSave: 0, hasWard: false, wardSave: 0, hasStatModifiers: false, statModifiers: {} },
+              { id: "i3", name: "Healing Elixir", category: "Consumable", isEquipped: false, hasArmor: false, armorSave: 0, hasWard: false, wardSave: 0, hasStatModifiers: false, statModifiers: {} }
+            ],
+            effects: [
+              { id: "e1", name: "Poisoned Blade", effectType: "HP_CHANGE_PER_ROUND", value: -3, damageType: "unsaveable", roundsRemaining: 3 },
+              { id: "e2", name: "Berserk Aura", effectType: "STAT_MODIFIER", targetStat: "strength", value: 3, roundsRemaining: 0 }
+            ]
+          },
+          {
+            id: "2",
+            name: "Gorgar Steel-Shield",
+            race: "Barbarian",
+            level: 1,
+            maxHp: 65,
+            currentHp: 65,
+            boostHp: 0,
+            currentArmor: null,
+            currentWard: null,
+            maxMp: 0,
+            gold: 45,
+            imageUri: null,
+            strength: 8,
+            intelligence: 0,
+            endurance: 6,
+            spirit: 1,
+            finesse: 2,
+            charisma: 1,
+            inventory: [
+              { id: "i4", name: "Tower Shield of Aegis", category: "Shield", isEquipped: true, hasArmor: true, armorSave: 8, hasWard: true, wardSave: 3, hasStatModifiers: true, statModifiers: { endurance: 3 } }
+            ],
+            effects: []
+          }
+        ];
+        saveData();
+      }
+      renderSelectScreen();
+      checkIosPrompt();
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
+    }
+
+    function getTotalArmor(c) {
+      if (!c || !c.inventory) return 0;
+      return c.inventory
+        .filter(i => i.isEquipped && (i.hasArmor || i.armorSave > 0))
+        .reduce((sum, i) => sum + (parseInt(i.armorSave) || 0), 0);
+    }
+
+    function getTotalWard(c) {
+      if (!c || !c.inventory) return 0;
+      return c.inventory
+        .filter(i => i.isEquipped && (i.hasWard || i.wardSave > 0))
+        .reduce((sum, i) => sum + (parseInt(i.wardSave) || 0), 0);
+    }
+
+    function getEquippedStatModifier(c, statKey) {
+      if (!c) return 0;
+      const kLower = statKey.toLowerCase();
+      // 1. From equipped gear
+      const gearSum = (c.inventory || [])
+        .filter(i => i.isEquipped && (i.hasStatModifiers || i.statModifiers))
+        .reduce((sum, i) => sum + ((i.statModifiers && i.statModifiers[kLower]) || 0), 0);
+
+      // 2. From active stat effects
+      const effectSum = (c.effects || [])
+        .filter(e => e.effectType === "STAT_MODIFIER")
+        .reduce((sum, e) => {
+           let val = 0;
+           if (e.targetStat && e.targetStat.toLowerCase() === kLower) {
+              val += (parseInt(e.value) || 0);
+           }
+           if (e.statModifiers && e.statModifiers[kLower]) {
+              val += (parseInt(e.statModifiers[kLower]) || 0);
+           }
+           return sum + val;
+        }, 0);
+
+      return gearSum + effectSum;
+    }
+
+    function getEffectiveMaxHp(c) {
+      if (!c) return 0;
+      const endMod = getEquippedStatModifier(c, 'endurance');
+      const totalEnd = (c.endurance || 0) + endMod;
+      return Math.max(0, totalEnd * 10);
+    }
+
+    function getEffectiveMaxMp(c) {
+      if (!c || c.hideMp) return 0;
+      const intMod = getEquippedStatModifier(c, 'intelligence');
+      const totalInt = (c.intelligence || 0) + intMod;
+      return Math.max(0, totalInt * 1);
+    }
+
+    function getEffectiveSpirit(c) {
+      if (!c) return 0;
+      const spiMod = getEquippedStatModifier(c, 'spirit');
+      const totalSpi = (c.spirit || 0) + spiMod;
+      return Math.max(0, totalSpi);
+    }
+
+    function adjustVitalsOnMaxChange(c, actionFn) {
+      if (!c) return;
+      const oldMaxHp = getEffectiveMaxHp(c);
+      const oldMaxMp = getEffectiveMaxMp(c);
+
+      actionFn();
+
+      const newMaxHp = getEffectiveMaxHp(c);
+      const newMaxMp = getEffectiveMaxMp(c);
+
+      const hpDelta = newMaxHp - oldMaxHp;
+      const mpDelta = newMaxMp - oldMaxMp;
+
+      c.currentHp = Math.max(0, Math.min(newMaxHp, c.currentHp + hpDelta));
+      c.currentMp = Math.max(0, Math.min(newMaxMp, c.currentMp + mpDelta));
+    }
+
+    let expiredTimer = null;
+
+    function showExpiredPopup(messages) {
+      if (expiredTimer) clearTimeout(expiredTimer);
+      document.getElementById('expiredPopupMsg').innerText = messages.join('\n');
+      document.getElementById('expiredPopup').classList.remove('hidden');
+      expiredTimer = setTimeout(() => {
+        dismissExpiredPopup();
+      }, 5000);
+    }
+
+    function dismissExpiredPopup() {
+      if (expiredTimer) clearTimeout(expiredTimer);
+      expiredTimer = null;
+      document.getElementById('expiredPopup').classList.add('hidden');
+    }
+
+    function resetNextRound() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      c.currentArmor = getTotalArmor(c);
+      c.currentWard = getTotalWard(c);
+
+      const maxHp = getEffectiveMaxHp(c);
+      const maxMp = getEffectiveMaxMp(c);
+      const spirit = getEffectiveSpirit(c);
+
+      const maxBoost = (c.maxBoostHp !== undefined && c.maxBoostHp !== null) ? c.maxBoostHp : (c.boostHp || 0);
+      let turns = c.boostHpTurns !== undefined ? c.boostHpTurns : 0;
+      const resetBoostOnNextRound = c.boostHpResetOnNextRound !== false;
+
+      const expiredList = [];
+
+      // Reset Boost HP if reset flag is true and Boost HP is active
+      if (maxBoost > 0 && resetBoostOnNextRound && (turns > 0 || (turns === 0 && c.boostHp > 0))) {
+        c.boostHp = maxBoost;
+      }
+      
+      const maxArmorBoost = (c.maxBoostArmor !== undefined && c.maxBoostArmor !== null) ? c.maxBoostArmor : (c.boostArmor || 0);
+      let armorTurns = c.boostArmorTurns !== undefined ? c.boostArmorTurns : 0;
+      const resetArmorBoostOnNextRound = c.boostArmorResetOnNextRound !== false;
+      if (maxArmorBoost > 0 && resetArmorBoostOnNextRound && (armorTurns > 0 || (armorTurns === 0 && c.boostArmor > 0))) {
+        c.boostArmor = maxArmorBoost;
+      }
+
+      const maxWardBoost = (c.maxBoostWard !== undefined && c.maxBoostWard !== null) ? c.maxBoostWard : (c.boostWard || 0);
+      let wardTurns = c.boostWardTurns !== undefined ? c.boostWardTurns : 0;
+      const resetWardBoostOnNextRound = c.boostWardResetOnNextRound !== false;
+      if (maxWardBoost > 0 && resetWardBoostOnNextRound && (wardTurns > 0 || (wardTurns === 0 && c.boostWard > 0))) {
+        c.boostWard = maxWardBoost;
+      }
+
+      // Spirit MP Recharge on Next Round (1 Spirit = +1 MP/turn)
+      if (maxMp > 0 && spirit > 0) {
+        c.currentMp = Math.min(maxMp, c.currentMp + spirit);
+      }
+
+      // Process per-round HP/MP effects
+      if (c.effects && c.effects.length > 0) {
+        const nextEffects = [];
+        c.effects.forEach(e => {
+          if (e.effectType === "HP_CHANGE_PER_ROUND") {
+            const val = parseInt(e.value) || 0;
+            if (val > 0) {
+              let oldHp = c.currentHp;
+              c.currentHp = Math.max(0, Math.min(maxHp, c.currentHp + val));
+              let change = c.currentHp - oldHp;
+              if (change > 0) showFloatingDamage('useHpFill', change, true);
+            } else if (val < 0) {
+              let rem = Math.abs(val);
+              const dmgType = e.damageType || "unsaveable";
+
+              if (dmgType === "physical") {
+                let armorChange = 0;
+                let curBoostArmor = c.boostArmor || 0;
+                if (rem > 0 && curBoostArmor > 0) {
+                  if (rem <= curBoostArmor) {
+                    armorChange += rem;
+                    curBoostArmor -= rem;
+                    rem = 0;
+                  } else {
+                    armorChange += curBoostArmor;
+                    rem -= curBoostArmor;
+                    curBoostArmor = 0;
+                  }
+                  c.boostArmor = curBoostArmor;
+                }
+                if (rem > 0 && c.currentArmor > 0) {
+                  if (rem <= c.currentArmor) {
+                    armorChange += rem;
+                    c.currentArmor -= rem;
+                    rem = 0;
+                  } else {
+                    armorChange += c.currentArmor;
+                    rem -= c.currentArmor;
+                    c.currentArmor = 0;
+                  }
+                }
+                if (armorChange > 0) showFloatingDamage('useArmorFill', armorChange);
+              } else if (dmgType === "magical") {
+                let wardChange = 0;
+                let curBoostWard = c.boostWard || 0;
+                if (rem > 0 && curBoostWard > 0) {
+                  if (rem <= curBoostWard) {
+                    wardChange += rem;
+                    curBoostWard -= rem;
+                    rem = 0;
+                  } else {
+                    wardChange += curBoostWard;
+                    rem -= curBoostWard;
+                    curBoostWard = 0;
+                  }
+                  c.boostWard = curBoostWard;
+                }
+                if (rem > 0 && c.currentWard > 0) {
+                  if (rem <= c.currentWard) {
+                    wardChange += rem;
+                    c.currentWard -= rem;
+                    rem = 0;
+                  } else {
+                    wardChange += c.currentWard;
+                    rem -= c.currentWard;
+                    c.currentWard = 0;
+                  }
+                }
+                if (wardChange > 0) showFloatingDamage('useWardFill', wardChange);
+              }
+
+              let hpDmg = rem;
+              // Boost HP is affected FIRST before current HP!
+              if (rem > 0 && c.boostHp > 0) {
+                if (rem <= c.boostHp) {
+                  c.boostHp -= rem;
+                  rem = 0;
+                } else {
+                  rem -= c.boostHp;
+                  c.boostHp = 0;
+                }
+              }
+
+              if (rem > 0) {
+                c.currentHp = Math.max(0, c.currentHp - rem);
+              }
+              
+              if (hpDmg > 0) {
+                showFloatingDamage('useHpFill', hpDmg);
+              }
+            }
+          }
+          if (e.effectType === "MP_CHANGE_PER_ROUND" && maxMp > 0) {
+            c.currentMp = Math.max(0, Math.min(maxMp, c.currentMp + (parseInt(e.value) || 0)));
+          }
+
+          let r = parseInt(e.roundsRemaining) || 0;
+          if (r > 1) {
+            nextEffects.push({ ...e, roundsRemaining: r - 1 });
+          } else if (r === 1) {
+            expiredList.push(`Effect expired: ${e.name}`);
+          } else if (r === 0) {
+            nextEffects.push(e); // Unlimited
+          }
+        });
+        c.effects = nextEffects;
+      }
+
+      // Decrement Boost HP turns
+      if (turns > 1) {
+        c.boostHpTurns = turns - 1;
+      } else if (turns === 1) {
+        c.boostHpTurns = 0;
+        c.boostHp = 0;
+        c.maxBoostHp = 0;
+        expiredList.push("Boost HP duration has ended!");
+      }
+
+      if (armorTurns > 1) {
+        c.boostArmorTurns = armorTurns - 1;
+      } else if (armorTurns === 1) {
+        c.boostArmorTurns = 0;
+        c.boostArmor = 0;
+        c.maxBoostArmor = 0;
+        expiredList.push("Boost Armor duration has ended!");
+      }
+
+      if (wardTurns > 1) {
+        c.boostWardTurns = wardTurns - 1;
+      } else if (wardTurns === 1) {
+        c.boostWardTurns = 0;
+        c.boostWard = 0;
+        c.maxBoostWard = 0;
+        expiredList.push("Boost Ward Save duration has ended!");
+      }
+
+      if (expiredList.length > 0) {
+        showExpiredPopup(expiredList);
+      }
+
+      saveData();
+      renderUseScreen();
+    }
+
+    function handlePhotoUpload(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          uploadedImageBase64 = e.target.result;
+          document.getElementById('photoPreviewContent').innerHTML = `<img src="${uploadedImageBase64}">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function openGoldModal() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      document.getElementById('goldAmountInput').value = '';
+      updateGoldModalDisplay();
+      document.getElementById('goldModal').classList.remove('hidden');
+    }
+
+    function closeGoldModal() {
+      document.getElementById('goldModal').classList.add('hidden');
+    }
+
+    function updateGoldModalDisplay() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const gold = c.gold || 0;
+      document.getElementById('modalGoldBalance').innerText = `🪙 ${gold} Gold`;
+      document.getElementById('headerGoldText').innerText = gold;
+    }
+
+    function modifyGold(multiplier) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const inputVal = parseInt(document.getElementById('goldAmountInput').value);
+      if (isNaN(inputVal) || inputVal <= 0) return;
+
+      const change = inputVal * multiplier;
+      c.gold = Math.max(0, (c.gold || 0) + change);
+      saveData();
+      updateGoldModalDisplay();
+      document.getElementById('goldAmountInput').value = '';
+    }
+
+    function quickAddGold(delta) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      c.gold = Math.max(0, (c.gold || 0) + delta);
+      saveData();
+      updateGoldModalDisplay();
+    }
+
+    function renderSelectScreen() {
+      document.getElementById('selectScreen').classList.remove('hidden');
+      document.getElementById('useScreen').classList.add('hidden');
+      document.getElementById('backBtn').classList.add('hidden');
+      document.getElementById('headerApiBtn').classList.add('hidden');
+      document.getElementById('headerRefreshBtn').classList.remove('hidden');
+      document.getElementById('headerAvatarBox').classList.add('hidden');
+      document.getElementById('sessionTabsBar').classList.add('hidden');
+      document.getElementById('headerLvlBtn').classList.add('hidden');
+      document.getElementById('headerGoldBtn').classList.add('hidden');
+      document.getElementById('headerEditBtn').classList.add('hidden');
+      document.getElementById('createFab').classList.remove('hidden');
+      document.getElementById('appTitle').innerText = "HOMEBREW RPG";
+      document.getElementById('appSubtitle').innerText = "Character Selection";
+
+      const container = document.getElementById('characterList');
+      const headerHTML = `
+        <div style="display:flex; justify-content:space-between; margin-bottom: 12px; gap:8px;">
+          <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
+          <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)" multiple>
+          <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--green-hp);" onclick="backupAllCharacters()">&#x1F4BE; BACKUP ALL</button>
+        </div>
+      `;
+
+      if (characters.length === 0) {
+        container.innerHTML = headerHTML + `<div style="text-align:center; padding:40px; color:var(--text-secondary);">No heroes found. Tap '+ CREATE HERO' to begin!</div>`;
+        return;
+      }
+
+      container.innerHTML = headerHTML + characters.map(c => {
+        const statsList = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+        const maxHp = getEffectiveMaxHp(c);
+        const maxMp = getEffectiveMaxMp(c);
+
+        return `
+        <div class="char-card">
+          <div class="card-top">
+            <div class="avatar-circle">
+              ${c.imageUri ? `<img src="${c.imageUri}">` : c.name[0].toUpperCase()}
+            </div>
+            <div class="card-meta">
+              <h3>${c.name}</h3>
+              <p>${c.race} • 🪙 ${c.gold || 0}</p>
+            </div>
+            <button class="action-icon-btn edit-btn" title="Export Hero" onclick="exportCharacter('${c.id}')">📤</button>
+            <button class="action-icon-btn edit-btn" title="Duplicate Hero" onclick="duplicateCharacter('${c.id}')">📋</button>
+            <button class="action-icon-btn edit-btn" title="Edit Hero" onclick="openEditModal('${c.id}')">✏️</button>
+            <button class="action-icon-btn delete-btn" title="Delete Hero" onclick="promptDelete('${c.id}')">🗑</button>
+          </div>
+
+          <div class="bars-container">
+            <div class="bar-group">
+              <div class="bar-header">
+                <span style="color:var(--green-hp);">HP</span>
+                <span style="color:var(--green-hp);">${c.currentHp} / ${maxHp} ${c.boostHp > 0 ? `<span class="boost-tag boost-tag-hp">+${c.boostHp} Boost</span>` : ''}</span>
+              </div>
+              <div class="bar-bg"><div class="bar-fill ${c.boostHp > 0 ? 'fill-boost' : (c.currentHp / Math.max(1, maxHp) <= 0.25 ? 'fill-hp-low' : 'fill-hp')}" style="width:${(c.currentHp / Math.max(1, maxHp)) * 100}%"></div></div>
+            </div>
+
+            ${maxMp > 0 ? `
+            <div class="bar-group">
+              <div class="bar-header">
+                <span style="color:var(--blue-mp);">MP</span>
+                <span>${c.currentMp} / ${maxMp}</span>
+              </div>
+              <div class="bar-bg"><div class="bar-fill fill-mp" style="width:${(c.currentMp / Math.max(1, maxMp)) * 100}%"></div></div>
+            </div>` : ''}
+          </div>
+
+          <div class="stats-badges">
+            ${statsList.map(k => {
+              const mod = getEquippedStatModifier(c, k);
+              const total = c[k] + mod;
+              const numColor = mod > 0 ? 'var(--green-hp)' : mod < 0 ? 'var(--crimson-primary)' : 'var(--gold-accent)';
+              const modText = mod > 0 ? `(+${mod})` : mod < 0 ? `(${mod})` : '';
+              return `
+              <div class="stat-badge">
+                <div class="lbl">${k.slice(0, 3).toUpperCase()}</div>
+                <div class="val" style="color:${numColor}">${total} ${modText ? `<span style="font-size:9px;">${modText}</span>` : ''}</div>
+              </div>`;
+            }).join('')}
+          </div>
+
+          <button class="use-btn" onclick="useCharacter('${c.id}')">▶ USE HERO</button>
+        </div>
+      `;
+      }).join('');
+    }
+
+    function useCharacter(id) {
+      activeCharId = id;
+      showBaseStatsMap = {};
+      const c = characters.find(item => item.id === id);
+      if (!c) return;
+
+      document.getElementById('selectScreen').classList.add('hidden');
+      document.getElementById('useScreen').classList.remove('hidden');
+      document.getElementById('backBtn').classList.remove('hidden');
+      document.getElementById('headerRefreshBtn').classList.add('hidden');
+      document.getElementById('headerApiBtn').classList.remove('hidden');
+      document.getElementById('sessionTabsBar').classList.remove('hidden');
+      document.getElementById('headerLvlBtn').classList.remove('hidden');
+      document.getElementById('headerLvlText').innerText = c.level || 1;
+      document.getElementById('headerGoldBtn').classList.remove('hidden');
+      document.getElementById('headerGoldText').innerText = c.gold || 0;
+      document.getElementById('headerEditBtn').classList.remove('hidden');
+      document.getElementById('createFab').classList.add('hidden');
+
+      if (c.imageUri) {
+        document.getElementById('headerAvatarBox').innerHTML = `<img src="${c.imageUri}">`;
+        document.getElementById('headerAvatarBox').classList.remove('hidden');
+      } else {
+        document.getElementById('headerAvatarBox').classList.add('hidden');
+      }
+
+      document.getElementById('appTitle').innerText = c.name;
+      document.getElementById('appSubtitle').innerText = `${c.race} • Active Session`;
+
+      switchSessionTab('vitals');
+    }
+
+    function editCurrentActiveChar() {
+      if (activeCharId) {
+        openEditModal(activeCharId);
+      }
+    }
+
+    function showSelectScreen() {
+      activeCharId = null;
+      document.getElementById('headerLvlBtn').classList.add('hidden');
+      document.getElementById('headerGoldBtn').classList.add('hidden');
+      renderSelectScreen();
+    }
+
+    function switchSessionTab(tab) {
+      currentSessionTab = tab;
+      const c = characters.find(item => item.id === activeCharId);
+
+      document.getElementById('tabVitals').classList.remove('active');
+      document.getElementById('tabAbilities').classList.remove('active');
+      document.getElementById('tabEquipment').classList.remove('active');
+      document.getElementById('tabInventory').classList.remove('active');
+      document.getElementById('tabNotes').classList.remove('active');
+
+      document.getElementById('vitalsTabContent').classList.add('hidden');
+      document.getElementById('abilitiesTabContent').classList.add('hidden');
+      document.getElementById('equipmentTabContent').classList.add('hidden');
+      document.getElementById('inventoryTabContent').classList.add('hidden');
+      document.getElementById('notesTabContent').classList.add('hidden');
+
+      if (tab === 'vitals') {
+        document.getElementById('tabVitals').classList.add('active');
+        document.getElementById('vitalsTabContent').classList.remove('hidden');
+        renderUseScreen();
+      } else if (tab === 'abilities') {
+        document.getElementById('tabAbilities').classList.add('active');
+        document.getElementById('abilitiesTabContent').classList.remove('hidden');
+        renderAbilitiesScreen();
+      } else if (tab === 'equipment') {
+        document.getElementById('tabEquipment').classList.add('active');
+        document.getElementById('equipmentTabContent').classList.remove('hidden');
+        renderEquipmentScreen();
+      } else if (tab === 'inventory') {
+        document.getElementById('tabInventory').classList.add('active');
+        document.getElementById('inventoryTabContent').classList.remove('hidden');
+        renderInventoryScreen();
+      } else if (tab === 'notes') {
+        document.getElementById('tabNotes').classList.add('active');
+        document.getElementById('notesTabContent').classList.remove('hidden');
+        renderNotesScreen();
+      }
+    }
+
+    function toggleStatBaseDisplay(statKey) {
+      showBaseStatsMap[statKey] = !showBaseStatsMap[statKey];
+      renderUseScreen();
+    }
+
+    function renderUseScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const totalArmor = getTotalArmor(c);
+      const totalWard = getTotalWard(c);
+
+      const maxHp = getEffectiveMaxHp(c);
+      const maxMp = getEffectiveMaxMp(c);
+
+      const effTotalArmor = totalArmor + (c.maxBoostArmor || 0);
+      const effTotalWard = totalWard + (c.maxBoostWard || 0);
+      const curArmor = (c.currentArmor !== null && c.currentArmor !== undefined) ? c.currentArmor : totalArmor;
+      const curWard = (c.currentWard !== null && c.currentWard !== undefined) ? c.currentWard : totalWard;
+      const effCurArmor = curArmor + (c.boostArmor || 0);
+      const effCurWard = curWard + (c.boostWard || 0);
+
+      if (effTotalArmor > 0) {
+        document.getElementById('armorBarBlock').classList.remove('hidden');
+        const turnsTagArmor = c.boostArmorTurns > 0 ? ` (${c.boostArmorTurns}t)` : (c.boostArmorResetOnNextRound !== false ? ' (R)' : '');
+        const boostTag = (c.boostArmor > 0) ? ` <span class="boost-tag boost-tag-armor" ondblclick="removeBoost('Armor')">+${c.boostArmor} Boost${turnsTagArmor}</span>` : '';
+        document.getElementById('useArmorText').innerHTML = `${curArmor} / ${totalArmor}${boostTag}`;
+        document.getElementById('useArmorFill').style.width = `${(curArmor / Math.max(1, totalArmor)) * 100}%`;
+        document.getElementById('useArmorFill').className = `bar-fill ${c.boostArmor > 0 ? 'fill-boost' : 'fill-armor'}`;
+      } else {
+        document.getElementById('armorBarBlock').classList.add('hidden');
+      }
+
+      if (effTotalWard > 0) {
+        document.getElementById('wardBarBlock').classList.remove('hidden');
+        const turnsTagWard = c.boostWardTurns > 0 ? ` (${c.boostWardTurns}t)` : (c.boostWardResetOnNextRound !== false ? ' (R)' : '');
+        const boostTag = (c.boostWard > 0) ? ` <span class="boost-tag boost-tag-ward" ondblclick="removeBoost('Ward Save')">+${c.boostWard} Boost${turnsTagWard}</span>` : '';
+        document.getElementById('useWardText').innerHTML = `${curWard} / ${totalWard}${boostTag}`;
+        document.getElementById('useWardFill').style.width = `${(curWard / Math.max(1, totalWard)) * 100}%`;
+        document.getElementById('useWardFill').className = `bar-fill ${c.boostWard > 0 ? 'fill-boost' : 'fill-ward'}`;
+      } else {
+        document.getElementById('wardBarBlock').classList.add('hidden');
+      }
+
+      const turnsTag = c.boostHpTurns > 0 ? ` (${c.boostHpTurns}t)` : (c.boostHpResetOnNextRound !== false ? ' (R)' : '');
+      const hpText = c.boostHp > 0 
+        ? `${c.currentHp} / ${maxHp} <span class="boost-tag boost-tag-hp" ondblclick="removeBoost('HP')">+${c.boostHp} Boost${turnsTag}</span>`
+        : `${c.currentHp} / ${maxHp}`;
+
+      document.getElementById('useHpText').innerHTML = hpText;
+        document.getElementById('useHpText').style.color = 'var(--green-hp)';
+      document.getElementById('useHpFill').style.width = `${(c.currentHp / Math.max(1, maxHp)) * 100}%`;
+      const hpRatio = c.currentHp / Math.max(1, maxHp);
+      const isHpLow = hpRatio <= 0.25 && c.boostHp <= 0;
+      document.getElementById('useHpFill').className = `bar-fill ${c.boostHp > 0 ? 'fill-boost' : (isHpLow ? 'fill-hp-low' : 'fill-hp')}`;
+
+      if (maxMp > 0) {
+        document.getElementById('useMpBlock').classList.remove('hidden');
+        document.getElementById('useMpText').innerText = `${c.currentMp} / ${maxMp}`;
+        document.getElementById('useMpFill').style.width = `${(c.currentMp / Math.max(1, maxMp)) * 100}%`;
+      } else {
+        document.getElementById('useMpBlock').classList.add('hidden');
+      }
+
+      const statsKeys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+      document.getElementById('statsGrid').innerHTML = statsKeys.map(k => {
+        const mod = getEquippedStatModifier(c, k);
+        const baseVal = c[k];
+        const totalVal = baseVal + mod;
+
+        const isShowingBase = !!showBaseStatsMap[k];
+        const numColor = mod > 0 ? 'var(--green-hp)' : mod < 0 ? 'var(--crimson-primary)' : 'var(--gold-accent)';
+        const modText = mod > 0 ? `(+${mod})` : mod < 0 ? `(${mod})` : '';
+
+        return `
+        <div class="stat-card-display" onclick="toggleStatBaseDisplay('${k}')">
+          <div style="font-size:10px; font-weight:700; color:${isShowingBase ? 'var(--gold-accent)' : 'var(--text-secondary)'}; text-transform:uppercase;">
+            ${k} ${isShowingBase ? '(BASE)' : ''}
+          </div>
+          <div style="font-size:24px; font-weight:bold; color:${isShowingBase ? 'var(--text-primary)' : numColor}; margin-top:4px;">
+            ${isShowingBase ? baseVal : totalVal}
+            ${(!isShowingBase && mod !== 0) ? `<span style="font-size:16px; color:${numColor};">${modText}</span>` : ''}
+          </div>
+          ${isShowingBase ? `<div style="font-size:9px; color:var(--text-secondary); margin-top:2px;">Tap to show total</div>` : ''}
+        </div>
+      `;
+      }).join('');
+
+      // Render Active Effects Section
+      const effects = c.effects || [];
+      document.getElementById('effectsTitle').innerText = `ACTIVE EFFECTS & BUFFS (${effects.length})`;
+      const effectsContainer = document.getElementById('effectsList');
+
+      if (effects.length === 0) {
+        effectsContainer.innerHTML = `<div style="font-size:12px; color:var(--text-secondary); padding:4px 0;">No active status effects or buffs applied.</div>`;
+      } else {
+        effectsContainer.innerHTML = effects.map(e => {
+          let descHtml = "";
+          if (e.effectType === "STAT_MODIFIER") {
+            const allMods = {};
+            if (e.targetStat && e.value) allMods[e.targetStat] = e.value;
+            if (e.statModifiers) {
+              for (const [k, v] of Object.entries(e.statModifiers)) {
+                allMods[k] = (allMods[k] || 0) + v;
+              }
+            }
+            const entries = Object.entries(allMods);
+            descHtml = entries.map(([k, v]) => {
+              const valStr = v > 0 ? `+${v}` : `${v}`;
+              const col = v >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
+              return `<span style="color:${col}">${k.toUpperCase()}: ${valStr}</span>`;
+            }).join('<span style="color:var(--text-secondary)">, </span>');
+          } else if (e.effectType === "HP_CHANGE_PER_ROUND") {
+            const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
+            const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
+            if (e.value < 0) {
+              const dt = (e.damageType || 'unsaveable').toUpperCase();
+              descHtml = `<span style="color:${col}">${valStr} ${dt} HP / round</span>`;
+            } else {
+              descHtml = `<span style="color:${col}">${valStr} HP / round</span>`;
+            }
+          } else if (e.effectType === "MP_CHANGE_PER_ROUND") {
+            const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
+            const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
+            descHtml = `<span style="color:${col}">${valStr} MP / round</span>`;
+          }
+
+          const r = parseInt(e.roundsRemaining) || 0;
+          const durStr = r === 0 ? "Unlimited" : `${r} Rounds left`;
+
+          return `
+          <div class="effect-item-row" style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="flex:1;">
+              <div style="font-weight:bold; font-size:13px;">${e.name}</div>
+              <div style="font-size:11px; font-weight:600;">${descHtml}</div>
+              <div style="font-size:10px; color:var(--gold-accent);">Duration: ${durStr}</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="action-icon-btn" title="Edit Effect" onclick="openAddEffectModal('${e.id}')" style="color:var(--gold-accent);">&#x270E;</button>
+              <button class="action-icon-btn delete-btn" title="Remove Effect" onclick="removeEffect('${e.id}')">&#x1F5D1;</button>
+            </div>
+          </div>
+        `;
+        }).join('');
+      }
+    }
+
+    let currentEditingEffectId = null;
+
+    function openAddEffectModal(editId = null) {
+      currentEditingEffectId = editId;
+      const c = characters.find(item => item.id === activeCharId);
+      let effect = null;
+      if (editId && c && c.effects) {
+        effect = c.effects.find(e => e.id === editId);
+      }
+
+      if (effect) {
+        document.getElementById('effectInputName').value = effect.name;
+        document.getElementById('effectInputType').value = effect.effectType;
+        document.getElementById('effectInputValue').value = effect.effectType !== 'STAT_MODIFIER' ? effect.value : '1';
+        document.getElementById('effectInputRounds').value = effect.roundsRemaining || 0;
+        
+        const stats = ["strength", "intelligence", "endurance", "spirit", "finesse", "charisma"];
+        stats.forEach(st => {
+          let v = 0;
+          if (effect.effectType === 'STAT_MODIFIER') {
+            if (effect.statModifiers && effect.statModifiers[st]) {
+              v = effect.statModifiers[st];
+            }
+            if (effect.targetStat && effect.targetStat.toLowerCase() === st) {
+              v += (effect.value || 0);
+            }
+          }
+          document.getElementById('statMod_' + st).value = v;
+        });
+
+        if (effect.effectType === 'HP_CHANGE_PER_ROUND' && effect.value < 0) {
+          document.getElementById('effectInputDamageType').value = effect.damageType || 'unsaveable';
+        }
+      } else {
+        document.getElementById('effectInputName').value = '';
+        document.getElementById('effectInputType').value = 'STAT_MODIFIER';
+        document.getElementById('effectInputValue').value = '1';
+        document.getElementById('effectInputRounds').value = '0';
+        
+        const stats = ["strength", "intelligence", "endurance", "spirit", "finesse", "charisma"];
+        stats.forEach(st => {
+          document.getElementById('statMod_' + st).value = '0';
+        });
+      }
+      
+      toggleEffectTargetFields();
+      document.getElementById('addEffectModal').classList.remove('hidden');
+    }
+
+    function closeAddEffectModal() {
+      document.getElementById('addEffectModal').classList.add('hidden');
+    }
+
+    function toggleEffectTargetFields() {
+      const type = document.getElementById('effectInputType').value;
+      const val = parseInt(document.getElementById('effectInputValue').value) || 0;
+      if (type === 'STAT_MODIFIER') {
+        document.getElementById('effectStatGroup').classList.remove('hidden');
+        document.getElementById('effectValueGroup').classList.add('hidden');
+      } else {
+        document.getElementById('effectStatGroup').classList.add('hidden');
+        document.getElementById('effectValueGroup').classList.remove('hidden');
+      }
+
+      if (type === 'HP_CHANGE_PER_ROUND' && val < 0) {
+        document.getElementById('effectDamageTypeGroup').classList.remove('hidden');
+      } else {
+        document.getElementById('effectDamageTypeGroup').classList.add('hidden');
+      }
+    }
+
+    function saveNewEffect() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const name = document.getElementById('effectInputName').value.trim();
+      const effectType = document.getElementById('effectInputType').value;
+      const value = parseInt(document.getElementById('effectInputValue').value) || 0;
+      const roundsRemaining = parseInt(document.getElementById('effectInputRounds').value) || 0;
+      const damageType = document.getElementById('effectInputDamageType').value;
+
+      if (!name) { alert("Please enter an effect name"); return; }
+      
+      let statModifiers = {};
+      if (effectType === 'STAT_MODIFIER') {
+        const stats = ["strength", "intelligence", "endurance", "spirit", "finesse", "charisma"];
+        stats.forEach(st => {
+          const v = parseInt(document.getElementById('statMod_' + st).value) || 0;
+          if (v !== 0) statModifiers[st] = v;
+        });
+      }
+
+      adjustVitalsOnMaxChange(c, () => {
+        if (!c.effects) c.effects = [];
+        
+        let targetEffect = c.effects.find(e => e.id === currentEditingEffectId);
+        if (!targetEffect) {
+            targetEffect = { id: Date.now().toString() };
+            c.effects.push(targetEffect);
+        }
+        
+        targetEffect.name = name;
+        targetEffect.effectType = effectType;
+        targetEffect.targetStat = null;
+        targetEffect.statModifiers = statModifiers;
+        targetEffect.value = effectType === 'STAT_MODIFIER' ? 0 : value;
+        targetEffect.roundsRemaining = roundsRemaining;
+        targetEffect.damageType = (effectType === 'HP_CHANGE_PER_ROUND' && value < 0) ? damageType : 'unsaveable';
+      });
+
+      saveData();
+      closeAddEffectModal();
+      renderUseScreen();
+    }
+
+    function removeEffect(effectId) {
+      if(!confirm("Are you sure you want to remove this effect?")) return;
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.effects) return;
+      adjustVitalsOnMaxChange(c, () => {
+        c.effects = c.effects.filter(e => e.id !== effectId);
+      });
+      saveData();
+      renderUseScreen();
+    }
+
+    function openDamageModal() {
+      document.getElementById('damageAmountInput').value = '';
+      document.getElementById('damageModal').classList.remove('hidden');
+    }
+
+    function closeDamageModal() {
+      document.getElementById('damageModal').classList.add('hidden');
+    }
+
+    function showFloatingDamage(fillId, amount, isHeal = false) {
+      if (amount <= 0) return;
+      const fillEl = document.getElementById(fillId);
+      if (!fillEl) return;
+      // .bar-bg is parent, .bar-group is grandparent
+      const container = fillEl.parentElement.parentElement;
+      const floatEl = document.createElement('div');
+      floatEl.className = 'floating-damage';
+      if (isHeal) {
+        floatEl.innerText = '+' + amount;
+        floatEl.style.color = 'var(--green-hp)';
+      } else {
+        floatEl.innerText = '-' + amount;
+        floatEl.style.color = 'var(--crimson-primary)';
+      }
+      container.appendChild(floatEl);
+      setTimeout(() => {
+        if (floatEl.parentElement) floatEl.remove();
+      }, 1500);
+    }
+
+    function confirmApplyDamage() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const amount = parseInt(document.getElementById('damageAmountInput').value);
+      if (isNaN(amount) || amount <= 0) { closeDamageModal(); return; }
+
+      const selectedType = document.querySelector('input[name="dmgType"]:checked').value;
+
+      const totalArmor = getTotalArmor(c);
+      const totalWard = getTotalWard(c);
+
+      let curArmor = (c.currentArmor !== null && c.currentArmor !== undefined) ? c.currentArmor : totalArmor;
+      let curWard = (c.currentWard !== null && c.currentWard !== undefined) ? c.currentWard : totalWard;
+      let rem = amount;
+
+      let curBoostArmor = c.boostArmor || 0;
+      let curBoostWard = c.boostWard || 0;
+
+      if (selectedType === 'physical') {
+        let armorChange = 0;
+        if (rem > 0 && curBoostArmor > 0) {
+          if (rem <= curBoostArmor) {
+            armorChange += rem;
+            curBoostArmor -= rem;
+            rem = 0;
+          } else {
+            armorChange += curBoostArmor;
+            rem -= curBoostArmor;
+            curBoostArmor = 0;
+          }
+        }
+        if (rem > 0 && curArmor > 0) {
+          if (rem <= curArmor) {
+            armorChange += rem;
+            curArmor -= rem;
+            rem = 0;
+          } else {
+            armorChange += curArmor;
+            rem -= curArmor;
+            curArmor = 0;
+          }
+        }
+        if (armorChange > 0) showFloatingDamage('useArmorFill', armorChange);
+      } else if (selectedType === 'magical') {
+        let wardChange = 0;
+        if (rem > 0 && curBoostWard > 0) {
+          if (rem <= curBoostWard) {
+            wardChange += rem;
+            curBoostWard -= rem;
+            rem = 0;
+          } else {
+            wardChange += curBoostWard;
+            rem -= curBoostWard;
+            curBoostWard = 0;
+          }
+        }
+        if (rem > 0 && curWard > 0) {
+          if (rem <= curWard) {
+            wardChange += rem;
+            curWard -= rem;
+            rem = 0;
+          } else {
+            wardChange += curWard;
+            rem -= curWard;
+            curWard = 0;
+          }
+        }
+        if (wardChange > 0) showFloatingDamage('useWardFill', wardChange);
+      }
+
+      let hpDmg = rem;
+      if (rem > 0 && c.boostHp > 0) {
+        if (rem <= c.boostHp) {
+          c.boostHp -= rem;
+          rem = 0;
+        } else {
+          rem -= c.boostHp;
+          c.boostHp = 0;
+        }
+      }
+
+      if (rem > 0) {
+        c.currentHp = Math.max(0, c.currentHp - rem);
+      }
+      
+      if (hpDmg > 0) {
+        showFloatingDamage('useHpFill', hpDmg);
+      }
+
+      c.currentArmor = curArmor;
+      c.currentWard = curWard;
+      c.boostArmor = curBoostArmor;
+      c.boostWard = curBoostWard;
+
+      saveData();
+      closeDamageModal();
+      renderUseScreen();
+    }
+
+    /* ABILITIES TAB */
+    let editingAbilityId = null;
+
+    function formatAbilityDescription(c, rawDesc) {
+      if (!rawDesc) return '';
+      if (!c) return rawDesc;
+
+      const keys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+      let res = rawDesc;
+      keys.forEach(k => {
+        const total = (c[k] || 0) + getEquippedStatModifier(c, k);
+        const tagShort = k.slice(0, 3).toUpperCase();
+        const regexShort = new RegExp(`\\{${tagShort}\\}`, 'gi');
+        const regexLong = new RegExp(`\\{${k}\\}`, 'gi');
+        res = res.replace(regexShort, total).replace(regexLong, total);
+      });
+      return res;
+    }
+
+    const expandedCardIds = new Set();
+
+    function toggleCardExpansion(id) {
+      if (expandedCardIds.has(id)) {
+        expandedCardIds.delete(id);
+      } else {
+        expandedCardIds.add(id);
+      }
+      switchSessionTab(currentSessionTab);
+    }
+
+    function renderAbilitiesScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const container = document.getElementById('abilitiesList');
+      const abilities = c.abilities || [];
+
+      if (abilities.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">✨</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">No Abilities Added</div><div style="font-size:14px;">Tap '+ ADD ABILITY' to create spells, skills, or special attacks!</div></div>`;
+        return;
+      }
+
+      container.innerHTML = abilities.map(a => {
+        const evalDesc = formatAbilityDescription(c, a.description);
+        const showFormula = a.description && (a.description !== evalDesc);
+        const maxCharLimit = 130;
+        const isExpanded = expandedCardIds.has(a.id);
+        const isLong = evalDesc.length > maxCharLimit;
+        const displayText = (isLong && !isExpanded) ? (evalDesc.slice(0, maxCharLimit) + '...') : evalDesc;
+
+        return `
+          <div class="item-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-weight:bold; font-size:16px; color:var(--gold-accent);">${a.name}</span>
+              <div>
+                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('abilities', '${a.id}', 'up')">🔼</button>
+                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('abilities', '${a.id}', 'down')">🔽</button>
+                <button class="action-icon-btn edit-btn" title="Edit Ability" onclick="openEditAbilityModal('${a.id}')">✏️</button>
+                <button class="action-icon-btn delete-btn" title="Delete Ability" onclick="deleteAbility('${a.id}')">🗑</button>
+              </div>
+            </div>
+
+            ${evalDesc ? `
+              <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'};" ${isLong ? `onclick="toggleCardExpansion('${a.id}')"` : ''}>
+                <div style="font-size:14px; font-weight:500; color:var(--text-primary); white-space:pre-line;">${displayText}</div>
+                ${isLong ? `<div style="font-size:11px; font-weight:bold; color:var(--gold-accent); margin-top:4px;">${isExpanded ? '▲ Tap to collapse' : '▼ Tap to expand'}</div>` : ''}
+                ${showFormula ? `<div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Formula: ${a.description}</div>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function insertAbilityTag(tag) {
+      const textarea = document.getElementById('abilityInputDesc');
+      textarea.value += tag;
+      updateAbilityPreview();
+    }
+
+    function updateAbilityPreview() {
+      const c = characters.find(item => item.id === activeCharId);
+      const raw = document.getElementById('abilityInputDesc').value;
+      const previewBox = document.getElementById('abilityPreviewBox');
+      if (!raw.trim()) {
+        previewBox.innerText = 'Preview will appear here as you type...';
+        previewBox.style.color = 'var(--text-secondary)';
+      } else {
+        previewBox.innerText = formatAbilityDescription(c, raw);
+        previewBox.style.color = 'var(--text-primary)';
+      }
+    }
+
+    function openAddAbilityModal() {
+      editingAbilityId = null;
+      document.getElementById('addAbilityModalTitle').innerText = 'ADD ABILITY';
+      document.getElementById('addAbilityModalSaveBtn').innerText = 'SAVE ABILITY';
+      document.getElementById('abilityInputName').value = '';
+      document.getElementById('abilityInputDesc').value = '';
+      updateAbilityPreview();
+      document.getElementById('addAbilityModal').classList.remove('hidden');
+    }
+
+    function openEditAbilityModal(abilityId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.abilities) return;
+      const a = c.abilities.find(item => item.id === abilityId);
+      if (!a) return;
+
+      editingAbilityId = abilityId;
+      document.getElementById('addAbilityModalTitle').innerText = 'EDIT ABILITY';
+      document.getElementById('addAbilityModalSaveBtn').innerText = 'SAVE CHANGES';
+      document.getElementById('abilityInputName').value = a.name;
+      document.getElementById('abilityInputDesc').value = a.description;
+      updateAbilityPreview();
+      document.getElementById('addAbilityModal').classList.remove('hidden');
+    }
+
+    function closeAddAbilityModal() {
+      document.getElementById('addAbilityModal').classList.add('hidden');
+    }
+
+    function saveNewAbility() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const name = document.getElementById('abilityInputName').value.trim();
+      const description = document.getElementById('abilityInputDesc').value.trim();
+
+      if (!name) { alert("Please enter an ability name"); return; }
+
+      if (!c.abilities) c.abilities = [];
+
+      if (editingAbilityId) {
+        const a = c.abilities.find(item => item.id === editingAbilityId);
+        if (a) {
+          a.name = name;
+          a.description = description;
+        }
+      } else {
+        c.abilities.push({
+          id: Date.now().toString(),
+          name,
+          description
+        });
+      }
+
+      saveData();
+      closeAddAbilityModal();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function deleteAbility(abilityId) {
+      if(!confirm("Are you sure you want to delete this ability?")) return;
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.abilities) return;
+      c.abilities = c.abilities.filter(a => a.id !== abilityId);
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    /* NOTES TAB */
+    let editingNoteId = null;
+    let showArchivedNotes = false;
+
+    function toggleShowArchivedNotes() {
+      showArchivedNotes = !showArchivedNotes;
+      renderNotesScreen();
+    }
+
+    function toggleArchiveNote(noteId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.notes) return;
+      const n = c.notes.find(item => item.id === noteId);
+      if (n) {
+        n.isArchived = !n.isArchived;
+      }
+      saveData();
+      renderNotesScreen();
+    }
+
+    function renderNotesScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const container = document.getElementById('notesList');
+      const notes = c.notes || [];
+      const archivedCount = notes.filter(n => n.isArchived).length;
+      const visibleNotes = notes.filter(n => !n.isArchived || showArchivedNotes);
+
+      let headerHtml = '';
+      if (archivedCount > 0) {
+        headerHtml = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <button class="prompt-btn" style="flex:none; width:auto; padding:4px 10px; font-size:11px; background:${showArchivedNotes ? 'rgba(212,175,55,0.2)' : 'var(--surface-variant)'}; color:${showArchivedNotes ? 'var(--gold-accent)' : 'var(--text-secondary)'}; border:1px solid ${showArchivedNotes ? 'var(--gold-accent)' : 'transparent'};" onclick="toggleShowArchivedNotes()">
+              ${showArchivedNotes ? '🙈 Hide Archived Notes (' + archivedCount + ')' : '👁️ Show Archived Notes (' + archivedCount + ')'}
+            </button>
+          </div>
+        `;
+      }
+
+      if (visibleNotes.length === 0) {
+        container.innerHTML = headerHtml + `
+          <div style="text-align:center; padding:40px; color:var(--text-secondary);">
+            ${notes.length === 0 ? "No notes created yet. Tap '+ ADD NOTE' to write down quests, secrets, or NPC info!" : "All notes are currently archived. Tap 'Show Archived Notes' to view them."}
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = headerHtml + visibleNotes.map(n => {
+        const maxCharLimit = 130;
+        const isExpanded = expandedCardIds.has(n.id);
+        const isLong = (n.content || '').length > maxCharLimit;
+        const displayText = (isLong && !isExpanded) ? (n.content.slice(0, maxCharLimit) + '...') : n.content;
+
+        return `
+          <div class="item-card" style="${n.isArchived ? 'opacity:0.65; border:1px dashed var(--surface-variant);' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-weight:bold; font-size:16px; color:${n.isArchived ? 'var(--text-secondary)' : 'var(--gold-accent)'};">${n.title}</span>
+                ${n.tag ? `<span style="font-size:10px; font-weight:bold; color:var(--cyan-accent); background:var(--surface-variant); padding:2px 6px; border-radius:4px;">${n.tag.toUpperCase()}</span>` : ''}
+                ${n.isArchived ? `<span style="font-size:9px; font-weight:bold; color:var(--crimson-primary); background:rgba(229,57,53,0.15); padding:2px 6px; border-radius:4px;">ARCHIVED</span>` : ''}
+              </div>
+              <div style="display:flex; gap:4px; align-items:center;">
+                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('notes', '${n.id}', 'up')">🔼</button>
+                <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('notes', '${n.id}', 'down')">🔽</button>
+                ${isLong ? `<button class="action-icon-btn edit-btn" style="color:var(--gold-accent); font-weight:bold;" title="${isExpanded ? 'Collapse Note' : 'Expand Note'}" onclick="toggleCardExpansion('${n.id}')">${isExpanded ? '▲' : '▼'}</button>` : ''}
+                <button class="action-icon-btn edit-btn" title="${n.isArchived ? 'Unarchive Note' : 'Archive Note'}" onclick="toggleArchiveNote('${n.id}')">${n.isArchived ? '📥' : '📦'}</button>
+                <button class="action-icon-btn edit-btn" title="Edit Note" onclick="openEditNoteModal('${n.id}')">✏️</button>
+                <button class="action-icon-btn delete-btn" title="Delete Note" onclick="deleteNote('${n.id}')">🗑</button>
+              </div>
+            </div>
+
+            ${n.content ? `
+              <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'};" ${isLong ? `onclick="toggleCardExpansion('${n.id}')"` : ''}>
+                <div style="font-size:14px; font-weight:400; color:var(--text-primary); white-space:pre-line;">${displayText}</div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setNoteTag(tag) {
+      document.getElementById('noteInputTag').value = tag;
+    }
+
+    function openAddNoteModal() {
+      editingNoteId = null;
+      document.getElementById('addNoteModalTitle').innerText = 'ADD NOTE';
+      document.getElementById('addNoteModalSaveBtn').innerText = 'SAVE NOTE';
+      document.getElementById('noteInputTitle').value = '';
+      document.getElementById('noteInputTag').value = '';
+      document.getElementById('noteInputContent').value = '';
+      document.getElementById('addNoteModal').classList.remove('hidden');
+    }
+
+    function openEditNoteModal(noteId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.notes) return;
+      const n = c.notes.find(item => item.id === noteId);
+      if (!n) return;
+
+      editingNoteId = noteId;
+      document.getElementById('addNoteModalTitle').innerText = 'EDIT NOTE';
+      document.getElementById('addNoteModalSaveBtn').innerText = 'SAVE CHANGES';
+      document.getElementById('noteInputTitle').value = n.title;
+      document.getElementById('noteInputTag').value = n.tag || '';
+      document.getElementById('noteInputContent').value = n.content || '';
+      document.getElementById('addNoteModal').classList.remove('hidden');
+    }
+
+    function closeAddNoteModal() {
+      document.getElementById('addNoteModal').classList.add('hidden');
+    }
+
+    function saveNewNote() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const title = document.getElementById('noteInputTitle').value.trim();
+      const tag = document.getElementById('noteInputTag').value.trim();
+      const content = document.getElementById('noteInputContent').value.trim();
+
+      if (!title) { alert("Please enter a note title"); return; }
+
+      if (!c.notes) c.notes = [];
+
+      if (editingNoteId) {
+        const n = c.notes.find(item => item.id === editingNoteId);
+        if (n) {
+          n.title = title;
+          n.tag = tag;
+          n.content = content;
+        }
+      } else {
+        c.notes.push({
+          id: Date.now().toString(),
+          title,
+          tag,
+          content
+        });
+      }
+
+      saveData();
+      closeAddNoteModal();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function deleteNote(noteId) {
+      if(!confirm("Are you sure you want to delete this note?")) return;
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.notes) return;
+      c.notes = c.notes.filter(n => n.id !== noteId);
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    /* EQUIPMENT TAB */
+    function renderEquipmentScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const container = document.getElementById('equipmentList');
+      const equippedItems = (c.inventory || []).filter(i => i.isEquipped);
+      if (equippedItems.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">🛡️</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">No Equipped Items</div><div style="font-size:14px;">Equip items from your Inventory tab, or tap '+ ADD ITEM'!</div></div>`;
+        return;
+      }
+      const grouped = {};
+      equippedItems.forEach(item => {
+        const cat = item.category || 'Misc';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(item);
+      });
+      const categories = c.equipmentCategoryOrder || Object.keys(grouped).sort();
+      c.equipmentCategoryOrder = categories; // save it back
+      
+      let htmlStr = '';
+      categories.forEach((cat, catIdx) => {
+        const items = grouped[cat];
+        if (!items || items.length === 0) return;
+        
+        const isCollapsed = !c.equipmentCategoryCollapsed || c.equipmentCategoryCollapsed[cat] !== false;
+        
+        htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
+        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('equipment', '${cat}')">`;
+        htmlStr += `  <div style="font-weight:bold; color:var(--gold-accent);">`;
+        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${cat.toUpperCase()} (${items.length})`;
+        htmlStr += `  </div>`;
+        htmlStr += `  <div style="display:flex; gap:8px;" onclick="event.stopPropagation()">`;
+        if (catIdx > 0) {
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', '${cat}', 'up')">🔼</button>`;
+        }
+        if (catIdx < categories.length - 1) {
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', '${cat}', 'down')">🔽</button>`;
+        }
+        htmlStr += `  </div>`;
+        htmlStr += `</div>`;
+        
+        if (!isCollapsed) {
+          htmlStr += `<div class="category-items" style="margin-top:8px;">`;
+          items.forEach(item => {
+            htmlStr += `
+            <div class="item-card equipped">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <span style="font-weight:bold; font-size:15px;">${item.name}</span>
+                </div>
+                <div>
+                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', true)">🔼</button>
+                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', true)">🔽</button>
+                  <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
+                  <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
+                </div>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
+                ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
+                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
+              </div>
+              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
+              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}
+              <button class="prompt-btn" style="background:rgba(229, 57, 53, 0.15); color:var(--crimson-primary);" onclick="toggleEquip('${item.id}')">✖ UNEQUIP (MOVE TO INVENTORY)</button>
+            </div>`;
+          });
+          htmlStr += `</div>`;
+        }
+        htmlStr += `</div>`;
+      });
+      container.innerHTML = htmlStr;
+    }
+
+    /* INVENTORY TAB */
+    function renderInventoryScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const container = document.getElementById('inventoryList');
+      const unequippedItems = (c.inventory || []).filter(i => !i.isEquipped);
+      if (unequippedItems.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-secondary);"><div style="font-size:48px; margin-bottom:12px;">🎒</div><div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">Inventory is Empty</div><div style="font-size:14px;">Unequip items from Equipment, or tap '+ ADD ITEM'!</div></div>`;
+        return;
+      }
+      const grouped = {};
+      unequippedItems.forEach(item => {
+        const cat = item.category || 'Misc';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(item);
+      });
+      const categories = c.inventoryCategoryOrder || Object.keys(grouped).sort();
+      c.inventoryCategoryOrder = categories; 
+      
+      let htmlStr = '';
+      categories.forEach((cat, catIdx) => {
+        const items = grouped[cat];
+        if (!items || items.length === 0) return;
+        
+        const isCollapsed = !c.inventoryCategoryCollapsed || c.inventoryCategoryCollapsed[cat] !== false;
+        
+        htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
+        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('inventory', '${cat}')">`;
+        htmlStr += `  <div style="font-weight:bold; color:var(--text-secondary);">`;
+        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${cat.toUpperCase()} (${items.length})`;
+        htmlStr += `  </div>`;
+        htmlStr += `  <div style="display:flex; gap:8px;" onclick="event.stopPropagation()">`;
+        if (catIdx > 0) {
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', '${cat}', 'up')">🔼</button>`;
+        }
+        if (catIdx < categories.length - 1) {
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', '${cat}', 'down')">🔽</button>`;
+        }
+        htmlStr += `  </div>`;
+        htmlStr += `</div>`;
+        
+        if (!isCollapsed) {
+          htmlStr += `<div class="category-items" style="margin-top:8px;">`;
+          items.forEach(item => {
+            htmlStr += `
+            <div class="item-card">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <span style="font-weight:bold; font-size:15px;">${item.name}</span>
+                </div>
+                <div>
+                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', false)">🔼</button>
+                  <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('inventory', '${item.id}', 'down', false)">🔽</button>
+                  <button class="action-icon-btn edit-btn" title="Edit Item" onclick="openEditItemModal('${item.id}')">✏️</button>
+                  <button class="action-icon-btn delete-btn" title="Delete Item" onclick="deleteItem('${item.id}')">🗑</button>
+                </div>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
+                ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
+                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
+              </div>
+              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
+              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}`;
+              
+              if (item.isConsumable) {
+                htmlStr += `<div style="display:flex; align-items:center; gap:8px; margin-top:8px;">`;
+                htmlStr += `  <button class="prompt-btn" style="width:auto; padding:4px 12px; background:var(--surface-variant);" onclick="adjustConsumable('${item.id}', -1)">-</button>`;
+                htmlStr += `  <span style="font-weight:bold;">${item.consumableAmount}</span>`;
+                htmlStr += `  <button class="prompt-btn" style="width:auto; padding:4px 12px; background:var(--surface-variant);" onclick="adjustConsumable('${item.id}', 1)">+</button>`;
+                htmlStr += `</div>`;
+              } else {
+                htmlStr += `<button class="prompt-btn" style="background:rgba(76, 175, 80, 0.15); color:var(--green-hp);" onclick="toggleEquip('${item.id}')">✓ EQUIP (MOVE TO EQUIPMENT)</button>`;
+              }
+            htmlStr += `</div>`;
+          });
+          htmlStr += `</div>`;
+        }
+        htmlStr += `</div>`;
+      });
+      container.innerHTML = htmlStr;
+    }
+
+    
+    function moveCategory(type, catName, direction) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      let orderList = (type === 'equipment') ? c.equipmentCategoryOrder : c.inventoryCategoryOrder;
+      if (!orderList) return;
+      const idx = orderList.indexOf(catName);
+      if (idx < 0) return;
+      
+      if (direction === 'up' && idx > 0) {
+        const temp = orderList[idx];
+        orderList[idx] = orderList[idx - 1];
+        orderList[idx - 1] = temp;
+      } else if (direction === 'down' && idx < orderList.length - 1) {
+        const temp = orderList[idx];
+        orderList[idx] = orderList[idx + 1];
+        orderList[idx + 1] = temp;
+      }
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function toggleCategoryCollapse(type, catName) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      if (type === 'equipment') {
+        if (!c.equipmentCategoryCollapsed) c.equipmentCategoryCollapsed = {};
+        if (c.equipmentCategoryCollapsed[catName] === undefined) c.equipmentCategoryCollapsed[catName] = true;
+        c.equipmentCategoryCollapsed[catName] = !c.equipmentCategoryCollapsed[catName];
+      } else {
+        if (!c.inventoryCategoryCollapsed) c.inventoryCategoryCollapsed = {};
+        if (c.inventoryCategoryCollapsed[catName] === undefined) c.inventoryCategoryCollapsed[catName] = true;
+        c.inventoryCategoryCollapsed[catName] = !c.inventoryCategoryCollapsed[catName];
+      }
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function toggleAllCategories(type) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const isEquip = type === 'equipment';
+      const items = (c.inventory || []).filter(i => isEquip ? i.isEquipped : !i.isEquipped);
+      const categories = [...new Set(items.map(i => i.category || 'Misc'))];
+      
+      let collapseState = isEquip ? c.equipmentCategoryCollapsed : c.inventoryCategoryCollapsed;
+      if (!collapseState) collapseState = {};
+      
+      const anyExpanded = categories.some(cat => collapseState[cat] === false);
+      const newState = anyExpanded ? true : false;
+      
+      categories.forEach(cat => { collapseState[cat] = newState; });
+      if (isEquip) c.equipmentCategoryCollapsed = collapseState;
+      else c.inventoryCategoryCollapsed = collapseState;
+      
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+    
+    function adjustConsumable(itemId, amount) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.inventory) return;
+      const item = c.inventory.find(i => i.id === itemId);
+      if (item && item.isConsumable) {
+        item.consumableAmount += amount;
+        if (item.consumableAmount <= 0) {
+            item.consumableAmount = 0;
+            if (confirm(`Consumable depleted! Do you want to delete ${item.name}?`)) {
+                deleteItem(item.id, true);
+                return;
+            }
+        }
+        saveData();
+        switchSessionTab(currentSessionTab);
+      }
+    }
+
+    function toggleEquip(itemId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.inventory) return;
+      adjustVitalsOnMaxChange(c, () => {
+        const item = c.inventory.find(i => i.id === itemId);
+        if (item) {
+          item.isEquipped = !item.isEquipped;
+          c.currentArmor = null;
+          c.currentWard = null;
+        }
+      });
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function deleteItem(itemId, force = false) {
+      if (!force && !confirm("Are you sure you want to delete this item?")) return;
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.inventory) return;
+      adjustVitalsOnMaxChange(c, () => {
+        c.inventory = c.inventory.filter(i => i.id !== itemId);
+        c.currentArmor = null;
+        c.currentWard = null;
+      });
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function toggleItemFormSections() {
+      const hasArmor = document.getElementById('chkHasArmor').checked;
+      const hasWard = document.getElementById('chkHasWard').checked;
+      const modifiesStats = document.getElementById('chkModifiesStats').checked;
+      const hasAttacks = document.getElementById('chkHasAttacks').checked;
+      const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
+
+
+      if (hasArmor) document.getElementById('armorInputBlock').classList.remove('hidden');
+      else document.getElementById('armorInputBlock').classList.add('hidden');
+
+      if (hasWard) document.getElementById('wardInputBlock').classList.remove('hidden');
+      else document.getElementById('wardInputBlock').classList.add('hidden');
+
+      if (modifiesStats) {
+        document.getElementById('statModBlock').classList.remove('hidden');
+        renderStatModSteppers();
+      } else {
+        document.getElementById('statModBlock').classList.add('hidden');
+      }
+
+      if (hasAttacks) document.getElementById('attacksInputBlock').classList.remove('hidden');
+      else document.getElementById('attacksInputBlock').classList.add('hidden');
+
+      if (hasSpecialEffects) document.getElementById('specialEffectsInputBlock').classList.remove('hidden');
+      else document.getElementById('specialEffectsInputBlock').classList.add('hidden');
+
+      let isEquipped = document.getElementById('itemInputEquipped').value === 'true';
+      let chkIsConsumable = document.getElementById('chkIsConsumable');
+      
+      if (isEquipped) {
+        chkIsConsumable.checked = false;
+        document.getElementById('consumableCheckboxRow').classList.add('hidden');
+      } else {
+        document.getElementById('consumableCheckboxRow').classList.remove('hidden');
+      }
+
+      const isConsumable = chkIsConsumable.checked;
+
+      if (isConsumable) {
+        document.getElementById('consumableInputBlock').classList.remove('hidden');
+        document.getElementById('itemEquippedBlock').classList.add('hidden');
+        document.getElementById('itemInputEquipped').value = 'false';
+      } else {
+        document.getElementById('consumableInputBlock').classList.add('hidden');
+        document.getElementById('itemEquippedBlock').classList.remove('hidden');
+      }
+    }
+
+    function renderStatModSteppers() {
+      const keys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+      document.getElementById('statModSteppersList').innerHTML = keys.map(k => `
+        <div class="stepper-row">
+          <div style="font-size:12px; font-weight:600; text-transform:capitalize;">${k}</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="stepper-btn" onclick="changeStatMod('${k}', -1)">-</button>
+            <span style="font-weight:bold; min-width:28px; text-align:center; color:${tempStatMods[k] > 0 ? 'var(--green-hp)' : tempStatMods[k] < 0 ? 'var(--crimson-primary)' : 'var(--text-secondary)'};">
+              ${tempStatMods[k] > 0 ? '+' + tempStatMods[k] : tempStatMods[k]}
+            </span>
+            <button class="stepper-btn" onclick="changeStatMod('${k}', 1)">+</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function changeStatMod(key, delta) {
+      tempStatMods[key] = (tempStatMods[key] || 0) + delta;
+      renderStatModSteppers();
+    }
+
+    function openAddItemModal() {
+      editingItemId = null;
+      document.getElementById('addItemModalTitle').innerText = 'ADD ITEM';
+      
+      document.getElementById('itemInputName').value = '';
+      document.getElementById('itemInputCategory').value = '';
+      document.getElementById('itemInputEquipped').value = currentSessionTab === 'inventory' ? 'false' : 'true';
+
+      document.getElementById('chkHasArmor').checked = false;
+      document.getElementById('itemInputArmorSave').value = '0';
+
+      document.getElementById('chkHasWard').checked = false;
+      document.getElementById('itemInputWardSave').value = '0';
+
+      document.getElementById('chkModifiesStats').checked = false;
+      tempStatMods = {};
+
+      document.getElementById('chkHasAttacks').checked = false;
+      document.getElementById('itemInputAttackCount').value = '1';
+      document.getElementById('itemInputAttackDamage').value = '';
+
+      document.getElementById('chkHasSpecialEffects').checked = false;
+      document.getElementById('itemInputSpecialEffects').value = '';
+
+      document.getElementById('chkIsConsumable').checked = false;
+      document.getElementById('itemInputConsumableAmount').value = '1';
+
+      toggleItemFormSections();
+      document.getElementById('addItemModal').classList.remove('hidden');
+    }
+
+    function openEditItemModal(itemId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.inventory) return;
+      const item = c.inventory.find(i => i.id === itemId);
+      if (!item) return;
+
+      editingItemId = item.id;
+      document.getElementById('addItemModalTitle').innerText = 'EDIT ITEM';
+      
+      document.getElementById('itemInputName').value = item.name || '';
+      document.getElementById('itemInputCategory').value = item.category || '';
+      document.getElementById('itemInputEquipped').value = item.isEquipped ? 'true' : 'false';
+
+      document.getElementById('chkHasArmor').checked = item.hasArmor || false;
+      document.getElementById('itemInputArmorSave').value = item.armorSave || 0;
+
+      document.getElementById('chkHasWard').checked = item.hasWard || false;
+      document.getElementById('itemInputWardSave').value = item.wardSave || 0;
+
+      document.getElementById('chkModifiesStats').checked = item.hasStatModifiers || false;
+      tempStatMods = {};
+      if (item.statModifiers) {
+        Object.assign(tempStatMods, item.statModifiers);
+      }
+
+      document.getElementById('chkHasAttacks').checked = item.hasAttacks || false;
+      document.getElementById('itemInputAttackCount').value = item.attackCount || 1;
+      document.getElementById('itemInputAttackDamage').value = item.attackDamage || '';
+
+      document.getElementById('chkHasSpecialEffects').checked = item.hasSpecialEffects || false;
+      document.getElementById('itemInputSpecialEffects').value = item.specialEffectsText || '';
+
+      document.getElementById('chkIsConsumable').checked = item.isConsumable || false;
+      document.getElementById('itemInputConsumableAmount').value = item.consumableAmount || 1;
+
+      toggleItemFormSections();
+      document.getElementById('addItemModal').classList.remove('hidden');
+    }
+
+    function closeAddItemModal() {
+      document.getElementById('addItemModal').classList.add('hidden');
+    }
+
+    function saveNewItem() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const name = document.getElementById('itemInputName').value.trim();
+      const category = document.getElementById('itemInputCategory').value.trim() || 'Misc';
+      const isEquipped = document.getElementById('itemInputEquipped').value === 'true';
+
+      const rawArmorSave = parseInt(document.getElementById('itemInputArmorSave').value) || 0;
+      const hasArmor = document.getElementById('chkHasArmor').checked || rawArmorSave > 0;
+      const armorSave = hasArmor ? rawArmorSave : 0;
+
+      const rawWardSave = parseInt(document.getElementById('itemInputWardSave').value) || 0;
+      const hasWard = document.getElementById('chkHasWard').checked || rawWardSave > 0;
+      const wardSave = hasWard ? rawWardSave : 0;
+
+      const hasStatModifiers = document.getElementById('chkModifiesStats').checked;
+      const statModifiers = {};
+      if (hasStatModifiers) {
+        Object.entries(tempStatMods).forEach(([k, v]) => {
+          if (v !== 0) statModifiers[k] = v;
+        });
+      }
+
+      const hasAttacks = document.getElementById('chkHasAttacks').checked;
+      const attackCount = hasAttacks ? (parseInt(document.getElementById('itemInputAttackCount').value) || 1) : 1;
+      const attackDamage = hasAttacks ? document.getElementById('itemInputAttackDamage').value.trim() : '';
+
+      const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
+      const specialEffectsText = hasSpecialEffects ? document.getElementById('itemInputSpecialEffects').value.trim() : '';
+
+      const isConsumable = document.getElementById('chkIsConsumable').checked;
+      const consumableAmount = isConsumable ? (parseInt(document.getElementById('itemInputConsumableAmount').value) || 1) : 0;
+
+      if (!name) { alert("Please enter an item name"); return; }
+
+      adjustVitalsOnMaxChange(c, () => {
+        if (!c.inventory) c.inventory = [];
+
+        if (editingItemId) {
+          const item = c.inventory.find(i => i.id === editingItemId);
+          if (item) {
+            item.name = name;
+            item.category = category;
+            item.isEquipped = isEquipped;
+            
+            item.hasArmor = hasArmor;
+            item.armorSave = armorSave;
+            
+            item.hasWard = hasWard;
+            item.wardSave = wardSave;
+            
+            item.hasStatModifiers = hasStatModifiers;
+            item.statModifiers = statModifiers;
+            
+            item.hasAttacks = hasAttacks;
+            item.attackCount = attackCount;
+            item.attackDamage = attackDamage;
+            
+            item.hasSpecialEffects = hasSpecialEffects;
+            item.specialEffectsText = specialEffectsText;
+
+            item.isConsumable = isConsumable;
+            item.consumableAmount = consumableAmount;
+          }
+        } else {
+          const newItem = {
+            id: Date.now().toString(),
+            name,
+            category,
+            isEquipped,
+            hasArmor,
+            armorSave,
+            hasWard,
+            wardSave,
+            hasStatModifiers,
+            statModifiers,
+            hasAttacks,
+            attackCount,
+            attackDamage,
+            hasSpecialEffects,
+            specialEffectsText,
+            isConsumable,
+            consumableAmount
+          };
+          c.inventory.push(newItem);
+          
+          if (isEquipped) {
+            if (!c.equipmentCategoryOrder) c.equipmentCategoryOrder = [];
+            if (!c.equipmentCategoryOrder.includes(category)) c.equipmentCategoryOrder.push(category);
+          } else {
+            if (!c.inventoryCategoryOrder) c.inventoryCategoryOrder = [];
+            if (!c.inventoryCategoryOrder.includes(category)) c.inventoryCategoryOrder.push(category);
+          }
+        }
+        
+        c.currentArmor = null;
+        c.currentWard = null;
+      });
+
+      saveData();
+      closeAddItemModal();
+      switchSessionTab(currentSessionTab);
+    }
+
+    function promptHeal() {
+      document.getElementById('healModal').classList.remove('hidden');
+    }
+
+    function closeHealModal() {
+      document.getElementById('healModal').classList.add('hidden');
+    }
+
+    function confirmApplyHeal() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const target = document.querySelector('input[name="healTarget"]:checked').value;
+      const amount = parseInt(document.getElementById('healAmountInput').value);
+      if (isNaN(amount) || amount <= 0) {
+        closeHealModal();
+        return;
+      }
+
+      if (target === 'HP') {
+        const maxHp = getEffectiveMaxHp(c);
+        let oldHp = c.currentHp;
+        c.currentHp = Math.min(maxHp, c.currentHp + amount);
+        let change = c.currentHp - oldHp;
+        if (change > 0) showFloatingDamage('useHpFill', change, true);
+      } else if (target === 'Armor') {
+        const maxArmor = getTotalArmor(c);
+        let oldArmor = c.currentArmor != null ? c.currentArmor : maxArmor;
+        c.currentArmor = Math.min(maxArmor, oldArmor + amount);
+        let change = c.currentArmor - oldArmor;
+        if (change > 0) showFloatingDamage('useArmorFill', change, true);
+      } else if (target === 'Ward Save') {
+        const maxWard = getTotalWard(c);
+        let oldWard = c.currentWard != null ? c.currentWard : maxWard;
+        c.currentWard = Math.min(maxWard, oldWard + amount);
+        let change = c.currentWard - oldWard;
+        if (change > 0) showFloatingDamage('useWardFill', change, true);
+      }
+      
+      saveData();
+      renderUseScreen();
+      closeHealModal();
+    }
+
+    function removeBoost(target) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      if (target === 'HP') {
+        c.boostHp = 0; c.maxBoostHp = 0;
+      } else if (target === 'Armor') {
+        c.boostArmor = 0; c.maxBoostArmor = 0;
+      } else if (target === 'Ward Save') {
+        c.boostWard = 0; c.maxBoostWard = 0;
+      }
+      saveData();
+      renderUseScreen();
+      
+      const oldNotify = document.getElementById('temp-notify');
+      if (oldNotify) oldNotify.remove();
+      const notify = document.createElement('div');
+      notify.id = 'temp-notify';
+      notify.style.position = 'fixed';
+      notify.style.bottom = '80px';
+      notify.style.left = '50%';
+      notify.style.transform = 'translateX(-50%)';
+      notify.style.background = 'rgba(0,0,0,0.8)';
+      notify.style.color = 'white';
+      notify.style.padding = '10px 20px';
+      notify.style.borderRadius = '20px';
+      notify.style.zIndex = '9999';
+      notify.innerText = target + ' Boost Removed';
+      document.body.appendChild(notify);
+      setTimeout(() => { if (notify.parentNode) notify.remove(); }, 2000);
+    }
+
+    function promptBoost() {
+      document.getElementById('boostModal').classList.remove('hidden');
+    }
+
+    function closeBoostModal() {
+      document.getElementById('boostModal').classList.add('hidden');
+    }
+
+    function confirmApplyBoost() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const target = document.querySelector('input[name="boostTarget"]:checked').value;
+      const amount = parseInt(document.getElementById('boostAmountInput').value);
+      const turns = parseInt(document.getElementById('boostTurnsInput').value) || 0;
+      const resetOnNextRound = document.getElementById('boostResetChk').checked;
+
+      if (isNaN(amount) || amount <= 0) {
+        closeBoostModal();
+        return;
+      }
+
+      if (target === 'HP') {
+        c.boostHp = amount;
+        c.maxBoostHp = amount;
+        c.boostHpTurns = turns;
+        c.boostHpResetOnNextRound = resetOnNextRound;
+      } else if (target === 'Armor') {
+        c.boostArmor = amount;
+        c.maxBoostArmor = amount;
+        c.boostArmorTurns = turns;
+        c.boostArmorResetOnNextRound = resetOnNextRound;
+      } else if (target === 'Ward Save') {
+        c.boostWard = amount;
+        c.maxBoostWard = amount;
+        c.boostWardTurns = turns;
+        c.boostWardResetOnNextRound = resetOnNextRound;
+      }
+
+      saveData();
+      renderUseScreen();
+      closeBoostModal();
+    }
+
+    function promptSpendMp() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const input = prompt("Enter MP amount to spend:");
+      const mp = parseInt(input);
+      if (isNaN(mp) || mp <= 0) return;
+
+      c.currentMp = Math.max(0, c.currentMp - mp);
+
+      saveData();
+      renderUseScreen();
+    }
+
+    function promptRecoverMp() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const input = prompt("Enter MP amount to recover:");
+      const mp = parseInt(input);
+      if (isNaN(mp) || mp <= 0) return;
+
+      const maxMp = getEffectiveMaxMp(c);
+      c.currentMp = Math.min(maxMp, c.currentMp + mp);
+
+      saveData();
+      renderUseScreen();
+    }
+
+    /* Creation & Editing Modal */
+    function openCreateModal() {
+      editingCharId = null;
+      tempStats = { ...defaultStats };
+      uploadedImageBase64 = null;
+      document.getElementById('modalTitle').innerText = 'CREATE NEW HERO';
+      document.getElementById('modalSaveBtn').innerText = 'SAVE HERO';
+      document.getElementById('photoPreviewContent').innerHTML = `📷`;
+      document.getElementById('inputName').value = '';
+      document.getElementById('inputRace').value = '';
+      document.getElementById('inputLevel').value = '1';
+      const hideMpCb = document.getElementById('inputHideMp');
+      if (hideMpCb) hideMpCb.checked = false;
+      renderModalStats();
+      document.getElementById('createModal').classList.remove('hidden');
+    }
+
+    function openEditModal(id) {
+      const c = characters.find(item => item.id === id);
+      if (!c) return;
+
+      editingCharId = id;
+      tempStats = {
+        strength: c.strength || 0,
+        intelligence: c.intelligence || 0,
+        endurance: c.endurance || 0,
+        spirit: c.spirit || 0,
+        finesse: c.finesse || 0,
+        charisma: c.charisma || 0
+      };
+      uploadedImageBase64 = c.imageUri || null;
+
+      document.getElementById('modalTitle').innerText = 'EDIT HERO';
+      document.getElementById('modalSaveBtn').innerText = 'SAVE CHANGES';
+      document.getElementById('photoPreviewContent').innerHTML = uploadedImageBase64 ? `<img src="${uploadedImageBase64}">` : `📷`;
+      document.getElementById('inputName').value = c.name;
+      document.getElementById('inputRace').value = c.race;
+      document.getElementById('inputLevel').value = c.level || 1;
+      const hideMpCb = document.getElementById('inputHideMp');
+      if (hideMpCb) hideMpCb.checked = !!c.hideMp;
+
+      renderModalStats();
+      document.getElementById('createModal').classList.remove('hidden');
+    }
+
+    function closeCreateModal() {
+      document.getElementById('createModal').classList.add('hidden');
+    }
+
+    function renderModalStats() {
+      const keys = ['strength', 'intelligence', 'endurance', 'spirit', 'finesse', 'charisma'];
+      document.getElementById('modalStatsList').innerHTML = keys.map(k => `
+        <div class="stepper-row">
+          <div>
+            <div style="font-size:12px; font-weight:600; text-transform:capitalize;">${k}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="stepper-btn" onclick="changeStat('${k}', -1)">-</button>
+            <span style="font-weight:bold; min-width:20px; text-align:center; color:var(--gold-accent);">${tempStats[k]}</span>
+            <button class="stepper-btn" onclick="changeStat('${k}', 1)">+</button>
+          </div>
+        </div>
+      `).join('');
+      updateModalDerivedPreview();
+    }
+
+    function updateModalDerivedPreview() {
+      const isHideMp = document.getElementById('inputHideMp')?.checked || false;
+      const hp = (tempStats.endurance || 0) * 10;
+      const mp = (tempStats.intelligence || 0) * 1;
+      const spi = (tempStats.spirit || 0);
+
+      const hpEl = document.getElementById('modalPreviewHp');
+      const mpEl = document.getElementById('modalPreviewMp');
+      const spiEl = document.getElementById('modalPreviewMpRecharge');
+
+      if (hpEl) hpEl.innerText = hp;
+      if (mpEl) {
+        mpEl.innerText = isHideMp ? "OFF" : mp;
+        mpEl.style.color = isHideMp ? "var(--text-secondary)" : "var(--blue-mp)";
+      }
+      if (spiEl) {
+        spiEl.innerText = isHideMp ? "OFF" : `+${spi}/turn`;
+        spiEl.style.color = isHideMp ? "var(--text-secondary)" : "var(--gold-accent)";
+      }
+    }
+
+    function changeStat(key, delta) {
+      tempStats[key] = Math.max(0, Math.min(99, tempStats[key] + delta));
+      renderModalStats();
+    }
+
+    function saveNewCharacter() {
+      const name = document.getElementById('inputName').value.trim();
+      const race = document.getElementById('inputRace').value.trim();
+      const level = parseInt(document.getElementById('inputLevel').value) || 1;
+      const hideMp = document.getElementById('inputHideMp').checked;
+      const maxHp = (tempStats.endurance || 0) * 10;
+      const maxMp = (tempStats.intelligence || 0) * 1;
+
+      if (!name) { alert("Please enter a character name"); return; }
+      if (!race) { alert("Please enter a race"); return; }
+
+      if (editingCharId) {
+        const c = characters.find(item => item.id === editingCharId);
+        if (c) {
+          adjustVitalsOnMaxChange(c, () => {
+            c.name = name;
+            c.race = race;
+            c.level = level;
+            c.hideMp = hideMp;
+            c.maxHp = maxHp;
+            c.maxMp = maxMp;
+            c.imageUri = uploadedImageBase64;
+            Object.assign(c, tempStats);
+          });
+        }
+      } else {
+        const newChar = {
+          id: Date.now().toString(),
+          name,
+          race,
+          level,
+          hideMp,
+          maxHp,
+          currentHp: maxHp,
+          boostHp: 0,
+          currentArmor: null,
+          currentWard: null,
+          maxMp,
+          currentMp: maxMp,
+          imageUri: uploadedImageBase64,
+          inventory: [],
+          effects: [],
+          ...tempStats
+        };
+        characters.unshift(newChar);
+      }
+
+      saveData();
+      closeCreateModal();
+
+      if (activeCharId) {
+        const c = characters.find(item => item.id === activeCharId);
+        if (c) {
+          document.getElementById('appTitle').innerText = c.name;
+          document.getElementById('appSubtitle').innerText = `${c.race} • Active Session`;
+          if (c.imageUri) {
+            document.getElementById('headerAvatarBox').innerHTML = `<img src="${c.imageUri}">`;
+          }
+        }
+        renderUseScreen();
+      } else {
+        renderSelectScreen();
+      }
+    }
+
+    /* Delete Modal */
+    function moveItem(arrayName, id, direction, isEquippedOnly = null) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c[arrayName]) return;
+      
+      let list = c[arrayName];
+      let indices = [];
+      const itemToMove = list.find(i => i.id === id);
+      if (!itemToMove) return;
+      const category = itemToMove.category;
+      
+      list.forEach((item, index) => {
+        if (isEquippedOnly !== null) {
+          if (item.isEquipped === isEquippedOnly && item.category === category) indices.push(index);
+        } else {
+          if (item.category === category) indices.push(index);
+        }
+      });
+      
+      const targetIdxInIndices = indices.findIndex(idx => list[idx].id === id);
+      if (targetIdxInIndices < 0) return;
+      
+      if (direction === 'up' && targetIdxInIndices > 0) {
+        const idx1 = indices[targetIdxInIndices];
+        const idx2 = indices[targetIdxInIndices - 1];
+        const temp = list[idx1];
+        list[idx1] = list[idx2];
+        list[idx2] = temp;
+      } else if (direction === 'down' && targetIdxInIndices < indices.length - 1) {
+        const idx1 = indices[targetIdxInIndices];
+        const idx2 = indices[targetIdxInIndices + 1];
+        const temp = list[idx1];
+        list[idx1] = list[idx2];
+        list[idx2] = temp;
+      } else {
+        return;
+      }
+      
+      saveData();
+      switchSessionTab(currentSessionTab);
+    }
+    
+    function duplicateCharacter(id) {
+      const c = characters.find(item => item.id === id);
+      if (!c) return;
+      const clone = JSON.parse(JSON.stringify(c));
+      clone.id = Date.now().toString();
+      clone.name = clone.name + " (Copy)";
+      characters.push(clone);
+      saveData();
+      renderCharacterList();
+    }
+    
+    function backupAllCharacters() {
+    if(characters.length === 0) {
+        alert("No characters to backup!");
+        return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(characters, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", "TabletopCompanion_All_Characters.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+    
+    function exportCharacter(id) {
+      const c = characters.find(item => item.id === id);
+      if (!c) return;
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(c));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", c.name + ".json");
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
+    
+    function importCharacter(event) {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    let filesProcessed = 0;
+    let totalImported = 0;
+    
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (Array.isArray(parsed)) {
+              parsed.forEach(c => {
+                  if(c.name) {
+                      c.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                      characters.push(c);
+                      totalImported++;
+                  }
+              });
+          } else {
+              if (!parsed.name) throw new Error("Invalid format");
+              parsed.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+              characters.push(parsed);
+              totalImported++;
+          }
+        } catch(err) {
+          console.error("Invalid character file.", err);
+        }
+        filesProcessed++;
+        if (filesProcessed === files.length) {
+            if (totalImported > 0) {
+                alert(`Successfully imported ${totalImported} characters!`);
+            } else {
+                alert("No valid characters found in the file(s).");
+            }
+            saveData();
+            renderCharacterList();
+            event.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+    function promptDelete(id) {
+      deletingCharId = id;
+      const c = characters.find(item => item.id === id);
+      document.getElementById('deleteConfirmText').innerText = `Are you sure you want to delete ${c ? c.name : 'this character'}?`;
+      document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      deletingCharId = null;
+      document.getElementById('deleteModal').classList.add('hidden');
+    }
+
+    function confirmDelete() {
+      if (deletingCharId) {
+        characters = characters.filter(c => c.id !== deletingCharId);
+        saveData();
+        closeDeleteModal();
+        renderSelectScreen();
+      }
+    }
+
+    function checkIosPrompt() {
+      const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+      const dismissed = localStorage.getItem('rpg_ios_banner_dismissed');
+      if (isIos && !isStandalone && !dismissed) {
+        const banner = document.getElementById('iosInstallBanner');
+        if (banner) banner.classList.remove('hidden');
+      }
+    }
+
+    function dismissIosBanner() {
+      localStorage.setItem('rpg_ios_banner_dismissed', 'true');
+      const banner = document.getElementById('iosInstallBanner');
+      if (banner) banner.classList.add('hidden');
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('PWA Service Worker registered successfully:', reg.scope))
+          .catch(err => console.log('PWA Service Worker registration failed:', err));
+      });
+    }
+
+    window.onload = init;
+    let apiSyncInterval = null;
+
+    function openApiModal() {
+      document.getElementById('apiServerUrl').value = localStorage.getItem('apiServerUrl') || '';
+      document.getElementById('apiKeyInput').value = localStorage.getItem('apiKeyInput') || '';
+      document.getElementById('apiAutoSync').checked = localStorage.getItem('apiAutoSync') === 'true';
+      document.getElementById('apiModal').classList.remove('hidden');
+    }
+
+    function closeApiModal() {
+      localStorage.setItem('apiServerUrl', document.getElementById('apiServerUrl').value.trim());
+      localStorage.setItem('apiKeyInput', document.getElementById('apiKeyInput').value.trim());
+      document.getElementById('apiModal').classList.add('hidden');
+    }
+
+    function toggleAutoSync() {
+      const isAuto = document.getElementById('apiAutoSync').checked;
+      localStorage.setItem('apiAutoSync', isAuto);
+      if (isAuto) {
+        startAutoSync();
+      } else {
+        stopAutoSync();
+      }
+    }
+
+    function startAutoSync() {
+      if (apiSyncInterval) clearInterval(apiSyncInterval);
+      apiSyncInterval = setInterval(() => {
+        manualApiSync(true);
+      }, 3 * 60 * 1000); // 3 minutes
+    }
+
+    function stopAutoSync() {
+      if (apiSyncInterval) clearInterval(apiSyncInterval);
+      apiSyncInterval = null;
+    }
+
+    async function manualApiSync(silent = false) {
+      if (!activeCharId) return;
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const url = document.getElementById('apiServerUrl').value.trim() || localStorage.getItem('apiServerUrl');
+      const key = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem('apiKeyInput');
+
+      if (!url) {
+        if (!silent) alert('Please enter a Server URL (e.g. 192.168.1.5:8080)');
+        return;
+      }
+
+      let fetchUrl = url;
+      if (!fetchUrl.startsWith('http')) fetchUrl = 'http://' + fetchUrl;
+      if (!fetchUrl.endsWith('/api/sync')) fetchUrl = fetchUrl.replace(/\\/?$/, '/api/sync');
+
+      try {
+        const payload = new URLSearchParams();
+        payload.append('postData', JSON.stringify(c));
+
+        const res = await fetch(fetchUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Bearer ' + key
+          },
+          body: payload
+        });
+
+        if (res.ok) {
+          if (!silent) {
+            alert('Character synced successfully to local Android app!');
+            closeApiModal();
+          }
+        } else {
+          if (!silent) alert('Sync failed! Status: ' + res.status);
+        }
+      } catch (err) {
+        if (!silent) alert('Sync failed! Could not reach the server: ' + err.message);
+      }
+    }
+
+    // Initialize Auto Sync on load
+    window.addEventListener('load', () => {
+      if (localStorage.getItem('apiAutoSync') === 'true') {
+        startAutoSync();
+      }
+    });
+
+    /* Level Up Logic */
+    function openLevelUpModal() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const currentLevel = c.level || 1;
+      document.getElementById('levelUpText').innerText = `Did you level up to level ${currentLevel + 1}?`;
+      document.getElementById('levelUpModal').classList.remove('hidden');
+    }
+
+    function closeLevelUpModal() {
+      document.getElementById('levelUpModal').classList.add('hidden');
+    }
+
+    function confirmLevelUp() {
+      closeLevelUpModal();
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      
+      const oldLevel = c.level || 1;
+      const newLevel = oldLevel + 1;
+      c.level = newLevel;
+      saveData();
+      
+      document.getElementById('headerLvlText').innerText = newLevel;
+      
+      // Play Animation
+      const overlay = document.getElementById('glitchOverlay');
+      const container = document.getElementById('glitchContainer');
+      const settled = document.getElementById('glitchSettled');
+      const cyan = document.getElementById('glitchCyan');
+      const mag = document.getElementById('glitchMagenta');
+      const wht = document.getElementById('glitchWhite');
+      
+      overlay.classList.remove('hidden');
+      container.classList.remove('hidden');
+      settled.classList.add('hidden');
+      
+      const txtOld = `LEVEL ${oldLevel}`;
+      const txtNew = `LEVEL ${newLevel}`;
+      
+      cyan.innerText = txtOld;
+      mag.innerText = txtOld;
+      wht.innerText = txtOld;
+      
+      let glitchInterval = setInterval(() => {
+        const txt = Math.random() > 0.5 ? txtNew : (Math.random() > 0.5 ? `L3V#L ${newLevel}` : txtOld);
+        cyan.innerText = txt;
+        mag.innerText = txt;
+        wht.innerText = txt;
+      }, 80);
+      
+      setTimeout(() => {
+        clearInterval(glitchInterval);
+        container.classList.add('hidden');
+        settled.innerText = txtNew;
+        settled.classList.remove('hidden');
+        
+        setTimeout(() => {
+          overlay.classList.add('hidden');
+        }, 2000);
+      }, 1200);
+    }
+  
