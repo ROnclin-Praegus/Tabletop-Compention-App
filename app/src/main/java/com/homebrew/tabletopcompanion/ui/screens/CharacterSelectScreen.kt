@@ -9,6 +9,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -282,60 +286,63 @@ fun CharacterSelectScreen(
             }
 
 
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (characters.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "No Heroes Created Yet",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = TextPrimary,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Tap '+ CREATE HERO' below to forge your first hero!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(characters, key = { it.id }) { character ->
-                        CharacterCard(
-                            character = character,
-                            onUse = { onSelectCharacter(character) },
-                            onEdit = { characterToEdit = character },
-                            onDelete = { characterToDelete = character },
-                            onDuplicate = {
-                                val clone = character.copy(
-                                    id = UUID.randomUUID().toString(),
-                                    name = character.name + " (Copy)"
-                                )
-                                onCreateCharacter(clone)
-                            },
-                            onExport = {
-                                characterToExport = character
-                                exportLauncher.launch("${character.name}.json")
-                            }
+            BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                val isTablet = maxWidth >= 600.dp
+                if (characters.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "No Heroes Created Yet",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Tap '+ CREATE HERO' below to forge your first hero!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = if (isTablet) GridCells.Adaptive(minSize = 340.dp) else GridCells.Fixed(1),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(characters, key = { it.id }) { character ->
+                            CharacterCard(
+                                character = character,
+                                onUse = { onSelectCharacter(character) },
+                                onEdit = { characterToEdit = character },
+                                onDelete = { characterToDelete = character },
+                                onDuplicate = {
+                                    val clone = character.copy(
+                                        id = UUID.randomUUID().toString(),
+                                        name = character.name + " (Copy)"
+                                    )
+                                    onCreateCharacter(clone)
+                                },
+                                onExport = {
+                                    characterToExport = character
+                                    exportLauncher.launch("${character.name}.json")
+                                }
+                            )
+                        }
                     }
                 }
             }
-        }
         } // Close the Column here!
         
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {

@@ -1,6 +1,7 @@
 package com.homebrew.tabletopcompanion.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,7 +37,11 @@ fun AddEffectDialog(
     var selectedDamageType by remember { mutableStateOf(effectToEdit?.damageType ?: com.homebrew.tabletopcompanion.model.DamageType.UNSAVEABLE) }
     
     // For HP/MP change per round
-    var valueAmount by remember { mutableIntStateOf(if (effectToEdit?.effectType != EffectType.STAT_MODIFIER) (effectToEdit?.value ?: 1) else 1) }
+    var isDiceRoll by remember { mutableStateOf(effectToEdit?.isDiceRoll ?: false) }
+    var diceFormulaText by remember { mutableStateOf(effectToEdit?.diceFormula ?: "") }
+    var diceMode by remember { mutableStateOf(if (effectToEdit?.isDiceRoll == true) effectToEdit.changeMode else "DMG") }
+    var fixedMode by remember { mutableStateOf(if (effectToEdit != null && effectToEdit.value < 0) "DMG" else if (effectToEdit != null && effectToEdit.value > 0) "HEAL" else "DMG") }
+    var fixedAmount by remember { mutableIntStateOf(if (effectToEdit != null && effectToEdit.effectType != EffectType.STAT_MODIFIER) kotlin.math.abs(effectToEdit.value).coerceAtLeast(1) else 1) }
     
     // For STAT_MODIFIER
     val initialMods = mutableMapOf<String, Int>()
@@ -47,6 +52,7 @@ fun AddEffectDialog(
         }
     }
     var statMods by remember { mutableStateOf(initialMods.toMap()) }
+    var isEnabled by remember { mutableStateOf(effectToEdit?.enabled ?: true) }
     
     var roundsText by remember { mutableStateOf((effectToEdit?.roundsRemaining ?: 0).toString()) }
 
@@ -164,6 +170,46 @@ fun AddEffectDialog(
                     }
 
                     if (selectedType == EffectType.STAT_MODIFIER) {
+                        Surface(
+                            color = DarkSurfaceVariant,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isEnabled = !isEnabled }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Effect Enabled",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = TextPrimary
+                                    )
+                                    Text(
+                                        text = if (isEnabled) "Active and modifying stats" else "Disabled / Inactive (stats not applied)",
+                                        fontSize = 11.sp,
+                                        color = if (isEnabled) GreenHp else TextSecondary
+                                    )
+                                }
+                                Switch(
+                                    checked = isEnabled,
+                                    onCheckedChange = { isEnabled = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = GoldAccent,
+                                        checkedTrackColor = GoldAccent.copy(alpha = 0.5f),
+                                        uncheckedThumbColor = TextSecondary,
+                                        uncheckedTrackColor = DarkSurface
+                                    )
+                                )
+                            }
+                        }
+
                         Text("TARGET STATS MODIFIERS (+ OR -)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldAccent)
                         stats.forEach { st ->
                             Surface(
@@ -217,56 +263,168 @@ fun AddEffectDialog(
                             }
                         }
                     } else {
-                        // VALUE AMOUNT (+ or -) for HP/MP
-                        Text("EFFECT VALUE (+ OR -)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
-                        Surface(
-                            color = DarkSurfaceVariant,
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
+                        // VALUE MODE TOGGLE: Fixed vs Dice Roll
+                        Text("VALUE MODE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            FilterChip(
+                                selected = !isDiceRoll,
+                                onClick = { isDiceRoll = false },
+                                label = { Text("🔢 Fixed Value", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = GoldAccent,
+                                    selectedLabelColor = DarkBackground
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = isDiceRoll,
+                                onClick = { isDiceRoll = true },
+                                label = { Text("🎲 Dice Roll", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = GoldAccent,
+                                    selectedLabelColor = DarkBackground
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        if (!isDiceRoll) {
+                            // Fixed: Choose DMG or HEAL
+                            Text("EFFECT MODE (DMG OR HEAL)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("Amount", fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                FilterChip(
+                                    selected = fixedMode == "DMG",
+                                    onClick = { fixedMode = "DMG" },
+                                    label = { Text("💥 Damage / Loss (DMG)", fontSize = 12.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = CrimsonPrimary,
+                                        selectedLabelColor = TextPrimary
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FilterChip(
+                                    selected = fixedMode == "HEAL",
+                                    onClick = { fixedMode = "HEAL" },
+                                    label = { Text("💚 Heal / Restore (HEAL)", fontSize = 12.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = GreenHp,
+                                        selectedLabelColor = DarkBackground
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
 
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(
-                                        onClick = { valueAmount -= 1 },
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
-                                    ) {
-                                        Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = TextPrimary)
-                                    }
+                            // Fixed Amount Stepper
+                            Surface(
+                                color = DarkSurfaceVariant,
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Fixed Amount", fontWeight = FontWeight.SemiBold, color = TextPrimary)
 
-                                    val formattedVal = if (valueAmount > 0) "+$valueAmount" else "$valueAmount"
-                                    Text(
-                                        text = formattedVal,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = if (valueAmount > 0) GreenHp else if (valueAmount < 0) CrimsonPrimary else TextSecondary,
-                                        modifier = Modifier.padding(horizontal = 16.dp)
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = { fixedAmount = (fixedAmount - 1).coerceAtLeast(1) },
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                                        ) {
+                                            Icon(Icons.Default.Remove, contentDescription = "Decrease", tint = TextPrimary)
+                                        }
 
-                                    IconButton(
-                                        onClick = { valueAmount += 1 },
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
-                                    ) {
-                                        Icon(Icons.Default.Add, contentDescription = "Increase", tint = TextPrimary)
+                                        Text(
+                                            text = "$fixedAmount",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 18.sp,
+                                            color = if (fixedMode == "HEAL") GreenHp else CrimsonPrimary,
+                                            modifier = Modifier.padding(horizontal = 16.dp)
+                                        )
+
+                                        IconButton(
+                                            onClick = { fixedAmount += 1 },
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                                        ) {
+                                            Icon(Icons.Default.Add, contentDescription = "Increase", tint = TextPrimary)
+                                        }
                                     }
                                 }
+                            }
+                        } else {
+                            // Dice Roll: Dice Formula text field
+                            Text("DICE ROLL FORMULA", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = GoldAccent)
+                            OutlinedTextField(
+                                value = diceFormulaText,
+                                onValueChange = { diceFormulaText = it },
+                                label = { Text("Dice Formula (e.g. 1d6, 2d8+2)") },
+                                placeholder = { Text("e.g. 1d6, 2d4+2") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = GoldAccent,
+                                    unfocusedBorderColor = TextSecondary
+                                )
+                            )
+
+                            // Dice Roll Mode: DMG, HEAL, MIXED
+                            Text("ROLL MODE (DMG, HEAL, OR MIXED)", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = diceMode == "DMG",
+                                    onClick = { diceMode = "DMG" },
+                                    label = { Text("💥 DMG", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = CrimsonPrimary,
+                                        selectedLabelColor = TextPrimary
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FilterChip(
+                                    selected = diceMode == "HEAL",
+                                    onClick = { diceMode = "HEAL" },
+                                    label = { Text("💚 HEAL", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = GreenHp,
+                                        selectedLabelColor = DarkBackground
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                FilterChip(
+                                    selected = diceMode == "MIXED",
+                                    onClick = { diceMode = "MIXED" },
+                                    label = { Text("⚖️ MIXED", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = CyanAccent,
+                                        selectedLabelColor = DarkBackground
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
                     }
 
-                    // IF HP CHANGE PER ROUND & NEGATIVE: PICK DAMAGE TYPE
-                    if (selectedType == EffectType.HP_CHANGE_PER_ROUND && valueAmount < 0) {
+                    // IF HP CHANGE PER ROUND & (fixed DMG or dice DMG/MIXED): PICK DAMAGE TYPE
+                    val showDamageType = selectedType == EffectType.HP_CHANGE_PER_ROUND &&
+                        ((!isDiceRoll && fixedMode == "DMG") || (isDiceRoll && (diceMode == "DMG" || diceMode == "MIXED")))
+                    if (showDamageType) {
                         Text("DAMAGE TYPE", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = CrimsonPrimary)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -341,17 +499,46 @@ fun AddEffectDialog(
                                 return@Button
                             }
 
+                            if (selectedType != EffectType.STAT_MODIFIER && isDiceRoll && diceFormulaText.isBlank()) {
+                                errorMessage = "Please enter a dice roll formula (e.g. 1d6)"
+                                return@Button
+                            }
+
                             val rounds = roundsText.toIntOrNull() ?: 0
+
+                            val calculatedValue = if (selectedType == EffectType.STAT_MODIFIER) {
+                                0
+                            } else if (isDiceRoll) {
+                                0
+                            } else {
+                                if (fixedMode == "DMG") -kotlin.math.abs(fixedAmount) else kotlin.math.abs(fixedAmount)
+                            }
+
+                            val calculatedDamageType = if (selectedType == EffectType.HP_CHANGE_PER_ROUND) {
+                                if (!isDiceRoll && fixedMode == "DMG") {
+                                    selectedDamageType
+                                } else if (isDiceRoll && (diceMode == "DMG" || diceMode == "MIXED")) {
+                                    selectedDamageType
+                                } else {
+                                    com.homebrew.tabletopcompanion.model.DamageType.UNSAVEABLE
+                                }
+                            } else {
+                                com.homebrew.tabletopcompanion.model.DamageType.UNSAVEABLE
+                            }
 
                             val effect = CharacterEffect(
                                 id = effectToEdit?.id ?: java.util.UUID.randomUUID().toString(),
                                 name = name.trim(),
                                 effectType = selectedType,
                                 targetStat = null,
-                                value = if (selectedType != EffectType.STAT_MODIFIER) valueAmount else 0,
+                                value = calculatedValue,
                                 statModifiers = if (selectedType == EffectType.STAT_MODIFIER) statMods.filter { it.value != 0 } else emptyMap(),
                                 roundsRemaining = rounds,
-                                damageType = if (selectedType == EffectType.HP_CHANGE_PER_ROUND && valueAmount < 0) selectedDamageType else com.homebrew.tabletopcompanion.model.DamageType.UNSAVEABLE
+                                damageType = calculatedDamageType,
+                                isDiceRoll = if (selectedType != EffectType.STAT_MODIFIER) isDiceRoll else false,
+                                diceFormula = if (selectedType != EffectType.STAT_MODIFIER && isDiceRoll) diceFormulaText.trim() else "",
+                                changeMode = if (selectedType != EffectType.STAT_MODIFIER) (if (isDiceRoll) diceMode else fixedMode) else "DMG",
+                                isEnabled = if (selectedType == EffectType.STAT_MODIFIER) isEnabled else true
                             )
                             onEffectSaved(effect)
                         },

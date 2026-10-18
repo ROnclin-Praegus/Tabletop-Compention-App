@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,9 +30,28 @@ fun AddAbilityDialog(
 ) {
     var name by remember { mutableStateOf(abilityToEdit?.name ?: "") }
     var description by remember { mutableStateOf(abilityToEdit?.description ?: "") }
+    var tierText by remember { mutableStateOf(abilityToEdit?.tier?.toString() ?: "") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showSkillPicker by remember { mutableStateOf(false) }
 
+    val isMagicAbility = name.trim().startsWith("Magic:", ignoreCase = true)
     val statTags = listOf("{STR}", "{INT}", "{END}", "{SPI}", "{FIN}", "{CHA}")
+
+    if (showSkillPicker) {
+        ChooseSkillDialog(
+            character = character,
+            onDismiss = { showSkillPicker = false },
+            onSkillSelected = { selectedSkill ->
+                name = selectedSkill.name
+                description = selectedSkill.description
+                if (selectedSkill.name.trim().startsWith("Magic:", ignoreCase = true) && tierText.isEmpty()) {
+                    tierText = "1"
+                }
+                errorMessage = null
+                showSkillPicker = false
+            }
+        )
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -73,6 +94,31 @@ fun AddAbilityDialog(
                         .padding(vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    // Choose from skills button
+                    OutlinedButton(
+                        onClick = { showSkillPicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = DarkSurfaceVariant.copy(alpha = 0.5f),
+                            contentColor = GoldAccent
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent.copy(alpha = 0.6f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MenuBook,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = GoldAccent
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "CHOOSE FROM SKILLS",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
                     // Ability Name
                     OutlinedTextField(
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
@@ -87,6 +133,30 @@ fun AddAbilityDialog(
                             unfocusedBorderColor = TextSecondary
                         )
                     )
+
+                    // Tier (Only shown if ability name starts with Magic:)
+                    if (isMagicAbility) {
+                        OutlinedTextField(
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+                                imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                            ),
+                            value = tierText,
+                            onValueChange = { input ->
+                                if (input.isEmpty() || input.all { it.isDigit() }) {
+                                    tierText = input
+                                }
+                            },
+                            label = { Text("Tier (Level)") },
+                            placeholder = { Text("e.g. 1, 2, 3") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GoldAccent,
+                                unfocusedBorderColor = TextSecondary
+                            )
+                        )
+                    }
 
                     // Quick Stat Tag Insertion Chips
                     Text("QUICK STAT FORMULA TAGS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GoldAccent)
@@ -176,10 +246,12 @@ fun AddAbilityDialog(
                                 return@Button
                             }
 
+                            val parsedTier = if (isMagicAbility) tierText.toIntOrNull() else null
                             val ability = CharacterAbility(
                                 id = abilityToEdit?.id ?: java.util.UUID.randomUUID().toString(),
                                 name = name.trim(),
-                                description = description.trim()
+                                description = description.trim(),
+                                tier = parsedTier
                             )
                             onAbilitySaved(ability)
                         },

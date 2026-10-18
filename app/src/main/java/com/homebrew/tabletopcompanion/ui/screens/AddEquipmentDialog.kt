@@ -58,11 +58,17 @@ fun AddEquipmentDialog(
     // Has Attacks?
     var hasAttacks by remember { mutableStateOf(itemToEdit?.hasAttacks ?: false) }
     var attackCountText by remember { mutableStateOf(itemToEdit?.attackCount?.toString() ?: "1") }
-    var attackDamageText by remember { mutableStateOf(itemToEdit?.attackDamage ?: "") }
+    var attackDamageText by remember { mutableStateOf(itemToEdit?.safeAttackDamage ?: "") }
 
     // Special Effects?
     var hasSpecialEffects by remember { mutableStateOf(itemToEdit?.hasSpecialEffects ?: false) }
-    var specialEffectsText by remember { mutableStateOf(itemToEdit?.specialEffectsText ?: "") }
+    var specialEffectsText by remember { mutableStateOf(itemToEdit?.safeSpecialEffectsText ?: "") }
+    var onHandSpecialEffectsText by remember { mutableStateOf(itemToEdit?.safeOnHandSpecialEffectsText ?: "") }
+
+    // Has Magic?
+    var hasMagic by remember { mutableStateOf(itemToEdit?.hasMagic ?: false) }
+    var spellDamageText by remember { mutableStateOf(if (itemToEdit?.spellDamageModifier != 0 && itemToEdit?.spellDamageModifier != null) itemToEdit.spellDamageModifier.toString() else "0") }
+    var spellHealingText by remember { mutableStateOf(if (itemToEdit?.spellHealingModifier != 0 && itemToEdit?.spellHealingModifier != null) itemToEdit.spellHealingModifier.toString() else "0") }
 
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -340,10 +346,10 @@ fun AddEquipmentDialog(
 
                     if (hasSpecialEffects) {
                         OutlinedTextField(
-                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Next),
                             value = specialEffectsText,
                             onValueChange = { specialEffectsText = it },
-                            label = { Text("Special Effects Description (Freeform)") },
+                            label = { Text("Equipped Special Effect") },
                             placeholder = { Text("e.g. Ignores resistance, grants +2 stealth...") },
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -351,6 +357,80 @@ fun AddEquipmentDialog(
                                 unfocusedBorderColor = TextSecondary
                             )
                         )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                            value = onHandSpecialEffectsText,
+                            onValueChange = { onHandSpecialEffectsText = it },
+                            label = { Text("On-Hand Special Effect") },
+                            placeholder = { Text("e.g. +10% critical strike when wielded...") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GoldAccent,
+                                unfocusedBorderColor = TextSecondary
+                            )
+                        )
+                    }
+
+                    Divider(color = DarkSurfaceVariant, thickness = 1.dp)
+
+                    // CHECKBOX: HAS MAGIC?
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = hasMagic,
+                            onCheckedChange = { hasMagic = it },
+                            colors = CheckboxDefaults.colors(checkedColor = GoldAccent)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Has Magic?", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = GoldAccent)
+                    }
+
+                    if (hasMagic) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = spellDamageText,
+                                onValueChange = { input ->
+                                    if (input.isEmpty() || input == "-" || input == "+" || input.toIntOrNull() != null) {
+                                        spellDamageText = input
+                                    }
+                                },
+                                label = { Text("Spell Damage") },
+                                placeholder = { Text("e.g. +2, -1") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = androidx.compose.ui.text.input.ImeAction.Next),
+                                modifier = Modifier.weight(1f),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = GoldAccent,
+                                    unfocusedBorderColor = TextSecondary
+                                )
+                            )
+
+                            OutlinedTextField(
+                                value = spellHealingText,
+                                onValueChange = { input ->
+                                    if (input.isEmpty() || input == "-" || input == "+" || input.toIntOrNull() != null) {
+                                        spellHealingText = input
+                                    }
+                                },
+                                label = { Text("Spell Healing") },
+                                placeholder = { Text("e.g. +3, -2") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                                modifier = Modifier.weight(1f),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = GreenHp,
+                                    unfocusedBorderColor = TextSecondary
+                                )
+                            )
+                        }
                     }
 
                     errorMessage?.let { msg ->
@@ -396,6 +476,9 @@ fun AddEquipmentDialog(
                             val atkCount = if (hasAttacks) (attackCountText.toIntOrNull() ?: 1) else 1
                             val atkDmg = if (hasAttacks) attackDamageText.trim() else ""
                             val specEffects = if (hasSpecialEffects) specialEffectsText.trim() else ""
+                            val onHandSpec = if (hasSpecialEffects) onHandSpecialEffectsText.trim() else ""
+                            val spellDmg = if (hasMagic) (spellDamageText.toIntOrNull() ?: 0) else 0
+                            val spellHeal = if (hasMagic) (spellHealingText.toIntOrNull() ?: 0) else 0
 
                             val item = EquipmentItem(
                                 id = itemToEdit?.id ?: java.util.UUID.randomUUID().toString(),
@@ -413,6 +496,10 @@ fun AddEquipmentDialog(
                                 attackDamage = atkDmg,
                                 hasSpecialEffects = hasSpecialEffects,
                                 specialEffectsText = specEffects,
+                                onHandSpecialEffectsText = onHandSpec,
+                                hasMagic = hasMagic,
+                                spellDamageModifier = spellDmg,
+                                spellHealingModifier = spellHeal,
                                 isConsumable = if (!isEquipped) isConsumable else false,
                                 consumableAmount = if (!isEquipped && isConsumable) consumableAmount else 1
                             )
