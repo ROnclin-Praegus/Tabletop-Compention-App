@@ -65,6 +65,7 @@ fun CharacterSelectScreen(
     var characterToEdit by remember { mutableStateOf<Character?>(null) }
     var characterToDelete by remember { mutableStateOf<Character?>(null) }
     var characterToExport by remember { mutableStateOf<Character?>(null) }
+    var showTurnOrderDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val gson = remember { Gson() }
@@ -134,6 +135,14 @@ fun CharacterSelectScreen(
                     }
                 },
                 actions = {
+                    TextButton(onClick = { showTurnOrderDialog = true }) {
+                        Text(
+                            text = "⚔️ TURNS",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = GoldAccent
+                        )
+                    }
                     TextButton(onClick = { importLauncher.launch("application/json") }) {
                         Text(
                             text = "📥 IMPORT",
@@ -221,6 +230,13 @@ fun CharacterSelectScreen(
                     }
                 },
                 containerColor = DarkSurface
+            )
+        }
+
+        if (showTurnOrderDialog) {
+            TurnOrderDialog(
+                activeCharacter = null,
+                onDismiss = { showTurnOrderDialog = false }
             )
         }
 

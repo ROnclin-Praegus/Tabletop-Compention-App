@@ -1,4 +1,4 @@
-const SW_VERSION = 'v1.6.0b';
+const SW_VERSION = 'v1.7.0';
 const CACHE_NAME = `rpg-companion-${SW_VERSION}`;
 const ASSETS_TO_CACHE = [
   './',
@@ -8,7 +8,8 @@ const ASSETS_TO_CACHE = [
   './skills.js',
   './skills.json',
   './spellbooks.js',
-  './spellbooks.json'
+  './spellbooks.json',
+  './turn-sync.js'
 ];
 
 self.addEventListener('message', (event) => {

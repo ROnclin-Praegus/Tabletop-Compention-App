@@ -96,6 +96,7 @@ fun UseCharacterScreen(
     var effectToEdit by remember { mutableStateOf<CharacterEffect?>(null) }
     var collapsedParentAbilityNames by remember { mutableStateOf(setOf<String>()) }
     var showSelectOnHandDialog by remember { mutableStateOf(false) }
+    var showTurnOrderDialog by remember { mutableStateOf(false) }
 
     var recentChangeArmor by remember { mutableStateOf<Int?>(null) }
     var recentChangeWard by remember { mutableStateOf<Int?>(null) }
@@ -872,7 +873,13 @@ fun UseCharacterScreen(
 
                         Spacer(modifier = Modifier.width(4.dp))
 
-                        // Removed edit button as title is now clickable
+                        // Turn Order Button
+                        IconButton(
+                            onClick = { showTurnOrderDialog = true },
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Text("⚔️", fontSize = 16.sp)
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface)
                 )
@@ -3030,6 +3037,14 @@ fun UseCharacterScreen(
                 containerColor = DarkSurface
             )
         }
+    }
+
+    // Turn Order Dialog
+    if (showTurnOrderDialog) {
+        TurnOrderDialog(
+            activeCharacter = activeCharacter,
+            onDismiss = { showTurnOrderDialog = false }
+        )
     }
 
     // Select On-Hand Weapon Dialog
