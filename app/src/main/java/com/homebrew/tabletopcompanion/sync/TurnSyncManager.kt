@@ -1,25 +1,21 @@
 package com.homebrew.tabletopcompanion.sync
 
+import android.content.Context
 import com.google.gson.Gson
 import com.homebrew.tabletopcompanion.model.BattleParticipant
 import com.homebrew.tabletopcompanion.model.BattleRoomState
 import com.homebrew.tabletopcompanion.model.BattleStatus
-import com.homebrew.tabletopcompanion.model.TurnSyncEnvelope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.homebrew.tabletopcompanion.server.GameServerManager
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import org.eclipse.paho.client.mqttv3.*
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.UUID
 
 object TurnSyncManager {
-    private const val BROKER_URL_TCP = "tcp://test.mosquitto.org:1883"
-    private const val TOPIC_PREFIX = "tabletop-rpg/rooms/"
-
-    private var mqttClient: MqttAsyncClient? = null
     val myClientId: String = "p-" + UUID.randomUUID().toString().take(6)
 
     var currentRoomCode: String? = null
@@ -27,6 +23,8 @@ object TurnSyncManager {
     var isHost: Boolean = false
         private set
     var myCurrentParticipant: BattleParticipant? = null
+        private set
+    var hostAddress: String = ""
         private set
 
     private val _roomState = MutableStateFlow<BattleRoomState?>(null)
@@ -38,56 +36,144 @@ object TurnSyncManager {
     private val _statusMessage = MutableStateFlow("Disconnected")
     val statusMessage: StateFlow<String> = _statusMessage.asStateFlow()
 
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var clientPollJob: Job? = null
+    private var hostCollectJob: Job? = null
+
+    private val okHttpClient = OkHttpClient.Builder().build()
     private val gson = Gson()
+    private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
-    fun createRoom(hostName: String, characterId: String? = null, currentHp: Int? = null, maxHp: Int? = null) {
-        val code = generateRoomCode()
-        val initialParticipant = BattleParticipant(
-            id = myClientId,
-            name = hostName,
-            characterId = characterId,
-            slot = 1,
-            isEnemy = false,
-            currentHp = currentHp,
-            maxHp = maxHp
-        )
-        val initialRoom = BattleRoomState(
-            roomCode = code,
-            hostId = myClientId,
-            round = 1,
-            activeSlot = 1,
-            status = BattleStatus.LOBBY,
-            participants = listOf(initialParticipant)
-        )
+    fun createRoom(
+        context: Context,
+        hostName: String,
+        characterId: String? = null,
+        currentHp: Int? = null,
+        maxHp: Int? = null
+    ) {
+        leaveRoom()
         isHost = true
-        myCurrentParticipant = initialParticipant
-        currentRoomCode = code
-        _roomState.value = initialRoom
+        val localIp = GameServerManager.getLocalIpAddress(context)
+        hostAddress = "$localIp:8080"
 
-        connectAndJoin(code) {
-            broadcastSync()
+        val initialRoom = GameServerManager.createBattle(
+            hostName = hostName,
+            charId = characterId,
+            hp = currentHp,
+            maxHp = maxHp,
+            context = context
+        )
+
+        val hostP = initialRoom.participants.firstOrNull()
+        myCurrentParticipant = hostP
+        currentRoomCode = initialRoom.roomCode
+        _roomState.value = initialRoom
+        _isConnected.value = true
+        _statusMessage.value = "Hosting at $hostAddress"
+
+        // Collect changes from GameServerManager.battleState
+        hostCollectJob?.cancel()
+        hostCollectJob = scope.launch {
+            GameServerManager.battleState.collect { updated ->
+                _roomState.value = updated
+                val found = updated?.participants?.find { it.id == hostP?.id }
+                if (found != null) {
+                    myCurrentParticipant = found
+                }
+            }
         }
     }
 
-    fun joinRoom(code: String, playerName: String, characterId: String? = null, currentHp: Int? = null, maxHp: Int? = null) {
-        val cleanCode = code.trim().uppercase()
+    fun joinRoom(
+        targetHostAddress: String,
+        playerName: String,
+        characterId: String? = null,
+        currentHp: Int? = null,
+        maxHp: Int? = null
+    ) {
+        leaveRoom()
+        isHost = false
+        var cleaned = targetHostAddress.trim()
+        if (!cleaned.startsWith("http://") && !cleaned.startsWith("https://")) {
+            cleaned = "http://$cleaned"
+        }
+        if (!cleaned.removePrefix("http://").removePrefix("https://").contains(":")) {
+            cleaned = "$cleaned:8080"
+        }
+        hostAddress = cleaned
+
         val participant = BattleParticipant(
             id = myClientId,
-            name = playerName,
+            name = playerName.ifBlank { "Player" },
             characterId = characterId,
             slot = 1,
             isEnemy = false,
             currentHp = currentHp,
             maxHp = maxHp
         )
-        isHost = false
         myCurrentParticipant = participant
-        currentRoomCode = cleanCode
+        _statusMessage.value = "Connecting to $hostAddress..."
 
-        connectAndJoin(cleanCode) {
-            // Send JOIN message to room so host picks us up
-            sendEnvelope("JOIN", gson.toJson(participant))
+        scope.launch {
+            try {
+                val actionPayload = mapOf(
+                    "action" to "JOIN",
+                    "payload" to participant
+                )
+                val body = gson.toJson(actionPayload).toRequestBody(jsonMediaType)
+                val request = Request.Builder()
+                    .url("$hostAddress/api/battle/action")
+                    .post(body)
+                    .build()
+
+                val response = okHttpClient.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val respJson = response.body?.string() ?: ""
+                    val state = try { gson.fromJson(respJson, BattleRoomState::class.java) } catch(e: Exception) { null }
+                    if (state != null) {
+                        currentRoomCode = state.roomCode
+                        _roomState.value = state
+                        val me = state.participants.find { it.id == myClientId }
+                        if (me != null) myCurrentParticipant = me
+                        _isConnected.value = true
+                        _statusMessage.value = "Connected to room ${state.roomCode}"
+                        startClientPolling()
+                    }
+                } else {
+                    _statusMessage.value = "Failed to join: HTTP ${response.code}"
+                }
+            } catch (e: Exception) {
+                _statusMessage.value = "Connection error: ${e.message}"
+            }
+        }
+    }
+
+    private fun startClientPolling() {
+        clientPollJob?.cancel()
+        clientPollJob = scope.launch {
+            while (isActive && !isHost && _isConnected.value) {
+                delay(800)
+                try {
+                    val request = Request.Builder()
+                        .url("$hostAddress/api/battle/state")
+                        .get()
+                        .build()
+                    val response = okHttpClient.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        val json = response.body?.string() ?: ""
+                        if (json.isNotBlank() && json != "{}") {
+                            val state = gson.fromJson(json, BattleRoomState::class.java)
+                            if (state != null) {
+                                _roomState.value = state
+                                val me = state.participants.find { it.id == myClientId }
+                                if (me != null) myCurrentParticipant = me
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Silently ignore momentary network hiccups
+                }
+            }
         }
     }
 
@@ -97,94 +183,83 @@ object TurnSyncManager {
         myCurrentParticipant = updated
 
         if (isHost) {
-            val state = _roomState.value ?: return
-            val updatedList = state.participants.map {
-                if (it.id == myClientId) updated else it
-            }
-            _roomState.value = state.copy(participants = updatedList)
-            broadcastSync()
+            val payload = mapOf("playerId" to currentP.id, "slot" to newSlot)
+            GameServerManager.handleBattleAction("CLAIM_SLOT", gson.toJson(payload))
         } else {
-            sendEnvelope("CLAIM_SLOT", gson.toJson(mapOf("playerId" to myClientId, "slot" to newSlot)))
+            sendClientAction("CLAIM_SLOT", mapOf("playerId" to currentP.id, "slot" to newSlot))
         }
     }
 
     fun startBattle() {
-        if (!isHost) return
-        val state = _roomState.value ?: return
-        _roomState.value = state.copy(
-            status = BattleStatus.BATTLE,
-            round = 1,
-            activeSlot = state.participants.filter { !it.isEnemy }.minOfOrNull { it.slot } ?: 1
-        )
-        broadcastSync()
+        if (isHost) {
+            GameServerManager.handleBattleAction("START", "{}")
+        } else {
+            sendClientAction("START", emptyMap<String, Any>())
+        }
     }
 
     fun endMyTurn() {
+        val currentP = myCurrentParticipant ?: return
         if (isHost) {
-            advanceTurnInternal()
+            GameServerManager.handleBattleAction("END_TURN", gson.toJson(mapOf("playerId" to currentP.id)))
         } else {
-            sendEnvelope("END_TURN", gson.toJson(mapOf("playerId" to myClientId)))
+            sendClientAction("END_TURN", mapOf("playerId" to currentP.id))
         }
     }
 
     fun endEnemiesTurn() {
+        val currentP = myCurrentParticipant ?: return
         if (isHost) {
-            advanceEnemiesInternal()
+            GameServerManager.handleBattleAction("END_ENEMIES", gson.toJson(mapOf("playerId" to currentP.id)))
         } else {
-            sendEnvelope("END_ENEMIES", gson.toJson(mapOf("playerId" to myClientId)))
+            sendClientAction("END_ENEMIES", mapOf("playerId" to currentP.id))
         }
     }
 
     fun forceNextTurn() {
-        if (!isHost) return
-        val state = _roomState.value ?: return
-        if (state.status == BattleStatus.BATTLE) {
-            advanceTurnInternal()
-        } else if (state.status == BattleStatus.ENEMIES) {
-            advanceEnemiesInternal()
+        if (isHost) {
+            GameServerManager.handleBattleAction("NEXT", "{}")
+        } else {
+            sendClientAction("NEXT", emptyMap<String, Any>())
         }
     }
 
     fun forcePrevTurn() {
-        if (!isHost) return
-        val state = _roomState.value ?: return
-        val playerSlots = state.participants.filter { !it.isEnemy }.map { it.slot }.sorted()
-        if (playerSlots.isEmpty()) return
-
-        if (state.status == BattleStatus.ENEMIES) {
-            _roomState.value = state.copy(
-                status = BattleStatus.BATTLE,
-                activeSlot = playerSlots.last()
-            )
+        if (isHost) {
+            GameServerManager.handleBattleAction("PREV", "{}")
         } else {
-            val currentIndex = playerSlots.indexOf(state.activeSlot)
-            if (currentIndex > 0) {
-                _roomState.value = state.copy(activeSlot = playerSlots[currentIndex - 1])
-            }
+            sendClientAction("PREV", emptyMap<String, Any>())
         }
-        broadcastSync()
     }
 
     fun resetBattle() {
-        if (!isHost) return
-        val state = _roomState.value ?: return
-        _roomState.value = state.copy(
-            status = BattleStatus.LOBBY,
-            round = 1,
-            activeSlot = 1
-        )
-        broadcastSync()
+        if (isHost) {
+            GameServerManager.handleBattleAction("RESET", "{}")
+        } else {
+            sendClientAction("RESET", emptyMap<String, Any>())
+        }
     }
 
     fun leaveRoom() {
-        sendEnvelope("LEAVE", gson.toJson(mapOf("playerId" to myClientId)))
-        try {
-            val topic = TOPIC_PREFIX + (currentRoomCode ?: "")
-            mqttClient?.unsubscribe(topic)
-            mqttClient?.disconnect()
-            mqttClient?.close()
-        } catch (_: Exception) {}
-        mqttClient = null
+        clientPollJob?.cancel()
+        clientPollJob = null
+        hostCollectJob?.cancel()
+        hostCollectJob = null
+
+        val pId = myCurrentParticipant?.id ?: myClientId
+        if (isHost) {
+            GameServerManager.leaveOrCloseBattle()
+        } else if (_isConnected.value) {
+            scope.launch {
+                try {
+                    val actionPayload = mapOf("action" to "LEAVE", "payload" to mapOf("playerId" to pId))
+                    val body = gson.toJson(actionPayload).toRequestBody(jsonMediaType)
+                    val request = Request.Builder().url("$hostAddress/api/battle/action").post(body).build()
+                    okHttpClient.newCall(request).execute()
+                } catch (e: Exception) {}
+            }
+        }
+
         currentRoomCode = null
         isHost = false
         myCurrentParticipant = null
@@ -193,208 +268,31 @@ object TurnSyncManager {
         _statusMessage.value = "Disconnected"
     }
 
-    private fun advanceTurnInternal() {
-        val state = _roomState.value ?: return
-        val playerSlots = state.participants.filter { !it.isEnemy }.map { it.slot }.sorted()
-        if (playerSlots.isEmpty()) return
-
-        val currentIndex = playerSlots.indexOf(state.activeSlot)
-        if (currentIndex in 0 until playerSlots.size - 1) {
-            // Next player
-            _roomState.value = state.copy(
-                activeSlot = playerSlots[currentIndex + 1],
-                status = BattleStatus.BATTLE
-            )
-        } else {
-            // Last player finished -> It is now the Enemies' Turn!
-            _roomState.value = state.copy(
-                status = BattleStatus.ENEMIES,
-                activeSlot = 999
-            )
-        }
-        broadcastSync()
-    }
-
-    private fun advanceEnemiesInternal() {
-        val state = _roomState.value ?: return
-        val firstSlot = state.participants.filter { !it.isEnemy }.minOfOrNull { it.slot } ?: 1
-        _roomState.value = state.copy(
-            round = state.round + 1,
-            activeSlot = firstSlot,
-            status = BattleStatus.BATTLE
-        )
-        broadcastSync()
-    }
-
-    private fun broadcastSync() {
-        val state = _roomState.value ?: return
-        sendEnvelope("SYNC", gson.toJson(state))
-    }
-
-    private fun sendEnvelope(type: String, payload: String) {
-        val room = currentRoomCode ?: return
-        val envelope = TurnSyncEnvelope(
-            type = type,
-            senderId = myClientId,
-            roomCode = room,
-            payloadJson = payload
-        )
-        val msg = MqttMessage(envelope.toJson().toByteArray(Charsets.UTF_8)).apply {
-            qos = 1
-        }
-        val topic = TOPIC_PREFIX + room
-        try {
-            mqttClient?.publish(topic, msg)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun connectAndJoin(roomCode: String, onConnected: () -> Unit) {
+    private fun sendClientAction(action: String, payload: Any) {
         scope.launch {
             try {
-                _statusMessage.value = "Connecting to room $roomCode..."
-                val client = MqttAsyncClient(BROKER_URL_TCP, myClientId, MemoryPersistence())
-                mqttClient = client
-
-                val options = MqttConnectOptions().apply {
-                    isCleanSession = true
-                    connectionTimeout = 10
-                    keepAliveInterval = 20
-                    isAutomaticReconnect = true
+                val actionPayload = mapOf(
+                    "action" to action,
+                    "payload" to payload
+                )
+                val body = gson.toJson(actionPayload).toRequestBody(jsonMediaType)
+                val request = Request.Builder()
+                    .url("$hostAddress/api/battle/action")
+                    .post(body)
+                    .build()
+                val response = okHttpClient.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val respJson = response.body?.string() ?: ""
+                    val state = try { gson.fromJson(respJson, BattleRoomState::class.java) } catch(e: Exception) { null }
+                    if (state != null) {
+                        _roomState.value = state
+                        val me = state.participants.find { it.id == myClientId }
+                        if (me != null) myCurrentParticipant = me
+                    }
                 }
-
-                client.setCallback(object : MqttCallbackExtended {
-                    override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        _isConnected.value = true
-                        _statusMessage.value = "Connected to room $roomCode"
-                        val topic = TOPIC_PREFIX + roomCode
-                        client.subscribe(topic, 1, null, object : IMqttActionListener {
-                            override fun onSuccess(asyncActionToken: IMqttToken?) {
-                                onConnected()
-                            }
-                            override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                                _statusMessage.value = "Failed to subscribe: ${exception?.message}"
-                            }
-                        })
-                    }
-
-                    override fun connectionLost(cause: Throwable?) {
-                        _isConnected.value = false
-                        _statusMessage.value = "Connection lost: ${cause?.message}"
-                    }
-
-                    override fun messageArrived(topic: String?, message: MqttMessage?) {
-                        val body = message?.payload?.let { String(it, Charsets.UTF_8) } ?: return
-                        handleIncomingEnvelope(body)
-                    }
-
-                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-                })
-
-                client.connect(options, null, object : IMqttActionListener {
-                    override fun onSuccess(asyncActionToken: IMqttToken?) {}
-                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                        _isConnected.value = false
-                        _statusMessage.value = "Connection error: ${exception?.message}"
-                    }
-                })
             } catch (e: Exception) {
-                _isConnected.value = false
-                _statusMessage.value = "Connection failed: ${e.message}"
+                // Ignore network glitch
             }
         }
-    }
-
-    private fun handleIncomingEnvelope(rawJson: String) {
-        val envelope = TurnSyncEnvelope.fromJson(rawJson) ?: return
-        if (envelope.roomCode != currentRoomCode) return
-
-        when (envelope.type) {
-            "SYNC" -> {
-                try {
-                    val syncedState = gson.fromJson(envelope.payloadJson, BattleRoomState::class.java)
-                    if (syncedState != null) {
-                        _roomState.value = syncedState
-                        // Update my participant slot if host synced it
-                        syncedState.participants.find { it.id == myClientId }?.let {
-                            myCurrentParticipant = it
-                        }
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-
-            "JOIN" -> {
-                if (isHost) {
-                    try {
-                        val newP = gson.fromJson(envelope.payloadJson, BattleParticipant::class.java)
-                        val state = _roomState.value ?: return
-                        val existing = state.participants.filter { it.id != newP.id }
-                        val nextSlot = (existing.maxOfOrNull { it.slot } ?: 0) + 1
-                        val assigned = newP.copy(slot = nextSlot)
-                        _roomState.value = state.copy(participants = existing + assigned)
-                        broadcastSync()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            }
-
-            "CLAIM_SLOT" -> {
-                if (isHost) {
-                    try {
-                        val map = gson.fromJson(envelope.payloadJson, Map::class.java)
-                        val pId = map["playerId"] as? String ?: return
-                        val slot = (map["slot"] as? Number)?.toInt() ?: return
-                        val state = _roomState.value ?: return
-                        val updated = state.participants.map {
-                            if (it.id == pId) it.copy(slot = slot) else it
-                        }
-                        _roomState.value = state.copy(participants = updated)
-                        broadcastSync()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            }
-
-            "START_BATTLE" -> {
-                // Guests wait for host SYNC, but if received from host, update state
-            }
-
-            "END_TURN" -> {
-                if (isHost) {
-                    advanceTurnInternal()
-                }
-            }
-
-            "END_ENEMIES" -> {
-                if (isHost) {
-                    advanceEnemiesInternal()
-                }
-            }
-
-            "LEAVE" -> {
-                if (isHost) {
-                    try {
-                        val map = gson.fromJson(envelope.payloadJson, Map::class.java)
-                        val pId = map["playerId"] as? String ?: return
-                        val state = _roomState.value ?: return
-                        val updated = state.participants.filter { it.id != pId }
-                        _roomState.value = state.copy(participants = updated)
-                        broadcastSync()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            }
-        }
-    }
-
-    private fun generateRoomCode(): String {
-        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-        return (1..4).map { chars.random() }.joinToString("")
     }
 }

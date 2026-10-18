@@ -4,6 +4,13 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.wifi.WifiManager
 import java.util.UUID
+import com.google.gson.Gson
+import com.homebrew.tabletopcompanion.model.BattleParticipant
+import com.homebrew.tabletopcompanion.model.BattleRoomState
+import com.homebrew.tabletopcompanion.model.BattleStatus
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object GameServerManager {
     var server: LocalGameServer? = null
@@ -147,6 +154,134 @@ object GameServerManager {
             e.printStackTrace()
             "127.0.0.1"
         }
+    }
+
+    // --- Turn Order Battle Management ---
+    private val _battleState = MutableStateFlow<BattleRoomState?>(null)
+    val battleState: StateFlow<BattleRoomState?> = _battleState.asStateFlow()
+
+    fun createBattle(hostName: String, charId: String?, hp: Int?, maxHp: Int?, context: Context): BattleRoomState {
+        startServer(context)
+        val code = generateRoomCode()
+        val hostParticipant = BattleParticipant(
+            id = "host-${UUID.randomUUID().toString().substring(0, 6)}",
+            name = hostName.ifBlank { "Host" },
+            characterId = charId,
+            slot = 1,
+            isEnemy = false,
+            currentHp = hp,
+            maxHp = maxHp
+        )
+        val state = BattleRoomState(
+            roomCode = code,
+            hostId = hostParticipant.id,
+            round = 1,
+            activeSlot = 1,
+            status = BattleStatus.LOBBY,
+            participants = listOf(hostParticipant)
+        )
+        _battleState.value = state
+        return state
+    }
+
+    fun handleBattleAction(action: String, payloadJson: String): BattleRoomState? {
+        val currentState = _battleState.value ?: return null
+        val gson = Gson()
+        val newState = when (action.uppercase()) {
+            "JOIN" -> {
+                val newP = try { gson.fromJson(payloadJson, BattleParticipant::class.java) } catch(e: Exception) { null }
+                if (newP == null) currentState
+                else {
+                    val existing = currentState.participants.filter { it.id != newP.id }
+                    val playerSlots = existing.filter { !it.isEnemy }.map { it.slot }
+                    val nextSlot = (playerSlots.maxOrNull() ?: 0) + 1
+                    val assignedP = if (newP.slot <= 0 || existing.any { it.slot == newP.slot }) {
+                        newP.copy(slot = nextSlot)
+                    } else newP
+                    currentState.copy(participants = existing + assignedP)
+                }
+            }
+            "CLAIM_SLOT" -> {
+                val obj = try { gson.fromJson(payloadJson, Map::class.java) } catch(e: Exception) { null }
+                val pId = obj?.get("playerId") as? String ?: ""
+                val targetSlot = (obj?.get("slot") as? Number)?.toInt() ?: 1
+                val updated = currentState.participants.map { p ->
+                    if (p.id == pId) p.copy(slot = targetSlot) else p
+                }
+                currentState.copy(participants = updated)
+            }
+            "START" -> {
+                val firstSlot = currentState.playerParticipants.firstOrNull()?.slot ?: 1
+                currentState.copy(status = BattleStatus.BATTLE, round = 1, activeSlot = firstSlot)
+            }
+            "END_TURN" -> {
+                val playerSlots = currentState.playerParticipants.map { it.slot }
+                if (playerSlots.isEmpty()) currentState
+                else {
+                    val currIdx = playerSlots.indexOf(currentState.activeSlot)
+                    if (currIdx in 0 until playerSlots.size - 1) {
+                        currentState.copy(status = BattleStatus.BATTLE, activeSlot = playerSlots[currIdx + 1])
+                    } else {
+                        // After last player, it is always ENEMIES turn!
+                        currentState.copy(status = BattleStatus.ENEMIES, activeSlot = 999)
+                    }
+                }
+            }
+            "END_ENEMIES" -> {
+                val firstSlot = currentState.playerParticipants.firstOrNull()?.slot ?: 1
+                currentState.copy(
+                    status = BattleStatus.BATTLE,
+                    round = currentState.round + 1,
+                    activeSlot = firstSlot
+                )
+            }
+            "NEXT" -> {
+                if (currentState.status == BattleStatus.BATTLE) {
+                    val playerSlots = currentState.playerParticipants.map { it.slot }
+                    val currIdx = playerSlots.indexOf(currentState.activeSlot)
+                    if (currIdx in 0 until playerSlots.size - 1) {
+                        currentState.copy(activeSlot = playerSlots[currIdx + 1])
+                    } else {
+                        currentState.copy(status = BattleStatus.ENEMIES, activeSlot = 999)
+                    }
+                } else if (currentState.status == BattleStatus.ENEMIES) {
+                    val firstSlot = currentState.playerParticipants.firstOrNull()?.slot ?: 1
+                    currentState.copy(status = BattleStatus.BATTLE, round = currentState.round + 1, activeSlot = firstSlot)
+                } else currentState
+            }
+            "PREV" -> {
+                val playerSlots = currentState.playerParticipants.map { it.slot }
+                if (currentState.status == BattleStatus.ENEMIES) {
+                    val lastSlot = playerSlots.lastOrNull() ?: 1
+                    currentState.copy(status = BattleStatus.BATTLE, activeSlot = lastSlot)
+                } else {
+                    val currIdx = playerSlots.indexOf(currentState.activeSlot)
+                    if (currIdx > 0) {
+                        currentState.copy(activeSlot = playerSlots[currIdx - 1])
+                    } else currentState
+                }
+            }
+            "RESET" -> {
+                currentState.copy(status = BattleStatus.LOBBY, round = 1, activeSlot = 1)
+            }
+            "LEAVE" -> {
+                val obj = try { gson.fromJson(payloadJson, Map::class.java) } catch(e: Exception) { null }
+                val pId = obj?.get("playerId") as? String ?: ""
+                currentState.copy(participants = currentState.participants.filter { it.id != pId })
+            }
+            else -> currentState
+        }
+        _battleState.value = newState
+        return newState
+    }
+
+    fun leaveOrCloseBattle() {
+        _battleState.value = null
+    }
+
+    private fun generateRoomCode(): String {
+        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        return (1..4).map { chars.random() }.joinToString("")
     }
 }
 

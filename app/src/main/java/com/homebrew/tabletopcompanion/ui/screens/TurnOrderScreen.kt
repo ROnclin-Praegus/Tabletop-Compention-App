@@ -71,7 +71,8 @@ fun TurnOrderScreenContent(
     val isConnected by TurnSyncManager.isConnected.collectAsState()
     val statusMessage by TurnSyncManager.statusMessage.collectAsState()
 
-    var joinCodeInput by remember { mutableStateOf("") }
+    val localIp = remember { com.homebrew.tabletopcompanion.server.GameServerManager.getLocalIpAddress(context) }
+    var joinCodeInput by remember { mutableStateOf(if (localIp != "127.0.0.1") localIp.substringBeforeLast('.') + "." else "") }
     var customNameInput by remember { mutableStateOf(activeCharacter?.name ?: "Hero") }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -184,6 +185,7 @@ fun TurnOrderScreenContent(
                     Button(
                         onClick = {
                             TurnSyncManager.createRoom(
+                                context = context,
                                 hostName = customNameInput.ifBlank { "Host" },
                                 characterId = activeCharacter?.id,
                                 currentHp = activeCharacter?.currentHp,
@@ -213,15 +215,15 @@ fun TurnOrderScreenContent(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Join by Code
+                    // Join by Host IP / Address
                     Row(
                         modifier = Modifier.fillMaxWidth(if (isTablet) 0.6f else 1f),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         OutlinedTextField(
                             value = joinCodeInput,
-                            onValueChange = { if (it.length <= 4) joinCodeInput = it.uppercase() },
-                            label = { Text("Room Code (e.g. ABCD)") },
+                            onValueChange = { joinCodeInput = it },
+                            label = { Text("Host Wi-Fi IP (e.g. 192.168.1.5:8080)") },
                             singleLine = true,
                             modifier = Modifier.weight(1f),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -234,7 +236,7 @@ fun TurnOrderScreenContent(
                             onClick = {
                                 if (joinCodeInput.isNotBlank()) {
                                     TurnSyncManager.joinRoom(
-                                        code = joinCodeInput,
+                                        targetHostAddress = joinCodeInput,
                                         playerName = customNameInput.ifBlank { "Player" },
                                         characterId = activeCharacter?.id,
                                         currentHp = activeCharacter?.currentHp,
@@ -320,8 +322,24 @@ private fun LobbyView(
                     color = GoldAccent,
                     letterSpacing = 4.sp
                 )
+                if (TurnSyncManager.hostAddress.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        color = DarkBackground,
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(
+                            text = "📡 Wi-Fi Host: ${TurnSyncManager.hostAddress}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CyanAccent,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
                 Text(
-                    text = "Share this 4-letter code with other players to join.",
+                    text = "Players on the same Wi-Fi can join using this Host Address.",
                     fontSize = 11.sp,
                     color = TextSecondary
                 )

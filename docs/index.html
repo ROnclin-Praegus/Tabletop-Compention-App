@@ -1241,7 +1241,7 @@
           <div style="font-size:42px; margin-bottom:8px;">⚔️</div>
           <h3 style="color:var(--gold-accent); margin-bottom:6px;">Party Turn Order</h3>
           <p style="font-size:12px; color:var(--text-secondary); line-height:1.4; margin-bottom:16px;">
-            Sync turn order live across players on Android and iOS (Web) with zero server setup.
+            Sync turn order live across players on local Wi-Fi with zero internet or cloud server dependencies.
           </p>
 
           <div class="form-group" style="text-align:left; margin-bottom:14px;">
@@ -1249,21 +1249,17 @@
             <input id="turnOrderPlayerNameInput" class="form-input" placeholder="e.g. Eldrin or Hero" style="font-size:14px;">
           </div>
 
-          <button class="form-btn" style="background:var(--gold-accent); color:var(--bg-dark); font-weight:bold; font-size:14px; margin-bottom:16px;" onclick="hostTurnOrderBattle()">
-            👑 HOST NEW BATTLE
-          </button>
-
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
-            <hr style="flex:1; border:0; border-top:1px solid var(--surface-variant);">
-            <span style="font-size:11px; color:var(--text-secondary);">OR JOIN BATTLE</span>
-            <hr style="flex:1; border:0; border-top:1px solid var(--surface-variant);">
-          </div>
-
-          <div style="display:flex; gap:8px;">
-            <input id="turnOrderJoinCodeInput" class="form-input" placeholder="4-Letter Code" style="text-transform:uppercase; font-size:14px; text-align:center; letter-spacing:2px; font-weight:bold;">
-            <button class="form-btn" style="width:auto; padding:0 20px; background:var(--cyan-accent); color:var(--bg-dark); font-weight:bold;" onclick="joinTurnOrderBattle()">
-              JOIN
-            </button>
+          <div class="form-group" style="text-align:left; margin-bottom:16px;">
+            <label>Host Wi-Fi Address (e.g. 192.168.1.5:8080)</label>
+            <div style="display:flex; gap:8px;">
+              <input id="turnOrderJoinCodeInput" class="form-input" placeholder="192.168.1.5:8080" style="font-size:14px; font-weight:bold;">
+              <button class="form-btn" style="width:auto; padding:0 20px; background:var(--gold-accent); color:var(--bg-dark); font-weight:bold;" onclick="joinTurnOrderBattle()">
+                JOIN BATTLE
+              </button>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">
+              Enter the Host IP shown on the host device.
+            </div>
           </div>
         </div>
       </div>
@@ -1274,7 +1270,7 @@
         <div style="background:var(--surface-variant); border-radius:10px; padding:12px; text-align:center; margin-bottom:12px;">
           <div style="font-size:10px; font-weight:bold; color:var(--text-secondary);">ROOM CODE</div>
           <div id="turnOrderLobbyCode" style="font-size:30px; font-weight:900; color:var(--gold-accent); letter-spacing:4px; margin:4px 0;">ABCD</div>
-          <div style="font-size:11px; color:var(--text-secondary);">Share this code with your party to join.</div>
+          <div id="turnOrderLobbyHostDisplay" style="font-size:12px; color:var(--cyan-accent); font-weight:bold; margin-top:2px;"></div>
         </div>
 
         <div style="font-size:12px; font-weight:bold; color:var(--gold-accent); margin-bottom:2px;">DECLARE YOUR TURN ORDER</div>
@@ -6380,6 +6376,10 @@
       if (nameInput) {
         nameInput.value = c ? c.name : (nameInput.value || 'Hero');
       }
+      const hostInput = document.getElementById('turnOrderJoinCodeInput');
+      if (hostInput && !hostInput.value) {
+        hostInput.value = localStorage.getItem('lastBattleHostIp') || localStorage.getItem('apiServerUrl') || '';
+      }
       document.getElementById('turnOrderModal').classList.remove('hidden');
       if (window.TurnSync) {
         renderTurnOrderUI(TurnSync.getRoomState(), TurnSync.getMyParticipant(), TurnSync.isHost());
@@ -6405,26 +6405,21 @@
       }
     }
 
-    function hostTurnOrderBattle() {
+    async function joinTurnOrderBattle() {
       if (!window.TurnSync) return;
       const c = characters.find(item => item.id === activeCharId);
       const nameInput = document.getElementById('turnOrderPlayerNameInput');
-      const name = (nameInput && nameInput.value.trim()) || (c ? c.name : 'Host');
-      TurnSync.createRoom(name, c ? c.id : null, c ? c.currentHp : null, c ? getEffectiveMaxHp(c) : null);
-    }
-
-    function joinTurnOrderBattle() {
-      if (!window.TurnSync) return;
-      const c = characters.find(item => item.id === activeCharId);
-      const nameInput = document.getElementById('turnOrderPlayerNameInput');
-      const codeInput = document.getElementById('turnOrderJoinCodeInput');
+      const hostInput = document.getElementById('turnOrderJoinCodeInput');
       const name = (nameInput && nameInput.value.trim()) || (c ? c.name : 'Player');
-      const code = (codeInput && codeInput.value.trim().toUpperCase()) || '';
-      if (!code || code.length < 3) {
-        alert('Please enter a valid room code');
+      const host = (hostInput && hostInput.value.trim()) || '';
+      if (!host) {
+        alert('Please enter the Host Wi-Fi Address (e.g. 192.168.1.5:8080)');
         return;
       }
-      TurnSync.joinRoom(code, name, c ? c.id : null, c ? c.currentHp : null, c ? getEffectiveMaxHp(c) : null);
+      const success = await TurnSync.joinRoom(host, name, c ? c.id : null, c ? c.currentHp : null, c ? getEffectiveMaxHp(c) : null);
+      if (!success) {
+        alert('Could not connect to host at ' + host + '. Make sure the host has started the battle on the same Wi-Fi network.');
+      }
     }
 
     function claimTurnOrderSlot(slotNum) {
@@ -6500,6 +6495,10 @@
 
         const codeEl = document.getElementById('turnOrderLobbyCode');
         if (codeEl) codeEl.textContent = state.roomCode;
+        const hostDisplay = document.getElementById('turnOrderLobbyHostDisplay');
+        if (hostDisplay && window.TurnSync) {
+          hostDisplay.textContent = '📡 Host: ' + TurnSync.getHostAddress();
+        }
 
         const hostControls = document.getElementById('turnOrderLobbyHostControls');
         const guestControls = document.getElementById('turnOrderLobbyGuestControls');
