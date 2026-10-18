@@ -1,0 +1,2277 @@
+﻿[
+    {
+        "name":  "Dagger specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield this type of weapon skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Dagger specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Unlocks dual-wielding for this weapon",
+        "reqText":  "req: Dagger specialization",
+        "requiredSkills":  [
+                               "Dagger specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Dagger specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "All daggers inflict bleed. Daggers that already did cause double the damage",
+        "reqText":  "req: Dagger specialization (Expert)",
+        "requiredSkills":  [
+                               "Dagger specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "One-handed swords specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield this type of weapon skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "One-handed swords specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Unlocks dual-wielding for this weapon",
+        "reqText":  "req: One-handed swords specialization",
+        "requiredSkills":  [
+                               "One-handed swords specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "One-handed swords specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Critical hit on a 9+",
+        "reqText":  "req: One-handed swords specialization (Expert)",
+        "requiredSkills":  [
+                               "One-handed swords specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "One-handed blunt specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield maces \u0026 clubs skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "One-handed blunt specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Unlocks dual-wielding for this weapon",
+        "reqText":  "req: One-handed blunt specialization",
+        "requiredSkills":  [
+                               "One-handed blunt specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "One-handed blunt specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Critical hit on a 9+",
+        "reqText":  "req: One-handed blunt specialization (Expert)",
+        "requiredSkills":  [
+                               "One-handed blunt specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "One-handed axe specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield this type of weapon skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "One-handed axe specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Unlocks dual-wielding for this weapon",
+        "reqText":  "req: One-handed axe specialization",
+        "requiredSkills":  [
+                               "One-handed axe specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "One-handed axe specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Armor reduction value is doubled",
+        "reqText":  "req: One-handed axe specialization (Expert)",
+        "requiredSkills":  [
+                               "One-handed axe specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Two-handed swords specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield this type of weapon skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Two-handed swords specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Gain an extra attack with this weapon type",
+        "reqText":  "req: Two-handed swords specialization",
+        "requiredSkills":  [
+                               "Two-handed swords specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Two-handed swords specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Armor reduction is doubled",
+        "reqText":  "req: Two-handed swords specialization (Expert)",
+        "requiredSkills":  [
+                               "Two-handed swords specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Two-handed Axe specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield this type of weapon skillfully.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Two-handed Axe specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Gain an extra attack with this weapon type",
+        "reqText":  "req: Two-handed Axe specialization",
+        "requiredSkills":  [
+                               "Two-handed Axe specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Two-handed Axe specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Critical hit on a 9+",
+        "reqText":  "req: Two-handed Axe specialization (Expert)",
+        "requiredSkills":  [
+                               "Two-handed Axe specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Two-handed blunt specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield greatclubs and warmaces skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Two-handed blunt specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Gain an extra attack with this weapon type.",
+        "reqText":  "req: Two-handed blunt specialization",
+        "requiredSkills":  [
+                               "Two-handed blunt specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Two-handed blunt specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Add an armor reduction equal to the user’s strength",
+        "reqText":  "req: Two-handed blunt specialization (Expert)",
+        "requiredSkills":  [
+                               "Two-handed blunt specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Polearm specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield spears, halberds, and bardiches skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Polearm specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Charging with this weapon type applies double the damage",
+        "reqText":  "req: Polearm specialization",
+        "requiredSkills":  [
+                               "Polearm specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Polearm specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Polearm may be used to vault up to 5 tiles, passing obstacles without AoO",
+        "reqText":  "req: Polearm specialization (Expert)",
+        "requiredSkills":  [
+                               "Polearm specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bow specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield this type of weapon skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bow specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Fire in melee range without penalty",
+        "reqText":  "req: Bow specialization",
+        "requiredSkills":  [
+                               "Bow specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bow specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Arrows ignore shields and helmets",
+        "reqText":  "req: Bow specialization (Expert)",
+        "requiredSkills":  [
+                               "Bow specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Crossbow specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield this type of weapon skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Crossbow specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Fire in melee range without penalty",
+        "reqText":  "req: Crossbow specialization",
+        "requiredSkills":  [
+                               "Crossbow specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Crossbow specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Darts ignore shields and helmets",
+        "reqText":  "req: Crossbow specialization (Expert)",
+        "requiredSkills":  [
+                               "Crossbow specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Exotic specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wield unique weapons skillfully",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Exotic specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Depends on weapon",
+        "reqText":  "req: Exotic specialization",
+        "requiredSkills":  [
+                               "Exotic specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Exotic specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Depends on the weapon",
+        "reqText":  "req: Exotic specialization (Expert)",
+        "requiredSkills":  [
+                               "Exotic specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Light armor specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wear light armor with 0 movement penalties",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Medium armor specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wear medium armor with half penalties.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Heavy armor specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wear heavy armor with half penalties.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Superheavy armor",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Wear superheavy armor at all.",
+        "reqText":  "req: Heavy armor specialization",
+        "requiredSkills":  [
+                               "Heavy armor specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Shield specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Gain full damage mitigation from shields instead of half.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Buckler specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Roll a D10 for any to hit roll missed by an enemy. On a 10, receive a counter-attack.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Tower shield specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Gain access to superheavy shields",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Pistol specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Learn to use pistols.",
+        "reqText":  "req: any ranged specialization",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  "any_ranged_spec"
+    },
+    {
+        "name":  "Pistol specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Enables dual-wield for this weapon type.",
+        "reqText":  "req: Pistol specialization",
+        "requiredSkills":  [
+                               "Pistol specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Pistol specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Once per event, perform a quick reload allowing for a second attack cycle.",
+        "reqText":  "req: Pistol specialization (Expert)",
+        "requiredSkills":  [
+                               "Pistol specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Rifle specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Learn to use rifles",
+        "reqText":  "req: any ranged specialization",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  "any_ranged_spec"
+    },
+    {
+        "name":  "Rifle specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Eliminates the chance of triggering the misfire table.",
+        "reqText":  "req: Rifle specialization",
+        "requiredSkills":  [
+                               "Rifle specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Rifle specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Ignore an amount of armor equal to double the rifleman’s finesse.",
+        "reqText":  "req: Rifle specialization (Expert)",
+        "requiredSkills":  [
+                               "Rifle specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Great weapon specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Able to wield enormous weapons, not realistically made for human use.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Mounted combat",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Fight effectively from horseback, adding speed value of your mount to total damage.",
+        "reqText":  "req: riding",
+        "requiredSkills":  [
+                               "Riding"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Lancer",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Any attack made with a polearm whilst mounted crits on a 7",
+        "reqText":  "req: polearm spec.",
+        "requiredSkills":  [
+                               "Polearm specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Item specialization",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Use an additional item per turn.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Item specialization (Master)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "+1 extra item uses per turn.",
+        "reqText":  "req: Item specialization (Expert)",
+        "requiredSkills":  [
+                               "Item specialization (Expert)"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Item specialization (Expert)",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Items scale with relevant stats.",
+        "reqText":  "req: Item specialization",
+        "requiredSkills":  [
+                               "Item specialization"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Charge",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Roll a D6 and add that number to your usual move distance. If this allows you to reach an enemy, attack them with +2 to your strength.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Jumping strike",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Leap up to 3 extra tiles to strike an enemy for 2d6+strength+weapon damage.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Dynamic landing",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Add an additional 2d4 aoe damage to your jumps.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Sweep",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Hit all enemies in a 180° angle for weapon damage+strength+1d8",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Full spin",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Hit everything around you for damage+strength+1d6",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Thrown weapon",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Hurl your weapon at a distant enemy for guaranteed crit damage+strength+finesse. Hits on a finesse roll.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Throwing lunatic",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "You can perform a free throwing action with anything in your reach, assuming you can lift it with your strength.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Power strike",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "You perform a powerful, crushing blow that negates half the enemy’s armor and does critical weapon damage+1d10+STR. Every foe in range gets an attack of opportunity before it lands.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Disarming strike/Shot",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Roll against finesse. If you win, the enemy is forced to surrender an attack and their item opportunity to pick up their weapon before attacking. Also inflicts strength+weapon damage.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Taunt",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Force an enemy to attack you. Does not work if enemy is already compelled to attack a different target.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Guardian",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Force all enemies in 1d6 range to attack you, unless otherwise compelled.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bash",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Strength check against an enemy. If you win, they are stunned for 1 turn and receive 2d4+strength damage. If you lose, they take the damage but get a free attack.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Shield bash",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Add shield’s damage resistance to your strength check result.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Backstabber",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "8 and 9 on a to hit roll count as critical hits, so long as you attack from behind and those rolls would’ve hit anyway. (i.e. with 1 finesse, only a 9 or 10 would count).",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Encouraging shout",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "All allies gain +1 to a stat of your choosing this turn. Does not stack!",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Intimidating shout",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Charisma check. If you win, reduce all enemy stats by one.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Rallying cry",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Every ally is healed for 2d10, knocked out allies recover. Only works once per day.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Dodge",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "While wearing light armor, roll a D10 against any successful melee hit. On a 9 or 10, the hit doesn’t count. Roll separately against criticals. If you dodge, it only counts as a normal hit.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Uncanny dodge",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Dodge on a 8. Can also be used against non-AoE ranged and magic.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Savior",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Once per battle, jump in front of an ally within movement distance to save them from an attack. If you have charge, you can roll to add the charge distance to Savior’s reach.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Armored struggle",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Roll to hold a person and force them to the ground, inflicting an amount of damage equal to your armor value and reducing their finesse by 3.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Deadly Reach",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Passively doubles the reach at which you can make attacks of opportunities. I.e. anyone passing within 2 blocks from you is targetable or 4 blocks with a long weapon.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Rapid Thrust",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Roll 1d6 dices and add 3. You get to make that amount of additional attacks with a one-handed melee weapon of choice, but with -2 Finesse and no strength bonus.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Final Strike/Execution",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Execute a knocked down opponent with a melee strikes or ranged weapon. Must be adjacent and not have used any of your other abilities yet that turn. Inflicts 3d8+critical weapon damage. If this kills the enemy, regain 2d10 HP as a surge of confidence.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Reclaimed opportunity",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Passive buff. While moving your character, gain a free attack on any enemy you pass. Treating your own movement as if THEY triggered an attack of opportunity. Enemies do still also get attacks of opportunity on you.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Dead eye",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Elect a target that receives -2 finesse against ranged damage and loses all special defenses.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Triple-shot",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Fire at 3 targets at once with -2 finesse on top of your regular shots.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Kneecapper",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Fire a shot out of your turn trip up an enemy, inflicting 2d3 damage+weapon.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Ballbuster",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Leave cover, lose your bloodline. Interrupt a male enemy’s movement for a targeted shot inflicting 2d6+critical weapon damage.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Piercing shot",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Ranged shot that pierces in a straight line, ignoring all armor. Inflicting 2d6+weapon damage to all targets hit.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Impact shot",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Upgrades piercing shot with critical damage. On top of an additional 3d6 damage for enemies within 1 square, 2d6 for 2-5 squares away, or 1d6 for distant targets. Also adds to the bleed counter.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Exploding shot",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Roll for finesse to fire at any target, doing weapon damage. Your projectile then explodes for aoe damage in a 2+d4 radius. Inflicting 10+1d6 damage.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Ranger marks",
+        "category":  "Weapon \u0026 Combat",
+        "description":  "Gain access to the marks system.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "First aid",
+        "category":  "Professions",
+        "description":  "Mend minor wounds on a successful finesse roll",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Doctoring",
+        "category":  "Professions",
+        "description":  "A sequence of difficult finesse rolls to perform riskier operations.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Repair",
+        "category":  "Professions",
+        "description":  "restoring slightly-damaged items, armor, and clothes on a successful roll. Governing skill finesse for cloth/leather, but strength for armors.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Crafting",
+        "category":  "Professions",
+        "description":  "Roll finesse to create items from basic resources or restore badly-damaged equipment.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Potion Making",
+        "category":  "Professions",
+        "description":  "Ability to forage local plants to create basic potions.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Woodcutting",
+        "category":  "Professions",
+        "description":  "Roll to fell trees and receive lumber.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Tracking",
+        "category":  "Professions",
+        "description":  "Roll for spirit to gain a sense of where an animal or target has gone.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Fishing",
+        "category":  "Professions",
+        "description":  "Self-evident *Those with fishing skill catch 1d5+2 fish. Without, you only catch 1d3.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Cooking",
+        "category":  "Professions",
+        "description":  "Yum *Rolls of 1 are a fail, 2-8 give a good meal, 9-10 a great meal. Without skill 1-5 is a fail, 6-10 a good meal.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Skinning",
+        "category":  "Professions",
+        "description":  "Roll for finesse to gain animal pelts.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Thieving",
+        "category":  "Professions",
+        "description":  "Roll for finesse to pickpocket or take items without being noticed.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Smithing",
+        "category":  "Professions",
+        "description":  "Creating basic armors from raw materials.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Clothesmaking",
+        "category":  "Professions",
+        "description":  "Creating clothes from cloth, leather, and other light materials.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Musician",
+        "category":  "Professions",
+        "description":  "Use charisma to inspire or otherwise influence your allies with music.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Artistry",
+        "category":  "Professions",
+        "description":  "Roll for charisma to create artistic objects, like paintings or sculptures.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Alcoholic",
+        "category":  "Professions",
+        "description":  "You gain finesse from drinking alcohol instead of losing it. However, you still lose intelligence from drinking.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Swimming",
+        "category":  "Utility",
+        "description":  "Roll for strength to not drown. Armor value is deducted from your roll.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Riding",
+        "category":  "Utility",
+        "description":  "To be able to ride horses. Or, you know, whatever else you can convince to be a mount.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Identification",
+        "category":  "Utility",
+        "description":  "Roll for spirit to discover the properties of magical items.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Blend",
+        "category":  "Utility",
+        "description":  "Use charisma to hide in plain sight, acting as if you belong. Context influences effectiveness, you can’t just blend your way past the king straight into his wife’s bedchambers.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Sneak",
+        "category":  "Utility",
+        "description":  "When wearing light armor, move silently so as not to alert.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Taming",
+        "category":  "Utility",
+        "description":  "Convincing animals to stay by your side and do your bidding.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Trap-finding",
+        "category":  "Utility",
+        "description":  "Have a chance of innately sensing traps. Without trap-finding, players have to guess when to search for traps and make an intelligence roll to pass it.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Lockpicking",
+        "category":  "Utility",
+        "description":  "Opening locks to which you have lost the key. Finesse roll.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Stealth",
+        "category":  "Utility",
+        "description":  "Merge into the world of shadows for complete invisibility. Every turn spent in stealth, you need to roll 2+ on a d10 to see if you can remain stealthed. With the required roll going up by 1 each turn.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Fire",
+        "category":  "Magic",
+        "description":  "High damage, burning",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Water",
+        "category":  "Magic",
+        "description":  "Utility, moderate damage",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Ice",
+        "category":  "Magic",
+        "description":  "Utility, piercing damage",
+        "reqText":  "req: Magic: Water, INT 6",
+        "requiredSkills":  [
+                               "Magic: Water"
+                           ],
+        "requiredStats":  {
+                              "intelligence":  6
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Blood",
+        "category":  "Magic",
+        "description":  "High, debilitating damage.",
+        "reqText":  "req: Magic: Water, INT 8",
+        "requiredSkills":  [
+                               "Magic: Water"
+                           ],
+        "requiredStats":  {
+                              "intelligence":  8
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Thunder",
+        "category":  "Magic",
+        "description":  "Area-of-effect damage",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Earthen",
+        "category":  "Magic",
+        "description":  "Moderate, physical damage",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Wind",
+        "category":  "Magic",
+        "description":  "Variety of direct and large area-of-effect spells",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Force",
+        "category":  "Magic",
+        "description":  "Magic that directly influences physics",
+        "reqText":  "req: Magic: Wind, INT 8",
+        "requiredSkills":  [
+                               "Magic: Wind"
+                           ],
+        "requiredStats":  {
+                              "intelligence":  8
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Illusion",
+        "category":  "Magic",
+        "description":  "Manipulation and trickery",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Enhancement",
+        "category":  "Magic",
+        "description":  "Magic that specializes in temporary buffs",
+        "reqText":  "req: INT 7",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  7
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Nature",
+        "category":  "Magic",
+        "description":  "Manipulate plants and restore life.",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Necromancy",
+        "category":  "Magic",
+        "description":  "Resurrecting and communicating with the dead.",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Darkness",
+        "category":  "Magic",
+        "description":  "Extremely powerful magic which drains your lifeforce in return.",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Nightmare",
+        "category":  "Magic",
+        "description":  "Psychologically damaging magic",
+        "reqText":  "req: INT 8",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  8
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Shapeshifting",
+        "category":  "Magic",
+        "description":  "Change your physical form or that of others.",
+        "reqText":  "req: INT 7",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  7
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Magic: Corruption",
+        "category":  "Magic",
+        "description":  "Poison, acid, and rot.",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Reaction spells",
+        "category":  "Magic",
+        "description":  "Unlock the ability to cast a limited selection of spells outside of your actual turn.",
+        "reqText":  "req: INT 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "intelligence":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Reaction Spell: Magic sensing (1MP)",
+        "category":  "Magic",
+        "description":  "Detect and trace sources of magic.",
+        "reqText":  "req: Reaction spells",
+        "requiredSkills":  [
+                               "Reaction spells"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Reaction Spell: Dispel (1MP)",
+        "category":  "Magic",
+        "description":  "Cancel a magical effect (burning, curse, slow, petrification) on a person. Or use 2MP to cast it as an area-of-effect.",
+        "reqText":  "req: Reaction spells",
+        "requiredSkills":  [
+                               "Reaction spells"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Reaction Spell: Diffuse (xMP)",
+        "category":  "Magic",
+        "description":  "A last-ditch defense spell that can be cast as a reaction. Reduce the damage of an incoming hit by 5+xd6. Where x is the amount of mana input.",
+        "reqText":  "req: Reaction spells",
+        "requiredSkills":  [
+                               "Reaction spells"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Reaction Spell: Magical device (1MP)",
+        "category":  "Magic",
+        "description":  "Channel magic to use magical machinery.",
+        "reqText":  "req: Reaction spells",
+        "requiredSkills":  [
+                               "Reaction spells"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Stealth (Shadow Realm)",
+        "category":  "Magic",
+        "description":  "Fade into a world of shadows. Can only be maintained for an amount of turns equal to half-spirit before it becomes harmful to the user.",
+        "reqText":  "req: Blend, INT 6",
+        "requiredSkills":  [
+                               "Blend"
+                           ],
+        "requiredStats":  {
+                              "intelligence":  6
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bible of Illumus",
+        "category":  "Faith",
+        "description":  "Prayers meant to oppose evil and call upon divine aid",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bible of Felis",
+        "category":  "Faith",
+        "description":  "Powerful healing magic",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bible of Gulf",
+        "category":  "Faith",
+        "description":  "Prayers to enhance physical power",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bible of Serena",
+        "category":  "Faith",
+        "description":  "Cleansing and magical damage",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bible of Koth",
+        "category":  "Faith",
+        "description":  "Anti-undead prayers",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bible of Gorün",
+        "category":  "Faith",
+        "description":  "Quiet prayers to aid in work and crafting",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bible of Merena",
+        "category":  "Faith",
+        "description":  "Prayers to call forth destruction and chaos",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bible of Zuul",
+        "category":  "Faith",
+        "description":  "Beg Zuul to better your odds or reshape reality to your advantage",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Bible of Nesfeth",
+        "category":  "Faith",
+        "description":  "Quiet curses to unleash upon your enemies",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Desperate prayer",
+        "category":  "Faith",
+        "description":  "Throw out an aimless prayer and roll for spirit. Who knows who or what might answer.",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Devotion",
+        "category":  "Faith",
+        "description":  "Gain a permanent, God-specific buff. (requires maxed out bible)",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Divine rivalry",
+        "category":  "Faith",
+        "description":  "Once per day, muster your piety to do double damage for a turn against a follower of a rival God (requires min 3 tiers in a bible)",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Unity",
+        "category":  "Faith",
+        "description":  "Roll for spirit to sense other followers of your faith nearby.",
+        "reqText":  "req: SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Fallen follower",
+        "category":  "Faith",
+        "description":  "Become an enemy of your faith. Your progress in a bible is converted into stat points and you gain a permanent damage bonus against your former comrades.",
+        "reqText":  "req: Any Bible, SPI 5",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "spirit":  5
+                          },
+        "specialReq":  "any_bible"
+    },
+    {
+        "name":  "Suppressing fire",
+        "category":  "Advanced combat moves",
+        "description":  "Gain a free ranged attack shot at any enemy moving within your line-of-sight.",
+        "reqText":  "req: any ranged expert",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  "any_ranged_expert"
+    },
+    {
+        "name":  "Snipe",
+        "category":  "Advanced combat moves",
+        "description":  "Sacrifice 2 of your shots for that turn for a guaranteed hit that crits on a 6+. If your shot would have crit anyway, damage is quadrupled.",
+        "reqText":  "req: Dead eye",
+        "requiredSkills":  [
+                               "Dead eye"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Volley",
+        "category":  "Advanced combat moves",
+        "description":  "Release a flurry of arrow fire on a designated area, damaging anything within for 3d3+ weapon damage.",
+        "reqText":  "req: bow or crossbow expert",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  "bow_or_crossbow_expert"
+    },
+    {
+        "name":  "Bullet Time",
+        "category":  "Advanced combat moves",
+        "description":  "When targeted by projectiles, gain +7 dodge and move into cover outside your turn.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Kneebreaker",
+        "category":  "Advanced combat moves",
+        "description":  "A targeted attack at an enemy’s legs. Roll a 1d3. 1: fail, 2: half movement, 3: unable to move. Effect lasts 3 turns and can’t be stacked, but can be cured.",
+        "reqText":  "req: any weapon expert",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  "any_weapon_expert"
+    },
+    {
+        "name":  "Earthshaker",
+        "category":  "Advanced combat moves",
+        "description":  "A forceful blow to the earth. Enemies within 2 tiles range receive 2d6 damage and are blown 1d3 tiles away.",
+        "reqText":  "req: melee weapon expert, strength 6",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "strength":  6
+                          },
+        "specialReq":  "melee_weapon_expert"
+    },
+    {
+        "name":  "Blade twist",
+        "category":  "Advanced combat moves",
+        "description":  "Use after landing a hit to twist your melee weapon, inflicting bleed on your enemy +1d6 damage.",
+        "reqText":  "req: melee weapon expert, finesse 6",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "finesse":  6
+                          },
+        "specialReq":  "melee_weapon_expert"
+    },
+    {
+        "name":  "Assassinate",
+        "category":  "Advanced combat moves",
+        "description":  "Strike a target out of stealth or hiding for quadruple your weapon damage.",
+        "reqText":  "req: backstab",
+        "requiredSkills":  [
+                               "Backstabber"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Silent killer",
+        "category":  "Advanced combat moves",
+        "description":  "Perform assassinate with a guarantee that nobody hears a thing, unless your victim survives. CAN NOT BE USED WITH GUNS OR GREAT WEAPONS.",
+        "reqText":  "req: Assassinate",
+        "requiredSkills":  [
+                               "Assassinate"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Rage",
+        "category":  "Advanced combat moves",
+        "description":  "You succumb to anger, halving your finesse and foregoing the benefits of a shield, but doubling your attack for this turn.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Natural armor",
+        "category":  "Advanced combat moves",
+        "description":  "Your muscles are your shield! Gain an armor value equal to your endurance so long as no other armor is worn (helms do not count).",
+        "reqText":  "req: str 6",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "strength":  6
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Professional nudist",
+        "category":  "Advanced combat moves",
+        "description":  "The effect of natural armor is doubled.",
+        "reqText":  "req: Natural armor",
+        "requiredSkills":  [
+                               "Natural armor"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "High on violence",
+        "category":  "Advanced combat moves",
+        "description":  "Upon defeating a worthy enemy, immediately regain your movement and 1 attack.",
+        "reqText":  "req: charge",
+        "requiredSkills":  [
+                               "Charge"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Dismembering strike",
+        "category":  "Advanced combat moves",
+        "description":  "A precise strike causing 2d8+weapon damage. Roll a strength check after and select a limb to cut off, inflicting an additional double-crit weapon damage + 2d4 bleed.",
+        "reqText":  "req: Power Strike",
+        "requiredSkills":  [
+                               "Power strike"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Engineering",
+        "category":  "Other advanced skills",
+        "description":  "Ability to maintain and repair mechanical constructions on a successful intelligence roll.",
+        "reqText":  "req: repair",
+        "requiredSkills":  [
+                               "Repair"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Driving",
+        "category":  "Other advanced skills",
+        "description":  "Ability to ride and control mechanical vehicles",
+        "reqText":  "req: riding",
+        "requiredSkills":  [
+                               "Riding"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Social grace",
+        "category":  "Other advanced skills",
+        "description":  "Quick wits and charm allow you to reroll a failed charisma check. You’re allowed to change the type of roll as well, i.e. failing an intimidation attempt, passing it off as a joke, and persuading the target instead.",
+        "reqText":  "req: charisma 7",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+                              "charisma":  7
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Borrowed strength",
+        "category":  "Other advanced skills",
+        "description":  "Add the value of a companion’s strength to your own when rolling for intimidation.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging",
+        "category":  "Other advanced skills",
+        "description":  "Utilize different types of ammo for different effects. Ammo types must first be bought or crafted with tinkering.",
+        "reqText":  "",
+        "requiredSkills":  [
+
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging: Incendiary rounds",
+        "category":  "Other advanced skills",
+        "description":  "Add +1 fire damage to each bullet and leave targets burning.",
+        "reqText":  "req: Gunslinging",
+        "requiredSkills":  [
+                               "Gunslinging"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging: AP rounds",
+        "category":  "Other advanced skills",
+        "description":  "Ignore half the enemy’s armor value.",
+        "reqText":  "req: Gunslinging",
+        "requiredSkills":  [
+                               "Gunslinging"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging: Fullmetal Jacket",
+        "category":  "Other advanced skills",
+        "description":  "Misfire chance is eliminated.",
+        "reqText":  "req: Gunslinging",
+        "requiredSkills":  [
+                               "Gunslinging"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging: Arcane rounds",
+        "category":  "Other advanced skills",
+        "description":  "Add +2 magic damage to bullets.",
+        "reqText":  "req: Gunslinging",
+        "requiredSkills":  [
+                               "Gunslinging"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging: Tracer rounds",
+        "category":  "Other advanced skills",
+        "description":  "Add +2 finesse for the purpose of ranged attacks for all allies.",
+        "reqText":  "req: Gunslinging",
+        "requiredSkills":  [
+                               "Gunslinging"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging: Explosive rounds",
+        "category":  "Other advanced skills",
+        "description":  "Add +3 damage to all shots, but misfires on a 3 or lower.",
+        "reqText":  "req: Gunslinging",
+        "requiredSkills":  [
+                               "Gunslinging"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging: Holy rounds",
+        "category":  "Other advanced skills",
+        "description":  "+2 damage per shot against opposite faith.",
+        "reqText":  "req: Gunslinging",
+        "requiredSkills":  [
+                               "Gunslinging"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging: Paint rounds",
+        "category":  "Other advanced skills",
+        "description":  "No damage, but fun colors.",
+        "reqText":  "req: Gunslinging",
+        "requiredSkills":  [
+                               "Gunslinging"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Gunslinging: Penetrator rounds",
+        "category":  "Other advanced skills",
+        "description":  "Ignore cover and can fire through walls.",
+        "reqText":  "req: Gunslinging",
+        "requiredSkills":  [
+                               "Gunslinging"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    },
+    {
+        "name":  "Self-help",
+        "category":  "Other advanced skills",
+        "description":  "For every turn downed, roll a 3+ on a 1d6 to see if you can recover by yourself while combat is ongoing. Healing yourself for 10+1d10 in the process. Roll required goes up by 1 after each down.",
+        "reqText":  "req: First Aid",
+        "requiredSkills":  [
+                               "First aid"
+                           ],
+        "requiredStats":  {
+
+                          },
+        "specialReq":  ""
+    }
+]

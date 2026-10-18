@@ -56,10 +56,38 @@ class CharacterRepository(context: Context) {
         }
         return try {
             val type = object : TypeToken<List<Character>>() {}.type
-            gson.fromJson<List<Character>>(json, type) ?: emptyList()
+            val list = gson.fromJson<List<Character>>(json, type) ?: emptyList()
+            list.map { sanitizeCharacter(it) }
         } catch (e: Exception) {
             getPresetCharacters()
         }
+    }
+
+    private fun sanitizeCharacter(c: Character): Character {
+        val cleanInventory = c.inventory.map { item ->
+            item.copy(
+                name = item.name ?: "",
+                category = item.category ?: "Gear",
+                attackDamage = item.attackDamage ?: "",
+                specialEffectsText = item.specialEffectsText ?: "",
+                onHandSpecialEffectsText = item.onHandSpecialEffectsText ?: "",
+                customProperties = item.customProperties ?: emptyMap(),
+                statModifiers = item.statModifiers ?: emptyMap()
+            )
+        }
+        val cleanEffects = c.effects.map { eff ->
+            eff.copy(
+                name = eff.name ?: "",
+                diceFormula = eff.diceFormula ?: "",
+                changeMode = eff.changeMode ?: "DMG",
+                statModifiers = eff.statModifiers ?: emptyMap(),
+                isEnabled = eff.isEnabled ?: true
+            )
+        }
+        return c.copy(
+            inventory = cleanInventory,
+            effects = cleanEffects
+        )
     }
 
     fun saveCharacters(characters: List<Character>) {

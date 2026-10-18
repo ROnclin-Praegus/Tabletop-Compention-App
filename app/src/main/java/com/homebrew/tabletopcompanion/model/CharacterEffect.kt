@@ -16,12 +16,27 @@ enum class DamageType {
 
 data class CharacterEffect(
     val id: String = UUID.randomUUID().toString(),
-    val name: String,
+    val name: String = "",
     val effectType: EffectType = EffectType.STAT_MODIFIER,
     val targetStat: String? = null, // "strength", "intelligence", "endurance", "spirit", "finesse", "charisma"
     val value: Int = 0, // e.g. +3, -5
     val statModifiers: Map<String, Int>? = emptyMap(),
     val roundsRemaining: Int = 0, // 0 = Unlimited, > 0 = remaining rounds
-    val damageType: DamageType = DamageType.UNSAVEABLE // For negative HP_CHANGE_PER_ROUND
-)
+    val damageType: DamageType = DamageType.UNSAVEABLE, // For negative HP_CHANGE_PER_ROUND
+    val isDiceRoll: Boolean = false,
+    val diceFormula: String = "",
+    val changeMode: String = "DMG", // "DMG", "HEAL", "MIXED"
+    val isEnabled: Boolean? = true
+) {
+    val enabled: Boolean
+        get() = isEnabled != false
 
+    val safeName: String
+        get() = name ?: ""
+
+    val safeDiceFormula: String
+        get() = diceFormula ?: ""
+
+    val safeChangeMode: String
+        get() = changeMode ?: "DMG"
+}

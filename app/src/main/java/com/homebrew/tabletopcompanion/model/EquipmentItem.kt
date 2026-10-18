@@ -4,8 +4,8 @@ import java.util.UUID
 
 data class EquipmentItem(
     val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val category: String, // Freeform category e.g. "Weapon", "Armor", "Potion", "Scroll"
+    val name: String = "",
+    val category: String = "Gear", // Freeform category e.g. "Weapon", "Armor", "Potion", "Scroll"
     val isEquipped: Boolean = false,
     val hasArmor: Boolean = false,
     val armorSave: Int = 0, // Integer points (e.g. 2, 5, 10)
@@ -17,8 +17,27 @@ data class EquipmentItem(
     val attackCount: Int = 1,
     val attackDamage: String = "",
     val hasSpecialEffects: Boolean = false,
-    val specialEffectsText: String = "",
-    val customProperties: Map<String, String> = emptyMap(),
+    val specialEffectsText: String? = "",
+    val onHandSpecialEffectsText: String? = "",
+    val hasMagic: Boolean = false,
+    val spellDamageModifier: Int = 0,
+    val spellHealingModifier: Int = 0,
+    val customProperties: Map<String, String>? = emptyMap(),
     val isConsumable: Boolean = false,
     val consumableAmount: Int = 1
-)
+) {
+    val safeSpecialEffectsText: String
+        get() = specialEffectsText ?: ""
+
+    val safeOnHandSpecialEffectsText: String
+        get() = onHandSpecialEffectsText ?: ""
+
+    val safeAttackDamage: String
+        get() = attackDamage ?: ""
+
+    val safeName: String
+        get() = name ?: ""
+
+    val safeCategory: String
+        get() = category ?: "Gear"
+}

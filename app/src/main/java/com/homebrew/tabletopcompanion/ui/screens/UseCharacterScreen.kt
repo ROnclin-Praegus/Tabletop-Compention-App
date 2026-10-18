@@ -1,5 +1,6 @@
 package com.homebrew.tabletopcompanion.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +9,10 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +48,7 @@ import com.homebrew.tabletopcompanion.model.CharacterNote
 import com.homebrew.tabletopcompanion.model.DamageType
 import com.homebrew.tabletopcompanion.model.EffectType
 import com.homebrew.tabletopcompanion.model.EquipmentItem
+import com.homebrew.tabletopcompanion.data.SkillsRepository
 import com.homebrew.tabletopcompanion.ui.theme.*
 
 enum class AdjustmentType {
@@ -88,6 +94,8 @@ fun UseCharacterScreen(
     var abilityToEdit by remember { mutableStateOf<CharacterAbility?>(null) }
     var noteToEdit by remember { mutableStateOf<CharacterNote?>(null) }
     var effectToEdit by remember { mutableStateOf<CharacterEffect?>(null) }
+    var collapsedParentAbilityNames by remember { mutableStateOf(setOf<String>()) }
+    var showSelectOnHandDialog by remember { mutableStateOf(false) }
 
     var recentChangeArmor by remember { mutableStateOf<Int?>(null) }
     var recentChangeWard by remember { mutableStateOf<Int?>(null) }
@@ -113,7 +121,15 @@ fun UseCharacterScreen(
     val effectiveMaxMp = activeCharacter.getEffectiveMaxMp()
     val effectiveSpirit = activeCharacter.getEffectiveSpirit()
 
-    fun resetDefensesAndTickRound() {
+    var showDiceRollPromptDialog by remember { mutableStateOf(false) }
+
+    val activeDiceEffects = remember(activeCharacter.effects) {
+        activeCharacter.effects.filter {
+            it.isDiceRoll && (it.effectType == EffectType.HP_CHANGE_PER_ROUND || it.effectType == EffectType.MP_CHANGE_PER_ROUND)
+        }
+    }
+
+    fun executeRoundTick(diceRollResults: Map<String, Int> = emptyMap()) {
         var newHp = activeCharacter.currentHp
         var newMp = activeCharacter.currentMp
         var newArmor = totalArmor
@@ -154,12 +170,18 @@ fun UseCharacterScreen(
 
         // 3. Process per-round HP/MP effects and decrement duration
         val updatedEffects = activeCharacter.effects.mapNotNull { effect ->
+            val effectiveVal = if (effect.isDiceRoll && diceRollResults.containsKey(effect.id)) {
+                diceRollResults[effect.id] ?: 0
+            } else {
+                effect.value
+            }
+
             // Apply per-round HP change
             if (effect.effectType == EffectType.HP_CHANGE_PER_ROUND) {
-                if (effect.value > 0) {
-                    newHp = (newHp + effect.value).coerceIn(0, effectiveMaxHp)
-                } else if (effect.value < 0) {
-                    var remainingDamage = kotlin.math.abs(effect.value)
+                if (effectiveVal > 0) {
+                    newHp = (newHp + effectiveVal).coerceIn(0, effectiveMaxHp)
+                } else if (effectiveVal < 0) {
+                    var remainingDamage = kotlin.math.abs(effectiveVal)
                     when (effect.damageType) {
                         DamageType.PHYSICAL -> {
                             if (remainingDamage > 0 && newBoostArmor > 0) {
@@ -224,7 +246,7 @@ fun UseCharacterScreen(
             }
             // Apply per-round MP change
             if (effect.effectType == EffectType.MP_CHANGE_PER_ROUND && effectiveMaxMp > 0) {
-                newMp = (newMp + effect.value).coerceIn(0, effectiveMaxMp)
+                newMp = (newMp + effectiveVal).coerceIn(0, effectiveMaxMp)
             }
 
             // Decrement duration (0 = unlimited)
@@ -297,6 +319,18 @@ fun UseCharacterScreen(
         )
         activeCharacter = updated
         onCharacterUpdated(updated)
+    }
+
+    fun triggerNextRound() {
+        if (activeDiceEffects.isNotEmpty()) {
+            showDiceRollPromptDialog = true
+        } else {
+            executeRoundTick()
+        }
+    }
+
+    fun resetDefensesAndTickRound() {
+        triggerNextRound()
     }
 
     fun applyDamageWithType(amount: Int, type: DamageType) {
@@ -559,11 +593,39 @@ fun UseCharacterScreen(
         }
     }
 
+    fun toggleEffectEnabled(effectId: String) {
+        applyCharacterUpdateWithVitalsDelta { char ->
+            val updatedList = char.effects.map { eff ->
+                if (eff.id == effectId) {
+                    eff.copy(isEnabled = !eff.enabled)
+                } else eff
+            }
+            char.copy(effects = updatedList)
+        }
+    }
+
     fun addAbility(ability: CharacterAbility) {
-        val updatedList = activeCharacter.abilities + ability
+        val subSpells = SkillsRepository.getSubSpellsForParent(ability.name)
+        val toAdd = mutableListOf(ability)
+        for (sub in subSpells) {
+            val alreadyPresent = activeCharacter.abilities.any { 
+                it.name.trim().lowercase() == sub.name.trim().lowercase() 
+            }
+            if (!alreadyPresent) {
+                toAdd.add(CharacterAbility(name = sub.name, description = sub.description))
+            }
+        }
+        val updatedList = activeCharacter.abilities + toAdd
         val updated = activeCharacter.copy(abilities = updatedList)
         activeCharacter = updated
         onCharacterUpdated(updated)
+        if (toAdd.size > 1) {
+            android.widget.Toast.makeText(
+                context,
+                "Added '${ability.name}' and ${toAdd.size - 1} sub-spells",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     fun updateAbility(updatedAbility: CharacterAbility) {
@@ -815,57 +877,79 @@ fun UseCharacterScreen(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface)
                 )
 
-                // 5 Icon-Only Navigation Tabs (Vitals, Abilities, Equipment, Inventory, Notes)
+                val hasMagicBible = remember(activeCharacter.abilities) {
+                    activeCharacter.abilities.any { a ->
+                        val n = a.name.trim().lowercase()
+                        n.startsWith("magic:") || n.startsWith("bible of") || n.contains("bible")
+                    }
+                }
+                val tabList = remember(hasMagicBible) {
+                    if (hasMagicBible) listOf(0, 1, 5, 2, 3, 4) else listOf(0, 1, 2, 3, 4)
+                }
+                val selectedTabIndex = tabList.indexOf(selectedTab).let { if (it >= 0) it else 0 }
+
+                LaunchedEffect(hasMagicBible) {
+                    if (!hasMagicBible && selectedTab == 5) {
+                        selectedTab = 1
+                    }
+                }
+
+                // Dynamic Navigation Tabs (Vitals, Abilities, [Spell Book], Equipment, Inventory, Notes)
                 TabRow(
-                    selectedTabIndex = selectedTab,
+                    selectedTabIndex = selectedTabIndex,
                     containerColor = DarkSurface,
                     contentColor = GoldAccent
                 ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        icon = { Icon(Icons.Default.Shield, contentDescription = "Vitals", modifier = Modifier.size(22.dp)) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "Abilities", modifier = Modifier.size(22.dp)) }
-                    )
-                    Tab(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        icon = { Icon(Icons.Default.CheckCircle, contentDescription = "Equipment", modifier = Modifier.size(22.dp)) }
-                    )
-                    Tab(
-                        selected = selectedTab == 3,
-                        onClick = { selectedTab = 3 },
-                        icon = { Icon(Icons.Default.Backpack, contentDescription = "Inventory", modifier = Modifier.size(22.dp)) }
-                    )
-                    Tab(
-                        selected = selectedTab == 4,
-                        onClick = { selectedTab = 4 },
-                        icon = { Icon(Icons.Default.EditNote, contentDescription = "Notes", modifier = Modifier.size(24.dp)) }
-                    )
+                    tabList.forEach { tabId ->
+                        when (tabId) {
+                            0 -> Tab(
+                                selected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                                icon = { Icon(Icons.Default.Shield, contentDescription = "Vitals", modifier = Modifier.size(22.dp)) }
+                            )
+                            1 -> Tab(
+                                selected = selectedTab == 1,
+                                onClick = { selectedTab = 1 },
+                                icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "Abilities", modifier = Modifier.size(22.dp)) }
+                            )
+                            5 -> Tab(
+                                selected = selectedTab == 5,
+                                onClick = { selectedTab = 5 },
+                                icon = { Icon(Icons.Default.MenuBook, contentDescription = "Spell Book", modifier = Modifier.size(22.dp)) }
+                            )
+                            2 -> Tab(
+                                selected = selectedTab == 2,
+                                onClick = { selectedTab = 2 },
+                                icon = { Icon(Icons.Default.CheckCircle, contentDescription = "Equipment", modifier = Modifier.size(22.dp)) }
+                            )
+                            3 -> Tab(
+                                selected = selectedTab == 3,
+                                onClick = { selectedTab = 3 },
+                                icon = { Icon(Icons.Default.Backpack, contentDescription = "Inventory", modifier = Modifier.size(22.dp)) }
+                            )
+                            4 -> Tab(
+                                selected = selectedTab == 4,
+                                onClick = { selectedTab = 4 },
+                                icon = { Icon(Icons.Default.EditNote, contentDescription = "Notes", modifier = Modifier.size(24.dp)) }
+                            )
+                        }
+                    }
                 }
             }
         },
         containerColor = DarkBackground
     ) { paddingValues ->
-        Box(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            val isTablet = maxWidth >= 600.dp
+
             when (selectedTab) {
                 0 -> {
                     // TAB 0: VITALS & STATS
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
+                    val vitalsCardContent: @Composable () -> Unit = {
                         // VITAL METRICS CARD
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -1265,83 +1349,465 @@ fun UseCharacterScreen(
                                 }
                             }
                         }
+                    }
 
-                        // STATS GRID (Interactive tap to view Base stat score)
-                        Row(
+                    // ON-HAND WEAPON CARD
+                    val onHandWeaponContent: @Composable () -> Unit = {
+                        val equippedItemsForOnHand = remember(activeCharacter.inventory) {
+                            activeCharacter.inventory.filter { it.isEquipped }
+                        }
+                        val onHandWeapon = remember(equippedItemsForOnHand, activeCharacter.onHandWeaponId) {
+                            equippedItemsForOnHand.find { it.id == activeCharacter.onHandWeaponId }
+                        }
+
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                            border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.35f))
                         ) {
-                            Text(
-                                text = "CHARACTER STATS",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = TextSecondary
-                            )
-                            Text(
-                                text = "Tap stat to view Base",
-                                fontSize = 10.sp,
-                                color = GoldAccent
-                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "⚔️",
+                                            fontSize = 15.sp
+                                        )
+                                        Text(
+                                            text = "ON-HAND WEAPON",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = GoldAccent
+                                        )
+                                    }
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Button(
+                                            onClick = { showSelectOnHandDialog = true },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (onHandWeapon != null) DarkSurfaceVariant else GoldAccent,
+                                                contentColor = if (onHandWeapon != null) GoldAccent else DarkBackground
+                                            ),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                            modifier = Modifier.height(30.dp),
+                                            border = if (onHandWeapon != null) BorderStroke(1.dp, GoldAccent) else null
+                                        ) {
+                                            Text(
+                                                text = if (onHandWeapon != null) "Switch" else "Select Weapon",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+
+                                        if (onHandWeapon != null) {
+                                            IconButton(
+                                                onClick = {
+                                                    val updated = activeCharacter.copy(onHandWeaponId = null)
+                                                    activeCharacter = updated
+                                                    onCharacterUpdated(updated)
+                                                },
+                                                modifier = Modifier.size(30.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "Clear on-hand",
+                                                    tint = CrimsonPrimary,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (onHandWeapon != null) {
+                                    Surface(
+                                        color = DarkSurfaceVariant,
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.25f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.Top
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = onHandWeapon.name,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 16.sp,
+                                                        color = TextPrimary
+                                                    )
+                                                    Text(
+                                                        text = onHandWeapon.category.ifBlank { "Weapon" },
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = GoldAccent
+                                                    )
+                                                }
+
+                                                if (onHandWeapon.hasAttacks) {
+                                                    Surface(
+                                                        color = GoldAccent.copy(alpha = 0.15f),
+                                                        border = BorderStroke(1.dp, GoldAccent),
+                                                        shape = RoundedCornerShape(8.dp)
+                                                    ) {
+                                                        Column(
+                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                            horizontalAlignment = Alignment.End
+                                                        ) {
+                                                            Text(
+                                                                text = "ATTACK",
+                                                                fontSize = 9.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = TextSecondary
+                                                            )
+                                                            Text(
+                                                                text = "${onHandWeapon.attackCount} × ${if (onHandWeapon.attackDamage.isNotBlank()) onHandWeapon.attackDamage else "Base"} Dmg",
+                                                                fontSize = 13.sp,
+                                                                fontWeight = FontWeight.ExtraBold,
+                                                                color = GoldAccent
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // Badges for armor, ward, stats
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                if (onHandWeapon.hasArmor && onHandWeapon.armorSave > 0) {
+                                                    Surface(
+                                                        color = GoldAccent.copy(alpha = 0.15f),
+                                                        shape = RoundedCornerShape(4.dp),
+                                                        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
+                                                    ) {
+                                                        Text(
+                                                            text = "Armor: ${onHandWeapon.armorSave}",
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = GoldAccent,
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        )
+                                                    }
+                                                }
+                                                if (onHandWeapon.hasWard && onHandWeapon.wardSave > 0) {
+                                                    Surface(
+                                                        color = CyanAccent.copy(alpha = 0.15f),
+                                                        shape = RoundedCornerShape(4.dp),
+                                                        border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.5f))
+                                                    ) {
+                                                        Text(
+                                                            text = "Ward: ${onHandWeapon.wardSave}",
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = CyanAccent,
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        )
+                                                    }
+                                                }
+                                                onHandWeapon.statModifiers?.forEach { (stat, mod) ->
+                                                    if (mod != 0) {
+                                                        Surface(
+                                                            color = if (mod > 0) GreenHp.copy(alpha = 0.15f) else CrimsonPrimary.copy(alpha = 0.15f),
+                                                            shape = RoundedCornerShape(4.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = "${stat.take(3).uppercase()}: ${if (mod > 0) "+$mod" else "$mod"}",
+                                                                fontSize = 11.sp,
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = if (mod > 0) GreenHp else CrimsonPrimary,
+                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if (onHandWeapon.hasSpecialEffects && onHandWeapon.safeOnHandSpecialEffectsText.isNotBlank()) {
+                                                Surface(
+                                                    color = GoldAccent.copy(alpha = 0.12f),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f)),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Column(modifier = Modifier.padding(8.dp)) {
+                                                        Text(
+                                                            text = "⚔️ ON-HAND SPECIAL EFFECT",
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = GoldAccent
+                                                        )
+                                                        Spacer(modifier = Modifier.height(2.dp))
+                                                        Text(
+                                                            text = onHandWeapon.safeOnHandSpecialEffectsText,
+                                                            fontSize = 12.sp,
+                                                            color = TextPrimary,
+                                                            lineHeight = 15.sp
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            if (onHandWeapon.hasSpecialEffects && onHandWeapon.safeSpecialEffectsText.isNotBlank()) {
+                                                Surface(
+                                                    color = CyanAccent.copy(alpha = 0.1f),
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.35f)),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Column(modifier = Modifier.padding(8.dp)) {
+                                                        Text(
+                                                            text = "🛡️ EQUIPPED SPECIAL EFFECT",
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = CyanAccent
+                                                        )
+                                                        Spacer(modifier = Modifier.height(2.dp))
+                                                        Text(
+                                                            text = onHandWeapon.safeSpecialEffectsText,
+                                                            fontSize = 12.sp,
+                                                            color = TextPrimary,
+                                                            lineHeight = 15.sp
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Surface(
+                                        color = DarkBackground,
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = "No weapon on hand. Tap 'Select Weapon' to choose from your equipped items.",
+                                            fontSize = 12.sp,
+                                            color = TextSecondary,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(14.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ITEM SPECIAL EFFECTS CARD (Between On-Hand Weapon and Character Stats)
+                    val itemSpecialEffectsContent: @Composable () -> Unit = {
+                        val equippedItemsWithEffects = remember(activeCharacter.inventory) {
+                            activeCharacter.inventory.filter { it.isEquipped && it.hasSpecialEffects && it.safeSpecialEffectsText.isNotBlank() }
                         }
 
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                            border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.35f))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                StatDisplayCard(
-                                    name = "Strength",
-                                    score = activeCharacter.strength,
-                                    modifierValue = activeCharacter.getStatModifier("strength"),
-                                    modifier = Modifier.weight(1f)
-                                )
-                                StatDisplayCard(
-                                    name = "Intelligence",
-                                    score = activeCharacter.intelligence,
-                                    modifierValue = activeCharacter.getStatModifier("intelligence"),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(text = "✨", fontSize = 15.sp)
+                                        Text(
+                                            text = "ITEM SPECIAL EFFECTS",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = CyanAccent
+                                        )
+                                    }
+                                    Text(
+                                        text = "${equippedItemsWithEffects.size} Active",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (equippedItemsWithEffects.isNotEmpty()) CyanAccent else TextSecondary
+                                    )
+                                }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                StatDisplayCard(
-                                    name = "Endurance",
-                                    score = activeCharacter.endurance,
-                                    modifierValue = activeCharacter.getStatModifier("endurance"),
-                                    modifier = Modifier.weight(1f)
-                                )
-                                StatDisplayCard(
-                                    name = "Spirit",
-                                    score = activeCharacter.spirit,
-                                    modifierValue = activeCharacter.getStatModifier("spirit"),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                StatDisplayCard(
-                                    name = "Finesse",
-                                    score = activeCharacter.finesse,
-                                    modifierValue = activeCharacter.getStatModifier("finesse"),
-                                    modifier = Modifier.weight(1f)
-                                )
-                                StatDisplayCard(
-                                    name = "Charisma",
-                                    score = activeCharacter.charisma,
-                                    modifierValue = activeCharacter.getStatModifier("charisma"),
-                                    modifier = Modifier.weight(1f)
-                                )
+                                if (equippedItemsWithEffects.isEmpty()) {
+                                    Surface(
+                                        color = DarkBackground,
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = "No equipped items have active special effects.",
+                                            fontSize = 12.sp,
+                                            color = TextSecondary,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(12.dp)
+                                        )
+                                    }
+                                } else {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        equippedItemsWithEffects.forEach { item ->
+                                            Surface(
+                                                color = DarkSurfaceVariant,
+                                                shape = RoundedCornerShape(8.dp),
+                                                border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.25f)),
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Column(modifier = Modifier.padding(10.dp)) {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(
+                                                            text = item.name,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 13.sp,
+                                                            color = GoldAccent
+                                                        )
+                                                        Text(
+                                                            text = item.category.ifBlank { "Equipped" },
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.SemiBold,
+                                                            color = TextSecondary
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Text(
+                                                        text = item.safeSpecialEffectsText,
+                                                        fontSize = 12.sp,
+                                                        color = TextPrimary,
+                                                        lineHeight = 15.sp
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
+                    }
 
-                        // ACTIVE STATUS EFFECTS & BUFFS SECTION (UNDER STATS)
+                    // STATS GRID (Interactive tap to view Base stat score)
+                    val characterStatsContent: @Composable () -> Unit = {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "CHARACTER STATS",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = TextSecondary
+                                    )
+                                    Text(
+                                        text = "Tap stat to view Base",
+                                        fontSize = 10.sp,
+                                        color = GoldAccent
+                                    )
+                                }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        StatDisplayCard(
+                                            name = "Strength",
+                                            score = activeCharacter.strength,
+                                            modifierValue = activeCharacter.getStatModifier("strength"),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        StatDisplayCard(
+                                            name = "Intelligence",
+                                            score = activeCharacter.intelligence,
+                                            modifierValue = activeCharacter.getStatModifier("intelligence"),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        StatDisplayCard(
+                                            name = "Endurance",
+                                            score = activeCharacter.endurance,
+                                            modifierValue = activeCharacter.getStatModifier("endurance"),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        StatDisplayCard(
+                                            name = "Spirit",
+                                            score = activeCharacter.spirit,
+                                            modifierValue = activeCharacter.getStatModifier("spirit"),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        StatDisplayCard(
+                                            name = "Finesse",
+                                            score = activeCharacter.finesse,
+                                            modifierValue = activeCharacter.getStatModifier("finesse"),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        StatDisplayCard(
+                                            name = "Charisma",
+                                            score = activeCharacter.charisma,
+                                            modifierValue = activeCharacter.getStatModifier("charisma"),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ACTIVE STATUS EFFECTS & BUFFS SECTION (UNDER STATS)
+                    val activeEffectsContent: @Composable () -> Unit = {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(14.dp),
@@ -1392,6 +1858,7 @@ fun UseCharacterScreen(
                                         activeCharacter.effects.forEach { effect ->
                                             EffectItemRow(
                                                 effect = effect,
+                                                onToggleEnable = { toggleEffectEnabled(effect.id) },
                                                 onEdit = { effectToEdit = effect },
                                                 onDelete = { removeEffect(effect.id) }
                                             )
@@ -1401,16 +1868,56 @@ fun UseCharacterScreen(
                             }
                         }
                     }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (isTablet) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    vitalsCardContent()
+                                    onHandWeaponContent()
+                                    itemSpecialEffectsContent()
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    characterStatsContent()
+                                    activeEffectsContent()
+                                }
+                            }
+                        } else {
+                            vitalsCardContent()
+                            onHandWeaponContent()
+                            itemSpecialEffectsContent()
+                            characterStatsContent()
+                            activeEffectsContent()
+                        }
+                    }
                 }
                 1 -> {
                     // TAB 1: ABILITIES
-                    LazyColumn(
+                    LazyVerticalGrid(
+                        columns = if (isTablet) GridCells.Adaptive(minSize = 340.dp) else GridCells.Fixed(1),
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        item {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             Button(
                                 onClick = { showAddAbilityDialog = true },
                                 modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -1422,7 +1929,7 @@ fun UseCharacterScreen(
                             }
                         }
                         if (activeCharacter.abilities.isEmpty()) {
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1455,28 +1962,76 @@ fun UseCharacterScreen(
                                 }
                             }
                         } else {
-                            items(activeCharacter.abilities, key = { it.id }) { ability ->
-                                AbilityCard(
-                                    ability = ability,
-                                    evaluatedDescription = activeCharacter.formatAbilityDescription(ability.description),
-                                    onEdit = { abilityToEdit = ability },
-                                    onDelete = { deleteAbility(ability.id) },
-                                    onMoveUp = { moveAbility(ability.id, -1) },
-                                    onMoveDown = { moveAbility(ability.id, 1) }
-                                )
+                            val topLevelAbilities = activeCharacter.abilities.filter { ability ->
+                                val parentName = SkillsRepository.getParentNameForSubSpell(ability.name)
+                                parentName == null || !activeCharacter.abilities.any { it.name.trim().equals(parentName, ignoreCase = true) }
+                            }
+                            items(topLevelAbilities, key = { it.id }) { ability ->
+                                val subSpells = activeCharacter.abilities.filter {
+                                    SkillsRepository.getParentNameForSubSpell(it.name)?.equals(ability.name, ignoreCase = true) == true
+                                }
+                                val isCollapsed = collapsedParentAbilityNames.contains(ability.name.trim().lowercase())
+
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    AbilityCard(
+                                        ability = ability,
+                                        evaluatedDescription = activeCharacter.formatAbilityDescription(ability.description),
+                                        onEdit = { abilityToEdit = ability },
+                                        onDelete = { deleteAbility(ability.id) },
+                                        onMoveUp = { moveAbility(ability.id, -1) },
+                                        onMoveDown = { moveAbility(ability.id, 1) },
+                                        subSpellsCount = subSpells.size,
+                                        isSubSpellsCollapsed = isCollapsed,
+                                        onToggleSubSpellsCollapse = {
+                                            val key = ability.name.trim().lowercase()
+                                            collapsedParentAbilityNames = if (collapsedParentAbilityNames.contains(key)) {
+                                                collapsedParentAbilityNames - key
+                                            } else {
+                                                collapsedParentAbilityNames + key
+                                            }
+                                        }
+                                    )
+
+                                    if (!isCollapsed && subSpells.isNotEmpty()) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(start = 16.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            subSpells.forEach { subAbility ->
+                                                AbilityCard(
+                                                    ability = subAbility,
+                                                    evaluatedDescription = activeCharacter.formatAbilityDescription(subAbility.description),
+                                                    onEdit = { abilityToEdit = subAbility },
+                                                    onDelete = { deleteAbility(subAbility.id) },
+                                                    onMoveUp = { moveAbility(subAbility.id, -1) },
+                                                    onMoveDown = { moveAbility(subAbility.id, 1) },
+                                                    isSubAbility = true
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
+                5 -> {
+                    // TAB 5: SPELL BOOK (Next to Abilities)
+                    SpellBookScreen(character = activeCharacter)
+                }
                 2 -> {
                     // TAB 2: EQUIPMENT (Equipped Items Only)
-                    LazyColumn(
+                    LazyVerticalGrid(
+                        columns = if (isTablet) GridCells.Adaptive(minSize = 340.dp) else GridCells.Fixed(1),
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        item {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             val allEquipCategories = equippedItems.map { it.category }.toSet()
                             val allEquipCollapsed = allEquipCategories.isNotEmpty() && allEquipCategories.all { collapsedEquippedCategories.contains(it) }
                             Row(
@@ -1513,7 +2068,7 @@ fun UseCharacterScreen(
                             }
                         }
                         if (equippedItems.isEmpty()) {
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1549,7 +2104,7 @@ fun UseCharacterScreen(
                             val groupedEquipped = equippedItems.groupBy { it.category }
                             for (category in groupedEquipped.keys) {
                                 val isCollapsed = collapsedEquippedCategories.contains(category)
-                                item(key = "header_equip_$category") {
+                                item(key = "header_equip_$category", span = { GridItemSpan(maxLineSpan) }) {
                                     CategoryHeader(
                                         categoryName = category,
                                         isExpanded = !isCollapsed,
@@ -1565,8 +2120,8 @@ fun UseCharacterScreen(
                                     )
                                 }
                                 if (!isCollapsed) {
-                                    val itemsInCategory = groupedEquipped[category]!!
-                                    items(itemsInCategory, key = { it.id }) { item ->
+                                    val itemsInCategory = groupedEquipped[category] ?: emptyList()
+                                    items(itemsInCategory, key = { "eq_${category}_${it.id}" }) { item ->
                                         EquipmentItemCard(
                                             item = item,
                                             onEdit = { itemToEdit = item },
@@ -1584,13 +2139,15 @@ fun UseCharacterScreen(
                 }
                 3 -> {
                     // TAB 3: INVENTORY (Unequipped Carried Items Only)
-                    LazyColumn(
+                    LazyVerticalGrid(
+                        columns = if (isTablet) GridCells.Adaptive(minSize = 340.dp) else GridCells.Fixed(1),
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        item {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             val allInvCategories = unequippedItems.map { it.category }.toSet()
                             val allInvCollapsed = allInvCategories.isNotEmpty() && allInvCategories.all { collapsedUnequippedCategories.contains(it) }
                             Row(
@@ -1627,7 +2184,7 @@ fun UseCharacterScreen(
                             }
                         }
                         if (unequippedItems.isEmpty()) {
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1663,7 +2220,7 @@ fun UseCharacterScreen(
                             val groupedUnequipped = unequippedItems.groupBy { it.category }
                             for (category in groupedUnequipped.keys) {
                                 val isCollapsed = collapsedUnequippedCategories.contains(category)
-                                item(key = "header_inv_$category") {
+                                item(key = "header_inv_$category", span = { GridItemSpan(maxLineSpan) }) {
                                     CategoryHeader(
                                         categoryName = category,
                                         isExpanded = !isCollapsed,
@@ -1679,8 +2236,8 @@ fun UseCharacterScreen(
                                     )
                                 }
                                 if (!isCollapsed) {
-                                    val itemsInCategory = groupedUnequipped[category]!!
-                                    items(itemsInCategory, key = { it.id }) { item ->
+                                    val itemsInCategory = groupedUnequipped[category] ?: emptyList()
+                                    items(itemsInCategory, key = { "uneq_${category}_${it.id}" }) { item ->
                                         EquipmentItemCard(
                                             item = item,
                                             onEdit = { itemToEdit = item },
@@ -1701,13 +2258,15 @@ fun UseCharacterScreen(
                     val archivedCount = activeCharacter.notes.count { it.isArchived }
                     val visibleNotes = activeCharacter.notes.filter { !it.isArchived || showArchivedNotes }
 
-                    LazyColumn(
+                    LazyVerticalGrid(
+                        columns = if (isTablet) GridCells.Adaptive(minSize = 340.dp) else GridCells.Fixed(1),
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        item {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
                             Button(
                                 onClick = { showAddNoteDialog = true },
                                 modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -1720,7 +2279,7 @@ fun UseCharacterScreen(
                         }
                         
                         if (archivedCount > 0) {
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1743,7 +2302,7 @@ fun UseCharacterScreen(
                         }
 
                         if (visibleNotes.isEmpty()) {
-                            item {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -2473,6 +3032,32 @@ fun UseCharacterScreen(
         }
     }
 
+    // Select On-Hand Weapon Dialog
+    if (showSelectOnHandDialog) {
+        SelectOnHandWeaponDialog(
+            character = activeCharacter,
+            onDismissRequest = { showSelectOnHandDialog = false },
+            onSelectWeapon = { selectedWeapon ->
+                val updated = activeCharacter.copy(onHandWeaponId = selectedWeapon?.id)
+                activeCharacter = updated
+                onCharacterUpdated(updated)
+                showSelectOnHandDialog = false
+            }
+        )
+    }
+
+    // Roll Dice Prompt Dialog for Round Effects
+    if (showDiceRollPromptDialog) {
+        RollDiceRoundDialog(
+            diceEffects = activeDiceEffects,
+            onDismissRequest = { showDiceRollPromptDialog = false },
+            onConfirmRolls = { rollResults ->
+                showDiceRollPromptDialog = false
+                executeRoundTick(rollResults)
+            }
+        )
+    }
+
     // Add Equipment Dialog
     if (showAddEquipmentDialog) {
         AddEquipmentDialog(
@@ -2535,7 +3120,11 @@ fun AbilityCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit
+    onMoveDown: () -> Unit,
+    isSubAbility: Boolean = false,
+    subSpellsCount: Int = 0,
+    isSubSpellsCollapsed: Boolean = false,
+    onToggleSubSpellsCollapse: (() -> Unit)? = null
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     var showDeletePrompt by remember { mutableStateOf(false) }
@@ -2569,7 +3158,10 @@ fun AbilityCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSubAbility) DarkSurfaceVariant.copy(alpha = 0.85f) else DarkSurface
+        ),
+        border = if (isSubAbility) androidx.compose.foundation.BorderStroke(1.dp, GoldAccent.copy(alpha = 0.25f)) else null
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -2580,13 +3172,41 @@ fun AbilityCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = ability.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = GoldAccent,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.weight(1f)
-                )
+                ) {
+                    if (isSubAbility) {
+                        Text(
+                            text = "↳",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = GoldAccent.copy(alpha = 0.7f)
+                        )
+                    }
+                    Text(
+                        text = ability.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = if (isSubAbility) 15.sp else 16.sp,
+                        color = if (isSubAbility) GoldAccent.copy(alpha = 0.9f) else GoldAccent
+                    )
+                    if (ability.tier != null) {
+                        Surface(
+                            color = GoldAccent.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(4.dp),
+                            border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f))
+                        ) {
+                            Text(
+                                text = "Tier ${ability.tier}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldAccent,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
 
                 Row {
                     IconButton(onClick = onMoveUp, modifier = Modifier.size(32.dp)) {
@@ -2606,7 +3226,7 @@ fun AbilityCard(
 
             if (evaluatedDescription.isNotBlank()) {
                 Surface(
-                    color = DarkSurfaceVariant,
+                    color = if (isSubAbility) DarkSurface else DarkSurfaceVariant,
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2631,6 +3251,47 @@ fun AbilityCard(
                     }
                 }
             }
+
+            if (subSpellsCount > 0) {
+                Surface(
+                    color = DarkSurfaceVariant.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(8.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldAccent.copy(alpha = 0.35f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onToggleSubSpellsCollapse?.invoke() }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isSubSpellsCollapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                                contentDescription = if (isSubSpellsCollapsed) "Expand Sub-spells" else "Collapse Sub-spells",
+                                tint = GoldAccent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = if (isSubSpellsCollapsed) "$subSpellsCount Sub-spells (Tap to expand)" else "$subSpellsCount Sub-spells (Tap to collapse)",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldAccent
+                            )
+                        }
+                        Text(
+                            text = if (isSubSpellsCollapsed) "COLLAPSED" else "EXPANDED",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSubSpellsCollapsed) TextSecondary else GreenHp
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -2638,16 +3299,18 @@ fun AbilityCard(
 @Composable
 fun EffectItemRow(
     effect: CharacterEffect,
+    onToggleEnable: (() -> Unit)? = null,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     var showDeletePrompt by remember { mutableStateOf(false) }
+    val isEffectActive = effect.enabled
 
     if (showDeletePrompt) {
         AlertDialog(
             onDismissRequest = { showDeletePrompt = false },
             title = { Text("Remove Effect?", fontWeight = FontWeight.Bold, color = CrimsonPrimary) },
-            text = { Text("Are you sure you want to remove ${effect.name}?") },
+            text = { Text("Are you sure you want to remove ${effect.safeName}?") },
             confirmButton = {
                 Button(
                     onClick = { showDeletePrompt = false; onDelete() },
@@ -2664,7 +3327,9 @@ fun EffectItemRow(
     Surface(
         color = DarkSurfaceVariant,
         shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { alpha = if (isEffectActive) 1f else 0.55f }
     ) {
         Row(
             modifier = Modifier
@@ -2674,12 +3339,29 @@ fun EffectItemRow(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = effect.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = TextPrimary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = effect.safeName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = if (isEffectActive) TextPrimary else TextSecondary
+                    )
+                    if (!isEffectActive) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            color = CrimsonPrimary.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "DISABLED",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CrimsonPrimary,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
 
                 val annotatedDesc = buildAnnotatedString {
                     when (effect.effectType) {
@@ -2706,26 +3388,57 @@ fun EffectItemRow(
                             }
                         }
                         EffectType.HP_CHANGE_PER_ROUND -> {
-                            val color = if (effect.value >= 0) GreenHp else CrimsonPrimary
-                            withStyle(style = SpanStyle(color = color)) {
-                                val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
-                                if (effect.value < 0) {
-                                    val typeLabel = when (effect.damageType) {
-                                        DamageType.PHYSICAL -> "Physical 🛡️"
-                                        DamageType.MAGICAL -> "Magical ✨"
-                                        DamageType.UNSAVEABLE -> "Unsaveable 💥"
+                            if (effect.isDiceRoll) {
+                                val mode = effect.safeChangeMode
+                                val color = when (mode) {
+                                    "HEAL" -> GreenHp
+                                    "DMG" -> CrimsonPrimary
+                                    else -> CyanAccent
+                                }
+                                withStyle(style = SpanStyle(color = color)) {
+                                    val typeLabel = if (mode != "HEAL") {
+                                        when (effect.damageType) {
+                                            DamageType.PHYSICAL -> " (Physical 🛡️)"
+                                            DamageType.MAGICAL -> " (Magical ✨)"
+                                            DamageType.UNSAVEABLE -> " (Unsaveable 💥)"
+                                        }
+                                    } else ""
+                                    append("🎲 ${effect.safeDiceFormula} ($mode)$typeLabel HP / round")
+                                }
+                            } else {
+                                val color = if (effect.value >= 0) GreenHp else CrimsonPrimary
+                                withStyle(style = SpanStyle(color = color)) {
+                                    val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
+                                    if (effect.value < 0) {
+                                        val typeLabel = when (effect.damageType) {
+                                            DamageType.PHYSICAL -> "Physical 🛡️"
+                                            DamageType.MAGICAL -> "Magical ✨"
+                                            DamageType.UNSAVEABLE -> "Unsaveable 💥"
+                                        }
+                                        append("$valStr $typeLabel HP / round")
+                                    } else {
+                                        append("$valStr HP / round")
                                     }
-                                    append("$valStr $typeLabel HP / round")
-                                } else {
-                                    append("$valStr HP / round")
                                 }
                             }
                         }
                         EffectType.MP_CHANGE_PER_ROUND -> {
-                            val color = if (effect.value >= 0) GreenHp else CrimsonPrimary
-                            withStyle(style = SpanStyle(color = color)) {
-                                val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
-                                append("$valStr MP / round")
+                            if (effect.isDiceRoll) {
+                                val mode = effect.safeChangeMode
+                                val color = when (mode) {
+                                    "HEAL" -> GreenHp
+                                    "DMG" -> CrimsonPrimary
+                                    else -> CyanAccent
+                                }
+                                withStyle(style = SpanStyle(color = color)) {
+                                    append("🎲 ${effect.safeDiceFormula} ($mode) MP / round")
+                                }
+                            } else {
+                                val color = if (effect.value >= 0) GreenHp else CrimsonPrimary
+                                withStyle(style = SpanStyle(color = color)) {
+                                    val valStr = if (effect.value > 0) "+${effect.value}" else "${effect.value}"
+                                    append("$valStr MP / round")
+                                }
                             }
                         }
                     }
@@ -2745,7 +3458,22 @@ fun EffectItemRow(
                 )
             }
 
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (effect.effectType == EffectType.STAT_MODIFIER && onToggleEnable != null) {
+                    Switch(
+                        checked = isEffectActive,
+                        onCheckedChange = { onToggleEnable() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = GoldAccent,
+                            checkedTrackColor = GoldAccent.copy(alpha = 0.5f),
+                            uncheckedThumbColor = TextSecondary,
+                            uncheckedTrackColor = DarkSurface
+                        ),
+                        modifier = Modifier
+                            .graphicsLayer { scaleX = 0.8f; scaleY = 0.8f }
+                            .padding(end = 4.dp)
+                    )
+                }
                 IconButton(onClick = onEdit) {
                     Icon(
                         imageVector = Icons.Default.Edit,
@@ -2958,7 +3686,7 @@ fun EquipmentItemCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "⚔️ Attacks: ${item.attackCount} × (${if (item.attackDamage.isNotBlank()) item.attackDamage else "Base"} Dmg)",
+                            text = "⚔️ Attacks: ${item.attackCount} × (${if (item.safeAttackDamage.isNotBlank()) item.safeAttackDamage else "Base"} Dmg)",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = GoldAccent
@@ -2967,8 +3695,8 @@ fun EquipmentItemCard(
                 }
             }
 
-            // SPECIAL EFFECTS BADGE
-            if (item.hasSpecialEffects && item.specialEffectsText.isNotBlank()) {
+            // SPECIAL EFFECTS BADGES
+            if (item.hasSpecialEffects && item.safeSpecialEffectsText.isNotBlank()) {
                 Surface(
                     color = CyanAccent.copy(alpha = 0.12f),
                     shape = RoundedCornerShape(6.dp),
@@ -2979,10 +3707,57 @@ fun EquipmentItemCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "✨ Special Effect: ${item.specialEffectsText}",
+                            text = "🛡️ Equipped Effect: ${item.safeSpecialEffectsText}",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = CyanAccent
+                        )
+                    }
+                }
+            }
+
+            if (item.hasSpecialEffects && item.safeOnHandSpecialEffectsText.isNotBlank()) {
+                Surface(
+                    color = GoldAccent.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "⚔️ On-Hand Effect: ${item.safeOnHandSpecialEffectsText}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = GoldAccent
+                        )
+                    }
+                }
+            }
+
+            if (item.hasMagic && (item.spellDamageModifier != 0 || item.spellHealingModifier != 0)) {
+                Surface(
+                    color = Color(0xFFB388FF).copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "🔮 Spell Dmg: ${if (item.spellDamageModifier > 0) "+${item.spellDamageModifier}" else "${item.spellDamageModifier}"}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFB388FF)
+                        )
+                        Text(
+                            text = "💖 Spell Heal: ${if (item.spellHealingModifier > 0) "+${item.spellHealingModifier}" else "${item.spellHealingModifier}"}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GreenHp
                         )
                     }
                 }
@@ -3297,3 +4072,355 @@ fun StatDisplayCard(
         }
     }
 }
+
+@Composable
+fun SelectOnHandWeaponDialog(
+    character: Character,
+    onDismissRequest: () -> Unit,
+    onSelectWeapon: (EquipmentItem?) -> Unit
+) {
+    val equippedItems = remember(character.inventory) {
+        character.inventory.filter { it.isEquipped }
+    }
+
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Select On-Hand Weapon",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = GoldAccent
+                    )
+                    IconButton(onClick = onDismissRequest, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                    }
+                }
+
+                Text(
+                    text = "Choose an equipped item to keep active on hand:",
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+
+                if (equippedItems.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No equipped items available.\nEquip an item from the Equipment tab first.",
+                            fontSize = 13.sp,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 350.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(equippedItems) { item ->
+                            val isSelected = item.id == character.onHandWeaponId
+                            Surface(
+                                onClick = { onSelectWeapon(item) },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) GoldAccent.copy(alpha = 0.15f) else DarkSurfaceVariant,
+                                border = BorderStroke(1.dp, if (isSelected) GoldAccent else Color.Transparent),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = item.name,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = if (isSelected) GoldAccent else TextPrimary
+                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Text(
+                                                text = item.category.ifBlank { "Item" },
+                                                fontSize = 11.sp,
+                                                color = TextSecondary
+                                            )
+                                            if (item.hasAttacks) {
+                                                Text(
+                                                    text = "• ${item.attackCount}×(${if (item.attackDamage.isNotBlank()) item.attackDamage else "Base"})",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = GoldAccent
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = GoldAccent,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    TextButton(onClick = { onSelectWeapon(null) }) {
+                        Text("Clear / None", color = CrimsonPrimary, fontSize = 12.sp)
+                    }
+                    TextButton(onClick = onDismissRequest) {
+                        Text("Close", color = TextSecondary, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RollDiceRoundDialog(
+    diceEffects: List<CharacterEffect>,
+    onDismissRequest: () -> Unit,
+    onConfirmRolls: (Map<String, Int>) -> Unit
+) {
+    val rollInputs = remember(diceEffects) {
+        mutableStateMapOf<String, String>().apply {
+            diceEffects.forEach { this[it.id] = "" }
+        }
+    }
+    val modeInputs = remember(diceEffects) {
+        mutableStateMapOf<String, String>().apply {
+            diceEffects.forEach { this[it.id] = if (it.changeMode == "MIXED") "DMG" else it.changeMode }
+        }
+    }
+    val allRollsFilled = diceEffects.all {
+        val input = rollInputs[it.id]?.trim() ?: ""
+        input.isNotEmpty() && input.toIntOrNull() != null
+    }
+
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("🎲", fontSize = 18.sp)
+                        Text(
+                            text = "Roll Dice for Round Effects",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = GoldAccent
+                        )
+                    }
+                    IconButton(onClick = onDismissRequest, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                    }
+                }
+
+                Text(
+                    text = "The following active effects require dice rolls this round. Roll your dice and input the results below:",
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 350.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(diceEffects) { effect ->
+                        val targetTypeLabel = if (effect.effectType == EffectType.HP_CHANGE_PER_ROUND) "HP" else "MP"
+                        val currentMode = modeInputs[effect.id] ?: "DMG"
+                        val currentRoll = rollInputs[effect.id] ?: ""
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = DarkSurfaceVariant,
+                            border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.25f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = effect.name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = TextPrimary
+                                    )
+                                    Surface(
+                                        color = GoldAccent.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(
+                                            text = "Roll ${effect.diceFormula}",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = GoldAccent,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+
+                                if (effect.changeMode == "MIXED") {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        FilterChip(
+                                            selected = currentMode == "DMG",
+                                            onClick = { modeInputs[effect.id] = "DMG" },
+                                            label = { Text("💥 Damage $targetTypeLabel", fontSize = 11.sp) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = CrimsonPrimary,
+                                                selectedLabelColor = TextPrimary
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        FilterChip(
+                                            selected = currentMode == "HEAL",
+                                            onClick = { modeInputs[effect.id] = "HEAL" },
+                                            label = { Text("💚 Heal $targetTypeLabel", fontSize = 11.sp) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = GreenHp,
+                                                selectedLabelColor = DarkBackground
+                                            ),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = if (effect.changeMode == "HEAL") "💚 Heals / Restores $targetTypeLabel" else "💥 Deals Damage / Drains $targetTypeLabel",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (effect.changeMode == "HEAL") GreenHp else CrimsonPrimary
+                                    )
+                                }
+
+                                OutlinedTextField(
+                                    value = currentRoll,
+                                    onValueChange = { input ->
+                                        rollInputs[effect.id] = input.filter { it.isDigit() }
+                                    },
+                                    label = { Text("Rolled Result for ${effect.diceFormula}") },
+                                    placeholder = { Text("e.g. 4") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = GoldAccent,
+                                        unfocusedBorderColor = TextSecondary
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (!allRollsFilled) {
+                        Text(
+                            text = "Please enter rolled results for all effects above to proceed.",
+                            color = CrimsonPrimary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                val resultMap = mutableMapOf<String, Int>()
+                                diceEffects.forEach { effect ->
+                                    val roll = (rollInputs[effect.id]?.toIntOrNull() ?: 0)
+                                    val mode = modeInputs[effect.id] ?: effect.changeMode
+                                    val signed = if (mode == "DMG") -kotlin.math.abs(roll) else kotlin.math.abs(roll)
+                                    resultMap[effect.id] = signed
+                                }
+                                onConfirmRolls(resultMap)
+                            },
+                            enabled = allRollsFilled,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = GoldAccent,
+                                contentColor = DarkBackground,
+                                disabledContainerColor = GoldAccent.copy(alpha = 0.3f),
+                                disabledContentColor = DarkBackground.copy(alpha = 0.6f)
+                            )
+                        ) {
+                            Text("Apply & Next Round", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

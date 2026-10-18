@@ -17,6 +17,8 @@
   <meta name="apple-mobile-web-app-title" content="RPG Companion">
 
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="skills.js"></script>
+  <script src="spellbooks.js"></script>
   <style>
     :root {
       --bg-dark: #121218;
@@ -45,46 +47,118 @@
       color: var(--text-primary);
       font-family: var(--font-body);
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 20px;
+      justify-content: flex-start;
+      padding: 0;
+      margin: 0;
     }
 
     .device-container {
       width: 100%;
-      max-width: 420px;
-      height: 840px;
+      max-width: 1200px;
+      height: 100vh;
+      height: 100dvh;
       background-color: var(--bg-dark);
-      border-radius: 40px;
-      border: 12px solid #22222d;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(255, 193, 7, 0.15);
+      border: none;
+      box-shadow: none;
       display: flex;
       flex-direction: column;
       overflow: hidden;
       position: relative;
+      margin: 0 auto;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
-    /* Mobile & Apple iOS Native PWA Viewport Rules */
-    @media (max-width: 768px), (display-mode: standalone) {
+    /* On wide desktop screens, add subtle border frame */
+    @media (min-width: 1281px) {
       body {
-        padding: 0 !important;
-        background-color: var(--bg-dark) !important;
+        padding: 16px;
       }
       .device-container {
-        width: 100vw !important;
-        max-width: 100vw !important;
-        height: 100vh !important;
-        height: 100dvh !important;
-        border-radius: 0 !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding-top: env(safe-area-inset-top, 0px);
-        padding-bottom: env(safe-area-inset-bottom, 0px);
+        border-radius: 16px;
+        border: 2px solid #22222d;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 193, 7, 0.1);
+        height: calc(100vh - 32px);
+        height: calc(100dvh - 32px);
       }
-      .status-bar {
-        display: none !important;
+    }
+
+    .status-bar {
+      display: none !important;
+    }
+
+    .fab {
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .web-version-badge {
+      bottom: calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* Tablet & Wide Screen Responsive Layout Rules */
+    .character-list-header {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+
+    .vitals-tab-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .vitals-tab-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    @media (min-width: 700px) {
+      .vitals-tab-layout {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 16px !important;
+        align-items: start !important;
+      }
+    }
+
+    @media (min-width: 650px) {
+      #characterList {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+        gap: 16px !important;
+        align-items: start !important;
+      }
+
+      #abilitiesList {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+        gap: 12px !important;
+        align-items: start !important;
+      }
+
+      .category-items {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+        gap: 12px !important;
+        align-items: start !important;
+      }
+
+      #notesList {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+        gap: 12px !important;
+        align-items: start !important;
+      }
+
+      .spell-tier-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+        gap: 10px !important;
+        align-items: start !important;
       }
     }
 
@@ -186,7 +260,7 @@
     .content-area {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 16px 16px 80px 16px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -216,6 +290,26 @@
     .fab:hover {
       transform: translateY(-2px);
       background-color: #ffd54f;
+    }
+
+    /* Web Version Badge (Bottom Left) */
+    .web-version-badge {
+      position: absolute;
+      bottom: 24px;
+      left: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+      z-index: 10;
+      background: rgba(30, 30, 40, 0.85);
+      border: 1px solid var(--surface-variant);
+      padding: 6px 12px;
+      border-radius: 20px;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      user-select: none;
+      pointer-events: none;
     }
 
     /* Character Card & Item Card */
@@ -447,6 +541,7 @@
       background-color: var(--surface-dark);
       border-radius: 16px;
       width: 100%;
+      max-width: 520px;
       max-height: 90%;
       padding: 20px;
       display: flex;
@@ -454,6 +549,7 @@
       gap: 14px;
       overflow-y: auto;
       border: 1px solid var(--surface-variant);
+      margin: 0 auto;
     }
 
     .modal-card h2 {
@@ -714,6 +810,119 @@
       position: absolute; color: white;
       animation: glitch-anim 0.4s infinite linear; z-index: 101;
     }
+
+    /* Drag & Scroll Tabs with Overflow Indicators */
+    .tabs-scroll-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 4px;
+    }
+
+    .drag-scroll-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 4px 6px 8px 6px;
+      border-bottom: 1px solid var(--surface-variant);
+      width: 100%;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: pan-x;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 193, 7, 0.45) rgba(255, 255, 255, 0.05);
+    }
+
+    .drag-scroll-tabs:active {
+      cursor: grabbing;
+    }
+
+    .drag-scroll-tabs::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .drag-scroll-tabs::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+    }
+
+    .drag-scroll-tabs::-webkit-scrollbar-thumb {
+      background: rgba(255, 193, 7, 0.5);
+      border-radius: 4px;
+    }
+
+    .drag-scroll-tabs::-webkit-scrollbar-thumb:hover {
+      background: var(--gold-accent);
+    }
+
+    .tabs-fade-edge {
+      position: absolute;
+      top: 0;
+      bottom: 8px;
+      width: 36px;
+      pointer-events: none;
+      z-index: 2;
+      transition: opacity 0.2s ease;
+    }
+
+    .tabs-fade-edge.left {
+      left: 0;
+      background: linear-gradient(to right, var(--surface-dark) 45%, transparent);
+    }
+
+    .tabs-fade-edge.right {
+      right: 0;
+      background: linear-gradient(to left, var(--surface-dark) 45%, transparent);
+    }
+
+    .tabs-fade-edge.hidden {
+      opacity: 0 !important;
+    }
+
+    .tab-scroll-arrow {
+      position: absolute;
+      top: calc(50% - 4px);
+      transform: translateY(-50%);
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(30, 30, 30, 0.92);
+      border: 1px solid var(--gold-accent);
+      color: var(--gold-accent);
+      font-size: 15px;
+      font-weight: bold;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 3;
+      padding: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+      transition: background-color 0.15s, color 0.15s, transform 0.15s, opacity 0.2s;
+    }
+
+    .tab-scroll-arrow:hover {
+      background: var(--gold-accent);
+      color: var(--bg-dark);
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    .tab-scroll-arrow.left {
+      left: 2px;
+    }
+
+    .tab-scroll-arrow.right {
+      right: 2px;
+    }
+
+    .tab-scroll-arrow.hidden {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -764,6 +973,7 @@
     <div id="sessionTabsBar" class="nav-tabs hidden">
       <div id="tabVitals" class="nav-tab active" title="Vitals" onclick="switchSessionTab('vitals')">🛡️</div>
       <div id="tabAbilities" class="nav-tab" title="Abilities" onclick="switchSessionTab('abilities')">✨</div>
+      <div id="tabSpellbook" class="nav-tab hidden" title="Spell Book" onclick="switchSessionTab('spellbook')">📖</div>
       <div id="tabEquipment" class="nav-tab" title="Equipment" onclick="switchSessionTab('equipment')">⚔️</div>
       <div id="tabInventory" class="nav-tab" title="Inventory" onclick="switchSessionTab('inventory')">🎒</div>
       <div id="tabNotes" class="nav-tab" title="Notes" onclick="switchSessionTab('notes')">📝</div>
@@ -791,80 +1001,94 @@
     <div id="useScreen" class="content-area hidden">
 
       <!-- TAB 1: VITALS & STATS -->
-      <div id="vitalsTabContent" style="display:flex; flex-direction:column; gap:16px;">
-        <!-- Vital Trackers -->
-        <div class="char-card">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h4 style="font-size: 12px; color: var(--gold-accent);">DEFENSES & VITAL METRICS</h4>
-            <button class="next-round-btn" onclick="resetNextRound()">🔄 NEXT ROUND</button>
-          </div>
-
-          <!-- ARMOR BAR (Shown ABOVE HP if equipped Armor > 0) -->
-          <div id="armorBarBlock" class="bar-group hidden">
-            <div class="bar-header">
-              <span style="color: var(--gold-accent);">🛡️ Armor</span>
-              <span id="useArmorText" style="color: var(--gold-accent);">0 / 0</span>
+      <div id="vitalsTabContent" class="vitals-tab-layout">
+        <!-- LEFT COLUMN: Defenses & Vitals, On-Hand Weapon, Special Effects -->
+        <div class="vitals-tab-col">
+          <!-- Vital Trackers -->
+          <div class="char-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h4 style="font-size: 12px; color: var(--gold-accent);">DEFENSES & VITAL METRICS</h4>
+              <button class="next-round-btn" onclick="resetNextRound()">🔄 NEXT ROUND</button>
             </div>
-            <div class="bar-bg"><div id="useArmorFill" class="bar-fill fill-armor"></div></div>
-            <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
-          </div>
 
-          <!-- WARD SAVE BAR (Shown ABOVE HP if equipped Ward > 0) -->
-          <div id="wardBarBlock" class="bar-group hidden">
-            <div class="bar-header">
-              <span style="color: var(--cyan-accent);">✨ Ward Save</span>
-              <span id="useWardText" style="color: var(--cyan-accent);">0 / 0</span>
+            <!-- ARMOR BAR (Shown ABOVE HP if equipped Armor > 0) -->
+            <div id="armorBarBlock" class="bar-group hidden">
+              <div class="bar-header">
+                <span style="color: var(--gold-accent);">🛡️ Armor</span>
+                <span id="useArmorText" style="color: var(--gold-accent);">0 / 0</span>
+              </div>
+              <div class="bar-bg"><div id="useArmorFill" class="bar-fill fill-armor"></div></div>
+              <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
             </div>
-            <div class="bar-bg"><div id="useWardFill" class="bar-fill fill-ward"></div></div>
-            <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
-          </div>
 
-          <!-- HP BAR -->
-          <div class="bar-group">
-            <div class="bar-header">
-              <span style="color: var(--green-hp);">Health</span>
-              <span id="useHpText" style="color: var(--green-hp);">0 / 0</span>
+            <!-- WARD SAVE BAR (Shown ABOVE HP if equipped Ward > 0) -->
+            <div id="wardBarBlock" class="bar-group hidden">
+              <div class="bar-header">
+                <span style="color: var(--cyan-accent);">✨ Ward Save</span>
+                <span id="useWardText" style="color: var(--cyan-accent);">0 / 0</span>
+              </div>
+              <div class="bar-bg"><div id="useWardFill" class="bar-fill fill-ward"></div></div>
+              <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 10px 0;">
             </div>
-            <div class="bar-bg"><div id="useHpFill" class="bar-fill fill-hp"></div></div>
-            <div style="display:flex; gap:6px; margin-top:10px;">
-              <button class="prompt-btn" style="color:var(--crimson-primary);" onclick="openDamageModal()">- DAMAGE</button>
-              <button class="prompt-btn" style="color:var(--green-hp);" onclick="promptHeal()">+ HEAL</button>
-              <button class="prompt-btn" style="color:var(--gold-accent); border: 1px solid var(--gold-accent);" onclick="promptBoost()">+ BOOST DEFENSES</button>
-            </div>
-          </div>
 
-          <!-- MP Block (hidden if maxMp === 0) -->
-          <div id="useMpBlock">
-            <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 12px 0;">
-
+            <!-- HP BAR -->
             <div class="bar-group">
               <div class="bar-header">
-                <span style="color: var(--blue-mp);">Mana</span>
-                <span id="useMpText">0 / 0</span>
+                <span style="color: var(--green-hp);">Health</span>
+                <span id="useHpText" style="color: var(--green-hp);">0 / 0</span>
               </div>
-              <div class="bar-bg"><div id="useMpFill" class="bar-fill fill-mp"></div></div>
+              <div class="bar-bg"><div id="useHpFill" class="bar-fill fill-hp"></div></div>
               <div style="display:flex; gap:6px; margin-top:10px;">
-                <button class="prompt-btn" style="color:var(--text-secondary);" onclick="promptSpendMp()">- USE MP</button>
-                <button class="prompt-btn" style="color:var(--blue-mp);" onclick="promptRecoverMp()">+ RECOVER</button>
+                <button class="prompt-btn" style="color:var(--crimson-primary);" onclick="openDamageModal()">- DAMAGE</button>
+                <button class="prompt-btn" style="color:var(--green-hp);" onclick="promptHeal()">+ HEAL</button>
+                <button class="prompt-btn" style="color:var(--gold-accent); border: 1px solid var(--gold-accent);" onclick="promptBoost()">+ BOOST DEFENSES</button>
+              </div>
+            </div>
+
+            <!-- MP Block (hidden if maxMp === 0) -->
+            <div id="useMpBlock">
+              <hr style="border: 0; border-top: 1px solid var(--surface-variant); margin: 12px 0;">
+
+              <div class="bar-group">
+                <div class="bar-header">
+                  <span style="color: var(--blue-mp);">Mana</span>
+                  <span id="useMpText">0 / 0</span>
+                </div>
+                <div class="bar-bg"><div id="useMpFill" class="bar-fill fill-mp"></div></div>
+                <div style="display:flex; gap:6px; margin-top:10px;">
+                  <button class="prompt-btn" style="color:var(--text-secondary);" onclick="promptSpendMp()">- USE MP</button>
+                  <button class="prompt-btn" style="color:var(--blue-mp);" onclick="promptRecoverMp()">+ RECOVER</button>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- On-Hand Weapon Section (Between Vital Metrics and Character Stats) -->
+          <div id="onHandWeaponCard" class="char-card" style="margin-top: 0;"></div>
+
+          <!-- Item Special Effects Section (Between On-Hand Weapon and Character Stats) -->
+          <div id="itemSpecialEffectsCard" class="char-card" style="margin-top: 0;"></div>
         </div>
 
-        <!-- Stats Grid -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-          <h4 style="font-size: 11px; color: var(--text-secondary);">CHARACTER STATS</h4>
-          <span style="font-size: 10px; color: var(--gold-accent);">Tap stat to toggle Base/Total</span>
-        </div>
-        <div class="stat-display-grid" id="statsGrid"></div>
-
-        <!-- Active Status Effects Section (UNDER STATS) -->
-        <div class="char-card" style="margin-top:4px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h4 style="font-size: 12px; color: var(--gold-accent);" id="effectsTitle">ACTIVE EFFECTS & BUFFS (0)</h4>
-            <button class="prompt-btn" style="flex:none; width:auto; background:var(--gold-accent); color:var(--bg-dark); padding:4px 10px;" onclick="openAddEffectModal()">+ ADD EFFECT</button>
+        <!-- RIGHT COLUMN: Character Stats, Active Status Effects -->
+        <div class="vitals-tab-col">
+          <!-- Stats Card -->
+          <div class="char-card" style="margin-top: 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+              <h4 style="font-size: 12px; color: var(--gold-accent); margin:0;">CHARACTER STATS</h4>
+              <span style="font-size: 10px; color: var(--gold-accent);">Tap stat to toggle Base/Total</span>
+            </div>
+            <div class="stat-display-grid" id="statsGrid"></div>
           </div>
-          <div id="effectsList" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+          <!-- Active Status Effects Section (UNDER STATS) -->
+          <div class="char-card" style="margin-top: 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h4 style="font-size: 12px; color: var(--gold-accent);" id="effectsTitle">ACTIVE EFFECTS & BUFFS (0)</h4>
+              <button class="prompt-btn" style="flex:none; width:auto; background:var(--gold-accent); color:var(--bg-dark); padding:4px 10px;" onclick="openAddEffectModal()">+ ADD EFFECT</button>
+            </div>
+            <div id="effectsList" style="display:flex; flex-direction:column; gap:8px;"></div>
+          </div>
         </div>
       </div>
 
@@ -874,6 +1098,11 @@
           <span style="font-size: 16px;">+</span> ADD ABILITY
         </button>
         <div id="abilitiesList"></div>
+      </div>
+
+      <!-- TAB SPELLBOOK: GRIMOIRE & SCRIPTURES (NEXT TO ABILITIES) -->
+      <div id="spellbookTabContent" class="hidden" style="display:flex; flex-direction:column; gap:12px;">
+        <div id="spellbookContainer"></div>
       </div>
 
       <!-- TAB 3: EQUIPMENT (EQUIPPED ITEMS ONLY) -->
@@ -915,6 +1144,9 @@
     <button id="createFab" class="fab" onclick="openCreateModal()">
       <span>+</span> CREATE HERO
     </button>
+
+    <!-- App Version Badge (Bottom Left) -->
+    <div id="webVersionBadge" class="web-version-badge" title="Service Worker v1.6.0">v1.6.0</div>
   </div>
 
     <!-- Level Up Modal -->
@@ -1135,6 +1367,13 @@
       </div>
 
       <div id="effectStatGroup" class="form-group">
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:8px; margin-bottom:8px;">
+          <div>
+            <div style="font-weight:bold; font-size:13px; color:var(--text-primary);">Effect Enabled / Active</div>
+            <div style="font-size:11px; color:var(--text-secondary);">When disabled, stat modifiers are not applied</div>
+          </div>
+          <input type="checkbox" id="effectInputEnabled" checked style="width:20px; height:20px; accent-color:var(--gold-accent); cursor:pointer;">
+        </div>
         <label style="color:var(--gold-accent)">Target Stats Modifiers (+ or -)</label>
         <div style="display:flex; flex-direction:column; gap:8px;">
           <div style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:6px 12px; border-radius:8px;">
@@ -1165,8 +1404,33 @@
       </div>
 
       <div id="effectValueGroup" class="form-group hidden">
-        <label>Effect Value (+ or -)</label>
-        <input id="effectInputValue" type="number" class="form-input" value="1" placeholder="e.g. +3 or -5" oninput="toggleEffectTargetFields()">
+        <label>Value Mode</label>
+        <div style="display:flex; gap:8px; margin-bottom:10px;">
+          <button type="button" id="btnEffectModeFixed" class="prompt-btn" style="flex:1; background:var(--gold-accent); color:var(--bg-dark); font-weight:bold;" onclick="setEffectValueMode('fixed')">🔢 Fixed Value</button>
+          <button type="button" id="btnEffectModeDice" class="prompt-btn" style="flex:1; background:var(--surface-variant); color:var(--text-secondary);" onclick="setEffectValueMode('dice')">🎲 Dice Roll</button>
+        </div>
+
+        <div id="effectFixedContainer">
+          <label>Effect Mode (DMG or HEAL)</label>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <button type="button" id="btnFixedDmg" class="prompt-btn" style="flex:1; background:rgba(229,57,53,0.2); color:var(--crimson-primary); border:1px solid var(--crimson-primary); font-weight:bold;" onclick="setFixedEffectMode('DMG')">💥 Damage / Loss (DMG)</button>
+            <button type="button" id="btnFixedHeal" class="prompt-btn" style="flex:1; background:var(--surface-variant); color:var(--text-secondary);" onclick="setFixedEffectMode('HEAL')">💚 Heal / Restore (HEAL)</button>
+          </div>
+          <label>Fixed Amount</label>
+          <input id="effectInputFixedAmount" type="number" min="1" class="form-input" value="1" placeholder="e.g. 5" oninput="toggleEffectTargetFields()">
+        </div>
+
+        <div id="effectDiceContainer" class="hidden">
+          <label style="color:var(--gold-accent);">Dice Roll Formula</label>
+          <input id="effectInputDiceFormula" class="form-input" placeholder="e.g. 1d6, 2d8+2" style="margin-bottom:10px;">
+
+          <label>Roll Mode (DMG, HEAL, or MIXED)</label>
+          <div style="display:flex; gap:6px;">
+            <button type="button" id="btnDiceDmg" class="prompt-btn" style="flex:1; background:rgba(229,57,53,0.2); color:var(--crimson-primary); border:1px solid var(--crimson-primary); font-weight:bold;" onclick="setDiceEffectMode('DMG')">💥 DMG</button>
+            <button type="button" id="btnDiceHeal" class="prompt-btn" style="flex:1; background:var(--surface-variant); color:var(--text-secondary);" onclick="setDiceEffectMode('HEAL')">💚 HEAL</button>
+            <button type="button" id="btnDiceMixed" class="prompt-btn" style="flex:1; background:var(--surface-variant); color:var(--text-secondary);" onclick="setDiceEffectMode('MIXED')">⚖️ MIXED</button>
+          </div>
+        </div>
       </div>
 
       <div id="effectDamageTypeGroup" class="form-group hidden">
@@ -1344,8 +1608,27 @@
         <input type="checkbox" id="chkHasSpecialEffects" onchange="toggleItemFormSections()"> Special Effects?
       </label>
       <div id="specialEffectsInputBlock" class="form-group hidden">
-        <label style="color:var(--cyan-accent);">Special Effects Description (Freeform)</label>
-        <input autocapitalize="sentences" id="itemInputSpecialEffects" class="form-input" placeholder="e.g. Ignores resistance, +2 stealth...">
+        <label style="color:var(--cyan-accent);">Equipped Special Effect</label>
+        <input autocapitalize="sentences" id="itemInputSpecialEffects" class="form-input" placeholder="e.g. Ignores resistance, grants +2 stealth...">
+        <label style="color:var(--gold-accent); margin-top:8px;">On-Hand Special Effect</label>
+        <input autocapitalize="sentences" id="itemInputOnHandSpecialEffects" class="form-input" placeholder="e.g. +10% critical strike when wielded...">
+      </div>
+
+      <!-- CHECKBOX 7: HAS MAGIC? -->
+      <label class="checkbox-row" style="color:#b388ff;">
+        <input type="checkbox" id="chkHasMagic" onchange="toggleItemFormSections()"> Has Magic?
+      </label>
+      <div id="magicInputBlock" class="form-group hidden">
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1;">
+            <label style="color:#b388ff;">Spell Damage</label>
+            <input type="number" id="itemInputSpellDamage" class="form-input" placeholder="0 e.g. +2, -1" value="0">
+          </div>
+          <div style="flex:1;">
+            <label style="color:#81c784;">Spell Healing</label>
+            <input type="number" id="itemInputSpellHealing" class="form-input" placeholder="0 e.g. +3, -2" value="0">
+          </div>
+        </div>
       </div>
 
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
@@ -1355,13 +1638,67 @@
     </div>
   </div>
 
+  <!-- Select On-Hand Weapon Modal -->
+  <div id="selectOnHandModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-height: 85vh; width: 100%; max-width: 480px; display: flex; flex-direction: column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="font-size:16px; color:var(--gold-accent); margin:0;">SELECT ON-HAND WEAPON</h3>
+        <button class="action-icon-btn" onclick="closeSelectOnHandModal()">✖</button>
+      </div>
+      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+        Choose an equipped item to keep active on hand:
+      </div>
+      <div id="selectOnHandList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
+      <div style="display:flex; justify-content:space-between; gap:10px; margin-top:16px;">
+        <button class="prompt-btn" style="background:rgba(229,57,53,0.15); color:var(--crimson-primary); flex:1;" onclick="clearOnHandWeapon()">CLEAR ON-HAND</button>
+        <button class="prompt-btn" style="background:var(--surface-variant); color:var(--text-secondary); flex:1;" onclick="closeSelectOnHandModal()">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Roll Dice Round Modal (Prompt on Next Round) -->
+  <div id="rollDiceRoundModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-height: 85vh; width: 100%; max-width: 480px; display: flex; flex-direction: column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">🎲</span>
+          <h3 style="font-size:16px; color:var(--gold-accent); margin:0;">Roll Dice for Round Effects</h3>
+        </div>
+        <button class="action-icon-btn" onclick="closeRollDiceRoundModal()">✖</button>
+      </div>
+      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+        The following active effects require dice rolls this round. Roll your dice and input the results below:
+      </div>
+      <div id="rollDiceRoundList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:10px; margin-bottom:14px; padding-right:4px;"></div>
+      <div id="rollDiceRoundError" style="font-size:11px; color:var(--crimson-primary); font-weight:600; margin-bottom:8px; display:none;">
+        Please enter rolled results for all effects above to proceed.
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button id="btnConfirmRoundDice" class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark); font-weight:bold;" onclick="confirmRoundDiceRolls()">APPLY & NEXT ROUND</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ADD ABILITY MODAL -->
   <div id="addAbilityModal" class="modal-overlay hidden">
     <div class="modal-card">
       <h2 id="addAbilityModalTitle">ADD ABILITY</h2>
+
+      <!-- Choose From Skills Button (Above Ability Name) -->
+      <div style="margin-bottom: 4px;">
+        <button type="button" class="prompt-btn" style="width:100%; padding:10px 14px; background:var(--surface-variant); color:var(--gold-accent); border:1px solid rgba(255,193,7,0.5); font-weight:bold; display:flex; align-items:center; justify-content:center; gap:8px;" onclick="openChooseSkillModal()">
+          <span style="font-size:16px;">📖</span> CHOOSE FROM SKILLS
+        </button>
+      </div>
+
       <div class="form-group">
         <label>Ability Name</label>
-        <input autocapitalize="sentences" id="abilityInputName" class="form-input" placeholder="e.g. Fireball, Whirlwind, Holy Heal">
+        <input autocapitalize="sentences" id="abilityInputName" class="form-input" placeholder="e.g. Fireball, Whirlwind, Holy Heal" oninput="checkAbilityNameMagic()">
+      </div>
+
+      <div id="abilityTierGroup" class="form-group hidden">
+        <label style="color:var(--gold-accent);">Tier (Level)</label>
+        <input type="number" id="abilityInputTier" class="form-input" placeholder="e.g. 1, 2, 3" min="1" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
       </div>
 
       <div class="form-group">
@@ -1389,6 +1726,54 @@
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
         <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeAddAbilityModal()">CANCEL</button>
         <button id="addAbilityModalSaveBtn" class="prompt-btn" style="flex:none; width:auto; background-color:var(--gold-accent); color:var(--bg-dark);" onclick="saveNewAbility()">SAVE ABILITY</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHOOSE FROM SKILLS MODAL -->
+  <div id="chooseSkillModal" class="modal-overlay hidden" style="z-index: 25;">
+    <div class="modal-card" style="max-height: 90vh; width: 100%; max-width: 500px; display: flex; flex-direction: column;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+        <div>
+          <h2 style="font-size: 16px; color: var(--gold-accent); margin:0;">CHOOSE FROM SKILLS</h2>
+          <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Tap a skill to copy its name & description</div>
+        </div>
+        <button type="button" class="action-icon-btn" onclick="closeChooseSkillModal()">✕</button>
+      </div>
+
+      <!-- Search Input -->
+      <div style="margin-bottom: 8px;">
+        <input type="text" id="skillSearchInput" class="form-input" placeholder="🔍 Search all skills & specializations..." oninput="filterSkills()">
+      </div>
+
+      <!-- Categories Tabs (scrollable with drag & overflow indicator) -->
+      <div class="tabs-scroll-wrapper" id="skillTabsWrapper">
+        <button type="button" class="tab-scroll-arrow left hidden" id="skillTabsArrowLeft" onclick="scrollTabsHorizontal('skillTabsBar', -150)" title="Scroll tabs left" aria-label="Previous categories">‹</button>
+        <div class="tabs-fade-edge left hidden" id="skillTabsFadeLeft"></div>
+        
+        <div id="skillTabsBar" class="drag-scroll-tabs">
+          <!-- Tabs rendered dynamically -->
+        </div>
+
+        <div class="tabs-fade-edge right" id="skillTabsFadeRight"></div>
+        <button type="button" class="tab-scroll-arrow right" id="skillTabsArrowRight" onclick="scrollTabsHorizontal('skillTabsBar', 150)" title="Scroll tabs right" aria-label="Next categories">›</button>
+      </div>
+
+      <!-- Visual Hint indicating hidden/scrollable categories -->
+      <div id="skillTabsHint" style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: var(--gold-accent); padding: 0 4px 6px 4px; opacity: 0.9; margin-top: -2px;">
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <span style="font-size: 12px;">↔</span> Drag or scroll tabs to view all categories
+        </span>
+        <span id="skillTabsCount" style="color: var(--text-secondary); font-size: 9px;">7 categories</span>
+      </div>
+
+      <!-- Skills List -->
+      <div id="skillsContainer" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding-right: 2px; max-height: 52vh;">
+        <!-- Skill Cards rendered dynamically -->
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top: 10px;">
+        <button type="button" class="prompt-btn" style="width: auto; padding: 6px 16px;" onclick="closeChooseSkillModal()">CANCEL</button>
       </div>
     </div>
   </div>
@@ -1630,6 +2015,7 @@
       if (isPremium && photoApiUrl) {
         startPhotoTimer();
       }
+      updateServiceWorkerVersionDisplay();
     }
 
     function saveData() {
@@ -1660,7 +2046,7 @@
 
       // 2. From active stat effects
       const effectSum = (c.effects || [])
-        .filter(e => e.effectType === "STAT_MODIFIER")
+        .filter(e => e.effectType === "STAT_MODIFIER" && e.isEnabled !== false)
         .reduce((sum, e) => {
            let val = 0;
            if (e.targetStat && e.targetStat.toLowerCase() === kLower) {
@@ -1730,7 +2116,130 @@
       document.getElementById('expiredPopup').classList.add('hidden');
     }
 
+    let pendingDiceEffects = [];
+    let pendingDiceModes = {};
+
     function resetNextRound() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const activeDiceEffects = (c.effects || []).filter(e => e.isDiceRoll && (e.effectType === 'HP_CHANGE_PER_ROUND' || e.effectType === 'MP_CHANGE_PER_ROUND'));
+      if (activeDiceEffects.length > 0) {
+        openRollDiceRoundModal(activeDiceEffects);
+      } else {
+        executeRoundTick({});
+      }
+    }
+
+    function openRollDiceRoundModal(diceEffects) {
+      pendingDiceEffects = diceEffects;
+      pendingDiceModes = {};
+      diceEffects.forEach(e => {
+        pendingDiceModes[e.id] = (e.changeMode === 'MIXED') ? 'DMG' : (e.changeMode || 'DMG');
+      });
+
+      const listContainer = document.getElementById('rollDiceRoundList');
+      listContainer.innerHTML = diceEffects.map(e => {
+        const isHp = e.effectType === 'HP_CHANGE_PER_ROUND';
+        const targetLabel = isHp ? 'HP' : 'MP';
+        const isMixed = e.changeMode === 'MIXED';
+        const currentMode = pendingDiceModes[e.id] || 'DMG';
+
+        return `
+          <div style="background:var(--surface-variant); border:1px solid rgba(212,175,55,0.25); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-weight:bold; font-size:14px; color:var(--text-primary);">${escapeHtml(e.name)}</span>
+              <span style="background:rgba(212,175,55,0.15); border:1px solid var(--gold-accent); color:var(--gold-accent); padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">
+                Roll ${escapeHtml(e.diceFormula || '1d6')}
+              </span>
+            </div>
+            ${isMixed ? `
+              <div style="display:flex; gap:6px;">
+                <button type="button" id="btnRollMixedDmg_${e.id}" class="prompt-btn" style="flex:1; padding:4px 8px; font-size:11px; background:${currentMode === 'DMG' ? 'rgba(229,57,53,0.3)' : 'var(--surface-dark)'}; color:${currentMode === 'DMG' ? 'var(--crimson-primary)' : 'var(--text-secondary)'}; border:1px solid ${currentMode === 'DMG' ? 'var(--crimson-primary)' : 'transparent'}; font-weight:bold;" onclick="setRoundDiceMixedMode('${e.id}', 'DMG')">
+                  💥 Damage ${targetLabel}
+                </button>
+                <button type="button" id="btnRollMixedHeal_${e.id}" class="prompt-btn" style="flex:1; padding:4px 8px; font-size:11px; background:${currentMode === 'HEAL' ? 'rgba(76,175,80,0.3)' : 'var(--surface-dark)'}; color:${currentMode === 'HEAL' ? 'var(--green-hp)' : 'var(--text-secondary)'}; border:1px solid ${currentMode === 'HEAL' ? 'var(--green-hp)' : 'transparent'}; font-weight:bold;" onclick="setRoundDiceMixedMode('${e.id}', 'HEAL')">
+                  💚 Heal ${targetLabel}
+                </button>
+              </div>
+            ` : `
+              <div style="font-size:11px; font-weight:600; color:${e.changeMode === 'HEAL' ? 'var(--green-hp)' : 'var(--crimson-primary)'};">
+                ${e.changeMode === 'HEAL' ? `💚 Heals / Restores ${targetLabel}` : `💥 Deals Damage / Drains ${targetLabel}`}
+              </div>
+            `}
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:12px; color:var(--text-secondary); flex:1;">Rolled Result:</label>
+              <input type="number" id="rollInput_${e.id}" min="0" class="form-input" style="width:90px; text-align:center; padding:6px; font-size:14px; font-weight:bold;" placeholder="e.g. 4" oninput="validateRoundDiceInputs()">
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      validateRoundDiceInputs();
+      document.getElementById('rollDiceRoundModal').classList.remove('hidden');
+    }
+
+    function validateRoundDiceInputs() {
+      const btn = document.getElementById('btnConfirmRoundDice');
+      const err = document.getElementById('rollDiceRoundError');
+      if (!btn) return false;
+      const allFilled = pendingDiceEffects && pendingDiceEffects.length > 0 && pendingDiceEffects.every(e => {
+        const inputEl = document.getElementById(`rollInput_${e.id}`);
+        const val = inputEl ? inputEl.value.trim() : '';
+        return val !== '' && !isNaN(parseInt(val, 10));
+      });
+
+      btn.disabled = !allFilled;
+      btn.style.opacity = allFilled ? '1' : '0.4';
+      btn.style.cursor = allFilled ? 'pointer' : 'not-allowed';
+      if (err) {
+        err.style.display = allFilled ? 'none' : 'block';
+      }
+      return allFilled;
+    }
+
+    function setRoundDiceMixedMode(effectId, mode) {
+      pendingDiceModes[effectId] = mode;
+      const dmgBtn = document.getElementById(`btnRollMixedDmg_${effectId}`);
+      const healBtn = document.getElementById(`btnRollMixedHeal_${effectId}`);
+      if (dmgBtn && healBtn) {
+        if (mode === 'DMG') {
+          dmgBtn.style.background = 'rgba(229,57,53,0.3)';
+          dmgBtn.style.color = 'var(--crimson-primary)';
+          dmgBtn.style.border = '1px solid var(--crimson-primary)';
+          healBtn.style.background = 'var(--surface-dark)';
+          healBtn.style.color = 'var(--text-secondary)';
+          healBtn.style.border = '1px solid transparent';
+        } else {
+          dmgBtn.style.background = 'var(--surface-dark)';
+          dmgBtn.style.color = 'var(--text-secondary)';
+          dmgBtn.style.border = '1px solid transparent';
+          healBtn.style.background = 'rgba(76,175,80,0.3)';
+          healBtn.style.color = 'var(--green-hp)';
+          healBtn.style.border = '1px solid var(--green-hp)';
+        }
+      }
+    }
+
+    function closeRollDiceRoundModal() {
+      document.getElementById('rollDiceRoundModal').classList.add('hidden');
+    }
+
+    function confirmRoundDiceRolls() {
+      if (!validateRoundDiceInputs()) return;
+      const rollResults = {};
+      pendingDiceEffects.forEach(e => {
+        const inputEl = document.getElementById(`rollInput_${e.id}`);
+        const rollVal = Math.abs(parseInt(inputEl ? inputEl.value : 0) || 0);
+        const mode = pendingDiceModes[e.id] || e.changeMode || 'DMG';
+        const signedVal = (mode === 'DMG') ? -rollVal : rollVal;
+        rollResults[e.id] = signedVal;
+      });
+      closeRollDiceRoundModal();
+      executeRoundTick(rollResults);
+    }
+
+    function executeRoundTick(diceRollResults = {}) {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
 
@@ -1776,7 +2285,10 @@
         const nextEffects = [];
         c.effects.forEach(e => {
           if (e.effectType === "HP_CHANGE_PER_ROUND") {
-            const val = parseInt(e.value) || 0;
+            const val = (e.isDiceRoll && diceRollResults && diceRollResults.hasOwnProperty(e.id))
+              ? (parseInt(diceRollResults[e.id]) || 0)
+              : (parseInt(e.value) || 0);
+
             if (val > 0) {
               let oldHp = c.currentHp;
               c.currentHp = Math.max(0, Math.min(maxHp, c.currentHp + val));
@@ -1864,7 +2376,10 @@
             }
           }
           if (e.effectType === "MP_CHANGE_PER_ROUND" && maxMp > 0) {
-            c.currentMp = Math.max(0, Math.min(maxMp, c.currentMp + (parseInt(e.value) || 0)));
+            const val = (e.isDiceRoll && diceRollResults && diceRollResults.hasOwnProperty(e.id))
+              ? (parseInt(diceRollResults[e.id]) || 0)
+              : (parseInt(e.value) || 0);
+            c.currentMp = Math.max(0, Math.min(maxMp, c.currentMp + val));
           }
 
           let r = parseInt(e.roundsRemaining) || 0;
@@ -1967,6 +2482,10 @@
       updateGoldModalDisplay();
     }
 
+    function renderCharacterList() {
+      renderSelectScreen();
+    }
+
     function renderSelectScreen() {
       document.getElementById('selectScreen').classList.remove('hidden');
       document.getElementById('useScreen').classList.add('hidden');
@@ -2000,16 +2519,21 @@
       `;
 
       const container = document.getElementById('characterList');
-      const headerHTML = premiumBannerHTML + `
-        <div style="display:flex; justify-content:space-between; margin-bottom: 12px; gap:8px;">
-          <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
-          <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)" multiple>
-          <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--green-hp);" onclick="backupAllCharacters()">&#x1F4BE; BACKUP ALL</button>
+      if (!container) return;
+
+      const headerHTML = `
+        <div class="character-list-header">
+          ${premiumBannerHTML}
+          <div style="display:flex; justify-content:space-between; margin-bottom: 12px; gap:8px;">
+            <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--gold-accent);" onclick="document.getElementById('importCharInput').click()">📥 IMPORT HERO</button>
+            <input type="file" id="importCharInput" style="display:none" accept=".json" onchange="importCharacter(event)" multiple>
+            <button class="prompt-btn" style="flex:1; padding:8px 12px; background:var(--surface-variant); color:var(--green-hp);" onclick="backupAllCharacters()">&#x1F4BE; BACKUP ALL</button>
+          </div>
         </div>
       `;
 
       if (characters.length === 0) {
-        container.innerHTML = headerHTML + `<div style="text-align:center; padding:40px; color:var(--text-secondary);">No heroes found. Tap '+ CREATE HERO' to begin!</div>`;
+        container.innerHTML = headerHTML + `<div class="character-list-header" style="text-align:center; padding:40px; color:var(--text-secondary);">No heroes found. Tap '+ CREATE HERO' to begin!</div>`;
         return;
       }
 
@@ -2115,6 +2639,8 @@
       activeCharId = null;
       document.getElementById('headerLvlBtn').classList.add('hidden');
       document.getElementById('headerGoldBtn').classList.add('hidden');
+      const tabSpellbook = document.getElementById('tabSpellbook');
+      if (tabSpellbook) tabSpellbook.classList.add('hidden');
       renderSelectScreen();
     }
 
@@ -2124,15 +2650,21 @@
 
       document.getElementById('tabVitals').classList.remove('active');
       document.getElementById('tabAbilities').classList.remove('active');
+      const tabSpellbook = document.getElementById('tabSpellbook');
+      if (tabSpellbook) tabSpellbook.classList.remove('active');
       document.getElementById('tabEquipment').classList.remove('active');
       document.getElementById('tabInventory').classList.remove('active');
       document.getElementById('tabNotes').classList.remove('active');
 
       document.getElementById('vitalsTabContent').classList.add('hidden');
       document.getElementById('abilitiesTabContent').classList.add('hidden');
+      const spellbookContent = document.getElementById('spellbookTabContent');
+      if (spellbookContent) spellbookContent.classList.add('hidden');
       document.getElementById('equipmentTabContent').classList.add('hidden');
       document.getElementById('inventoryTabContent').classList.add('hidden');
       document.getElementById('notesTabContent').classList.add('hidden');
+
+      updateSpellBookTabVisibility();
 
       if (tab === 'vitals') {
         document.getElementById('tabVitals').classList.add('active');
@@ -2142,6 +2674,10 @@
         document.getElementById('tabAbilities').classList.add('active');
         document.getElementById('abilitiesTabContent').classList.remove('hidden');
         renderAbilitiesScreen();
+      } else if (tab === 'spellbook') {
+        if (tabSpellbook) tabSpellbook.classList.add('active');
+        if (spellbookContent) spellbookContent.classList.remove('hidden');
+        renderSpellBookScreen();
       } else if (tab === 'equipment') {
         document.getElementById('tabEquipment').classList.add('active');
         document.getElementById('equipmentTabContent').classList.remove('hidden');
@@ -2270,31 +2806,51 @@
               return `<span style="color:${col}">${k.toUpperCase()}: ${valStr}</span>`;
             }).join('<span style="color:var(--text-secondary)">, </span>');
           } else if (e.effectType === "HP_CHANGE_PER_ROUND") {
-            const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
-            const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
-            if (e.value < 0) {
-              const dt = (e.damageType || 'unsaveable').toUpperCase();
-              descHtml = `<span style="color:${col}">${valStr} ${dt} HP / round</span>`;
+            if (e.isDiceRoll) {
+              const mode = e.changeMode || 'DMG';
+              const col = mode === 'HEAL' ? 'var(--green-hp)' : 'var(--crimson-primary)';
+              const dt = (mode !== 'HEAL' && e.damageType) ? ` ${e.damageType.toUpperCase()}` : '';
+              descHtml = `<span style="color:${col}">🎲 ${escapeHtml(e.diceFormula || '1d6')} (${mode})${dt} HP / round</span>`;
             } else {
-              descHtml = `<span style="color:${col}">${valStr} HP / round</span>`;
+              const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
+              const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
+              if (e.value < 0) {
+                const dt = (e.damageType || 'unsaveable').toUpperCase();
+                descHtml = `<span style="color:${col}">${valStr} ${dt} HP / round</span>`;
+              } else {
+                descHtml = `<span style="color:${col}">${valStr} HP / round</span>`;
+              }
             }
           } else if (e.effectType === "MP_CHANGE_PER_ROUND") {
-            const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
-            const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
-            descHtml = `<span style="color:${col}">${valStr} MP / round</span>`;
+            if (e.isDiceRoll) {
+              const mode = e.changeMode || 'DMG';
+              const col = mode === 'HEAL' ? 'var(--green-hp)' : 'var(--crimson-primary)';
+              descHtml = `<span style="color:${col}">🎲 ${escapeHtml(e.diceFormula || '1d6')} (${mode}) MP / round</span>`;
+            } else {
+              const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
+              const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
+              descHtml = `<span style="color:${col}">${valStr} MP / round</span>`;
+            }
           }
 
           const r = parseInt(e.roundsRemaining) || 0;
           const durStr = r === 0 ? "Unlimited" : `${r} Rounds left`;
 
+          const isEnabled = e.isEnabled !== false;
+          const statusBadge = (!isEnabled) ? `<span style="font-size:9px; font-weight:800; background:rgba(229,57,53,0.2); color:var(--crimson-primary); padding:1px 5px; border-radius:4px; margin-left:6px;">DISABLED</span>` : '';
+          const toggleBtn = (e.effectType === 'STAT_MODIFIER') ? `
+            <button class="prompt-btn" style="flex:none; width:auto; padding:3px 8px; font-size:10px; font-weight:bold; background:${isEnabled ? 'rgba(76,175,80,0.2)' : 'rgba(229,57,53,0.15)'}; color:${isEnabled ? 'var(--green-hp)' : 'var(--crimson-primary)'}; border:1px solid ${isEnabled ? 'rgba(76,175,80,0.4)' : 'rgba(229,57,53,0.3)'}; margin-right:4px;" onclick="toggleEffectEnabled('${e.id}')">${isEnabled ? 'ENABLED' : 'DISABLED'}</button>
+          ` : '';
+
           return `
-          <div class="effect-item-row" style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="effect-item-row" style="display:flex; justify-content:space-between; align-items:center; opacity:${isEnabled ? '1' : '0.55'};">
             <div style="flex:1;">
-              <div style="font-weight:bold; font-size:13px;">${e.name}</div>
+              <div style="font-weight:bold; font-size:13px; display:flex; align-items:center;">${escapeHtml(e.name)}${statusBadge}</div>
               <div style="font-size:11px; font-weight:600;">${descHtml}</div>
               <div style="font-size:10px; color:var(--gold-accent);">Duration: ${durStr}</div>
             </div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              ${toggleBtn}
               <button class="action-icon-btn" title="Edit Effect" onclick="openAddEffectModal('${e.id}')" style="color:var(--gold-accent);">&#x270E;</button>
               <button class="action-icon-btn delete-btn" title="Remove Effect" onclick="removeEffect('${e.id}')">&#x1F5D1;</button>
             </div>
@@ -2302,9 +2858,302 @@
         `;
         }).join('');
       }
+
+      renderOnHandWeaponSection(c);
+      renderItemSpecialEffectsSection(c);
+    }
+
+    function renderOnHandWeaponSection(c) {
+      const container = document.getElementById('onHandWeaponCard');
+      if (!container) return;
+
+      const equippedItems = (c.inventory || []).filter(i => i.isEquipped);
+      const onHandItem = equippedItems.find(i => i.id === c.onHandWeaponId);
+
+      if (!onHandItem) {
+        container.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:16px;">⚔️</span>
+              <h4 style="font-size: 12px; color: var(--gold-accent); margin:0;">ON-HAND WEAPON</h4>
+            </div>
+            <button class="prompt-btn" style="flex:none; width:auto; background:var(--gold-accent); color:var(--bg-dark); padding:4px 12px; font-weight:700;" onclick="openSelectOnHandModal()">
+              SELECT WEAPON
+            </button>
+          </div>
+          <div style="text-align:center; padding:12px; background:var(--surface-variant); border-radius:8px; margin-top:8px; border:1px dashed var(--border-color);">
+            <div style="font-size:13px; color:var(--text-secondary);">No weapon currently on hand.</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Tap 'SELECT WEAPON' to choose from your equipped gear.</div>
+          </div>
+        `;
+        return;
+      }
+
+      let statBadges = '';
+      if (onHandItem.hasStatModifiers && onHandItem.statModifiers) {
+        statBadges = Object.entries(onHandItem.statModifiers)
+          .filter(([_, val]) => val !== 0)
+          .map(([st, val]) => `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>`)
+          .join('');
+      }
+
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">⚔️</span>
+            <h4 style="font-size: 12px; color: var(--gold-accent); margin:0;">ON-HAND WEAPON</h4>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="prompt-btn" style="flex:none; width:auto; background:var(--surface-variant); color:var(--gold-accent); border:1px solid var(--gold-accent); padding:4px 10px; font-size:11px;" onclick="openSelectOnHandModal()">
+              🔄 SWITCH
+            </button>
+            <button class="prompt-btn" style="flex:none; width:auto; background:rgba(229,57,53,0.15); color:var(--crimson-primary); padding:4px 8px; font-size:11px;" title="Clear on-hand" onclick="clearOnHandWeapon()">
+              ✖
+            </button>
+          </div>
+        </div>
+
+        <div style="background:var(--surface-variant); border:1px solid rgba(212,175,55,0.3); border-radius:10px; padding:12px; margin-top:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+            <div>
+              <div style="font-size:16px; font-weight:bold; color:var(--text-primary);">${escapeHtml(onHandItem.name)}</div>
+              <div style="font-size:11px; color:var(--gold-accent); margin-top:2px; font-weight:600;">${escapeHtml(onHandItem.category || 'Weapon')}</div>
+            </div>
+            ${onHandItem.hasAttacks ? `
+              <div style="background:rgba(212,175,55,0.15); border:1px solid var(--gold-accent); padding:4px 10px; border-radius:8px; text-align:right; flex-shrink:0;">
+                <div style="font-size:9px; font-weight:bold; color:var(--text-secondary); letter-spacing:0.5px;">ATTACK</div>
+                <div style="font-size:13px; font-weight:800; color:var(--gold-accent);">${onHandItem.attackCount || 1} × ${escapeHtml(onHandItem.attackDamage || 'Base')} Dmg</div>
+              </div>
+            ` : ''}
+          </div>
+
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+            ${(onHandItem.hasArmor && onHandItem.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${onHandItem.armorSave}</span>` : ''}
+            ${(onHandItem.hasWard && onHandItem.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${onHandItem.wardSave}</span>` : ''}
+            ${statBadges}
+          </div>
+
+          ${(onHandItem.hasSpecialEffects && onHandItem.onHandSpecialEffectsText) ? `
+            <div style="font-size:12px; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:6px 10px; border-radius:6px; margin-top:8px; line-height:1.4;">
+              🗡️ <b>On-Hand Effect:</b> ${escapeHtml(onHandItem.onHandSpecialEffectsText)}
+            </div>
+          ` : ''}
+          ${(onHandItem.hasSpecialEffects && onHandItem.specialEffectsText) ? `
+            <div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:6px 10px; border-radius:6px; margin-top:6px; line-height:1.4;">
+              ✨ <b>Equipped Effect:</b> ${escapeHtml(onHandItem.specialEffectsText)}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function renderItemSpecialEffectsSection(c) {
+      const container = document.getElementById('itemSpecialEffectsCard');
+      if (!container) return;
+
+      const equippedItems = (c.inventory || []).filter(i => i.isEquipped && i.hasSpecialEffects && i.specialEffectsText && i.specialEffectsText.trim().length > 0);
+
+      let itemsHtml = '';
+      if (equippedItems.length === 0) {
+        itemsHtml = `
+          <div style="text-align:center; padding:12px; background:var(--surface-variant); border-radius:8px; margin-top:8px; border:1px dashed var(--border-color);">
+            <div style="font-size:12px; color:var(--text-secondary);">No equipped items have active special effects.</div>
+          </div>
+        `;
+      } else {
+        itemsHtml = `
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+            ${equippedItems.map(item => `
+              <div style="background:var(--surface-variant); border:1px solid rgba(0,188,212,0.25); border-radius:8px; padding:10px 12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-weight:bold; font-size:13px; color:var(--text-primary);">${escapeHtml(item.name)}</span>
+                  <span style="font-size:11px; color:var(--gold-accent); font-weight:600;">${escapeHtml(item.category || 'Gear')}</span>
+                </div>
+                <div style="font-size:12px; color:var(--cyan-accent); margin-top:4px; line-height:1.4;">
+                  ${escapeHtml(item.specialEffectsText)}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">✨</span>
+            <h4 style="font-size: 12px; color: var(--cyan-accent); margin:0;">ITEM SPECIAL EFFECTS</h4>
+          </div>
+          <span style="font-size:11px; font-weight:bold; color:${equippedItems.length > 0 ? 'var(--cyan-accent)' : 'var(--text-secondary)'};">
+            ${equippedItems.length} Active
+          </span>
+        </div>
+        ${itemsHtml}
+      `;
+    }
+
+    function openSelectOnHandModal() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+
+      const equippedItems = (c.inventory || []).filter(i => i.isEquipped);
+      const listContainer = document.getElementById('selectOnHandList');
+
+      if (equippedItems.length === 0) {
+        listContainer.innerHTML = `
+          <div style="text-align:center; padding:30px 10px; color:var(--text-secondary);">
+            <div style="font-size:32px; margin-bottom:8px;">🎒</div>
+            <div style="font-weight:bold; color:var(--text-primary); font-size:14px; margin-bottom:4px;">No Equipped Items</div>
+            <div style="font-size:12px; line-height:1.4;">You have no items equipped. Equip a weapon or item from your Equipment or Inventory tab first.</div>
+          </div>
+        `;
+      } else {
+        listContainer.innerHTML = equippedItems.map(item => {
+          const isSelected = item.id === c.onHandWeaponId;
+          return `
+            <div onclick="setOnHandWeapon('${item.id}')" style="
+              background:${isSelected ? 'rgba(212,175,55,0.15)' : 'var(--surface-variant)'};
+              border:1px solid ${isSelected ? 'var(--gold-accent)' : 'var(--border-color)'};
+              border-radius:8px;
+              padding:10px 12px;
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              cursor:pointer;
+              transition:all 0.15s;
+            ">
+              <div>
+                <div style="font-size:14px; font-weight:bold; color:${isSelected ? 'var(--gold-accent)' : 'var(--text-primary)'};">${escapeHtml(item.name)}</div>
+                <div style="display:flex; gap:6px; align-items:center; margin-top:2px;">
+                  <span style="font-size:11px; color:var(--text-secondary);">${escapeHtml(item.category || 'Item')}</span>
+                  ${item.hasAttacks ? `<span style="font-size:11px; font-weight:bold; color:var(--gold-accent);">• ${item.attackCount || 1} × (${escapeHtml(item.attackDamage || 'Base')})</span>` : ''}
+                </div>
+              </div>
+              <div>
+                ${isSelected ? '<span style="color:var(--gold-accent); font-weight:bold; font-size:16px;">✔</span>' : '<span style="color:var(--text-secondary); font-size:11px;">Equipped</span>'}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('selectOnHandModal').classList.remove('hidden');
+    }
+
+    function closeSelectOnHandModal() {
+      document.getElementById('selectOnHandModal').classList.add('hidden');
+    }
+
+    function setOnHandWeapon(itemId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      c.onHandWeaponId = itemId;
+      saveData();
+      closeSelectOnHandModal();
+      renderUseScreen();
+    }
+
+    function clearOnHandWeapon() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      c.onHandWeaponId = null;
+      saveData();
+      closeSelectOnHandModal();
+      renderUseScreen();
     }
 
     let currentEditingEffectId = null;
+    let currentEffectValueMode = 'fixed';
+    let currentFixedEffectMode = 'DMG';
+    let currentDiceEffectMode = 'DMG';
+
+    function setEffectValueMode(mode) {
+      currentEffectValueMode = mode;
+      const btnFixed = document.getElementById('btnEffectModeFixed');
+      const btnDice = document.getElementById('btnEffectModeDice');
+      const fixedContainer = document.getElementById('effectFixedContainer');
+      const diceContainer = document.getElementById('effectDiceContainer');
+
+      if (mode === 'fixed') {
+        btnFixed.style.background = 'var(--gold-accent)';
+        btnFixed.style.color = 'var(--bg-dark)';
+        btnFixed.style.fontWeight = 'bold';
+        btnDice.style.background = 'var(--surface-variant)';
+        btnDice.style.color = 'var(--text-secondary)';
+        btnDice.style.fontWeight = 'normal';
+        fixedContainer.classList.remove('hidden');
+        diceContainer.classList.add('hidden');
+      } else {
+        btnDice.style.background = 'var(--gold-accent)';
+        btnDice.style.color = 'var(--bg-dark)';
+        btnDice.style.fontWeight = 'bold';
+        btnFixed.style.background = 'var(--surface-variant)';
+        btnFixed.style.color = 'var(--text-secondary)';
+        btnFixed.style.fontWeight = 'normal';
+        fixedContainer.classList.add('hidden');
+        diceContainer.classList.remove('hidden');
+      }
+      toggleEffectTargetFields();
+    }
+
+    function setFixedEffectMode(mode) {
+      currentFixedEffectMode = mode;
+      const btnDmg = document.getElementById('btnFixedDmg');
+      const btnHeal = document.getElementById('btnFixedHeal');
+
+      if (mode === 'DMG') {
+        btnDmg.style.background = 'rgba(229,57,53,0.2)';
+        btnDmg.style.color = 'var(--crimson-primary)';
+        btnDmg.style.border = '1px solid var(--crimson-primary)';
+        btnDmg.style.fontWeight = 'bold';
+        btnHeal.style.background = 'var(--surface-variant)';
+        btnHeal.style.color = 'var(--text-secondary)';
+        btnHeal.style.border = 'none';
+        btnHeal.style.fontWeight = 'normal';
+      } else {
+        btnHeal.style.background = 'rgba(76,175,80,0.2)';
+        btnHeal.style.color = 'var(--green-hp)';
+        btnHeal.style.border = '1px solid var(--green-hp)';
+        btnHeal.style.fontWeight = 'bold';
+        btnDmg.style.background = 'var(--surface-variant)';
+        btnDmg.style.color = 'var(--text-secondary)';
+        btnDmg.style.border = 'none';
+        btnDmg.style.fontWeight = 'normal';
+      }
+      toggleEffectTargetFields();
+    }
+
+    function setDiceEffectMode(mode) {
+      currentDiceEffectMode = mode;
+      const btnDmg = document.getElementById('btnDiceDmg');
+      const btnHeal = document.getElementById('btnDiceHeal');
+      const btnMixed = document.getElementById('btnDiceMixed');
+
+      [btnDmg, btnHeal, btnMixed].forEach(b => {
+        b.style.background = 'var(--surface-variant)';
+        b.style.color = 'var(--text-secondary)';
+        b.style.border = 'none';
+        b.style.fontWeight = 'normal';
+      });
+
+      if (mode === 'DMG') {
+        btnDmg.style.background = 'rgba(229,57,53,0.2)';
+        btnDmg.style.color = 'var(--crimson-primary)';
+        btnDmg.style.border = '1px solid var(--crimson-primary)';
+        btnDmg.style.fontWeight = 'bold';
+      } else if (mode === 'HEAL') {
+        btnHeal.style.background = 'rgba(76,175,80,0.2)';
+        btnHeal.style.color = 'var(--green-hp)';
+        btnHeal.style.border = '1px solid var(--green-hp)';
+        btnHeal.style.fontWeight = 'bold';
+      } else {
+        btnMixed.style.background = 'rgba(212,175,55,0.2)';
+        btnMixed.style.color = 'var(--gold-accent)';
+        btnMixed.style.border = '1px solid var(--gold-accent)';
+        btnMixed.style.fontWeight = 'bold';
+      }
+      toggleEffectTargetFields();
+    }
 
     function openAddEffectModal(editId = null) {
       currentEditingEffectId = editId;
@@ -2315,11 +3164,21 @@
       }
 
       if (effect) {
-        document.getElementById('effectInputName').value = effect.name;
-        document.getElementById('effectInputType').value = effect.effectType;
-        document.getElementById('effectInputValue').value = effect.effectType !== 'STAT_MODIFIER' ? effect.value : '1';
+        document.getElementById('effectInputName').value = effect.name || '';
+        document.getElementById('effectInputType').value = effect.effectType || 'STAT_MODIFIER';
         document.getElementById('effectInputRounds').value = effect.roundsRemaining || 0;
-        
+
+        if (effect.isDiceRoll) {
+          setEffectValueMode('dice');
+          document.getElementById('effectInputDiceFormula').value = effect.diceFormula || '';
+          setDiceEffectMode(effect.changeMode || 'DMG');
+        } else {
+          setEffectValueMode('fixed');
+          const isHeal = (effect.changeMode === 'HEAL') || (effect.value > 0);
+          setFixedEffectMode(isHeal ? 'HEAL' : 'DMG');
+          document.getElementById('effectInputFixedAmount').value = Math.abs(effect.value) || 1;
+        }
+
         const stats = ["strength", "intelligence", "endurance", "spirit", "finesse", "charisma"];
         stats.forEach(st => {
           let v = 0;
@@ -2334,21 +3193,28 @@
           document.getElementById('statMod_' + st).value = v;
         });
 
-        if (effect.effectType === 'HP_CHANGE_PER_ROUND' && effect.value < 0) {
-          document.getElementById('effectInputDamageType').value = effect.damageType || 'unsaveable';
+        if (effect.damageType) {
+          document.getElementById('effectInputDamageType').value = effect.damageType;
         }
+        document.getElementById('effectInputEnabled').checked = effect.isEnabled !== false;
       } else {
         document.getElementById('effectInputName').value = '';
         document.getElementById('effectInputType').value = 'STAT_MODIFIER';
-        document.getElementById('effectInputValue').value = '1';
         document.getElementById('effectInputRounds').value = '0';
-        
+        document.getElementById('effectInputEnabled').checked = true;
+        setEffectValueMode('fixed');
+        setFixedEffectMode('DMG');
+        setDiceEffectMode('DMG');
+        document.getElementById('effectInputFixedAmount').value = '1';
+        document.getElementById('effectInputDiceFormula').value = '';
+        document.getElementById('effectInputDamageType').value = 'unsaveable';
+
         const stats = ["strength", "intelligence", "endurance", "spirit", "finesse", "charisma"];
         stats.forEach(st => {
           document.getElementById('statMod_' + st).value = '0';
         });
       }
-      
+
       toggleEffectTargetFields();
       document.getElementById('addEffectModal').classList.remove('hidden');
     }
@@ -2359,19 +3225,25 @@
 
     function toggleEffectTargetFields() {
       const type = document.getElementById('effectInputType').value;
-      const val = parseInt(document.getElementById('effectInputValue').value) || 0;
       if (type === 'STAT_MODIFIER') {
         document.getElementById('effectStatGroup').classList.remove('hidden');
         document.getElementById('effectValueGroup').classList.add('hidden');
+        document.getElementById('effectDamageTypeGroup').classList.add('hidden');
       } else {
         document.getElementById('effectStatGroup').classList.add('hidden');
         document.getElementById('effectValueGroup').classList.remove('hidden');
-      }
 
-      if (type === 'HP_CHANGE_PER_ROUND' && val < 0) {
-        document.getElementById('effectDamageTypeGroup').classList.remove('hidden');
-      } else {
-        document.getElementById('effectDamageTypeGroup').classList.add('hidden');
+        if (type === 'HP_CHANGE_PER_ROUND') {
+          const isDmg = (currentEffectValueMode === 'fixed' && currentFixedEffectMode === 'DMG') ||
+                        (currentEffectValueMode === 'dice' && currentDiceEffectMode !== 'HEAL');
+          if (isDmg) {
+            document.getElementById('effectDamageTypeGroup').classList.remove('hidden');
+          } else {
+            document.getElementById('effectDamageTypeGroup').classList.add('hidden');
+          }
+        } else {
+          document.getElementById('effectDamageTypeGroup').classList.add('hidden');
+        }
       }
     }
 
@@ -2381,12 +3253,11 @@
 
       const name = document.getElementById('effectInputName').value.trim();
       const effectType = document.getElementById('effectInputType').value;
-      const value = parseInt(document.getElementById('effectInputValue').value) || 0;
       const roundsRemaining = parseInt(document.getElementById('effectInputRounds').value) || 0;
       const damageType = document.getElementById('effectInputDamageType').value;
 
       if (!name) { alert("Please enter an effect name"); return; }
-      
+
       let statModifiers = {};
       if (effectType === 'STAT_MODIFIER') {
         const stats = ["strength", "intelligence", "endurance", "spirit", "finesse", "charisma"];
@@ -2398,25 +3269,63 @@
 
       adjustVitalsOnMaxChange(c, () => {
         if (!c.effects) c.effects = [];
-        
+
         let targetEffect = c.effects.find(e => e.id === currentEditingEffectId);
         if (!targetEffect) {
-            targetEffect = { id: Date.now().toString() };
-            c.effects.push(targetEffect);
+          targetEffect = { id: Date.now().toString() };
+          c.effects.push(targetEffect);
         }
-        
+
         targetEffect.name = name;
         targetEffect.effectType = effectType;
         targetEffect.targetStat = null;
-        targetEffect.statModifiers = statModifiers;
-        targetEffect.value = effectType === 'STAT_MODIFIER' ? 0 : value;
         targetEffect.roundsRemaining = roundsRemaining;
-        targetEffect.damageType = (effectType === 'HP_CHANGE_PER_ROUND' && value < 0) ? damageType : 'unsaveable';
+
+        if (effectType === 'STAT_MODIFIER') {
+          targetEffect.isDiceRoll = false;
+          targetEffect.diceFormula = '';
+          targetEffect.changeMode = 'DMG';
+          targetEffect.statModifiers = statModifiers;
+          targetEffect.value = 0;
+          targetEffect.damageType = 'unsaveable';
+          targetEffect.isEnabled = document.getElementById('effectInputEnabled').checked;
+        } else {
+          targetEffect.isEnabled = true;
+          targetEffect.statModifiers = {};
+          if (currentEffectValueMode === 'dice') {
+            const formula = document.getElementById('effectInputDiceFormula').value.trim() || '1d6';
+            targetEffect.isDiceRoll = true;
+            targetEffect.diceFormula = formula;
+            targetEffect.changeMode = currentDiceEffectMode;
+            targetEffect.value = 0;
+            targetEffect.damageType = (effectType === 'HP_CHANGE_PER_ROUND' && currentDiceEffectMode !== 'HEAL') ? damageType : 'unsaveable';
+          } else {
+            const amt = Math.max(1, parseInt(document.getElementById('effectInputFixedAmount').value) || 1);
+            targetEffect.isDiceRoll = false;
+            targetEffect.diceFormula = '';
+            targetEffect.changeMode = currentFixedEffectMode;
+            targetEffect.value = currentFixedEffectMode === 'DMG' ? -amt : amt;
+            targetEffect.damageType = (effectType === 'HP_CHANGE_PER_ROUND' && currentFixedEffectMode === 'DMG') ? damageType : 'unsaveable';
+          }
+        }
       });
 
       saveData();
       closeAddEffectModal();
       renderUseScreen();
+    }
+
+    function toggleEffectEnabled(effectId) {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.effects) return;
+      const eff = c.effects.find(e => e.id === effectId);
+      if (eff) {
+        adjustVitalsOnMaxChange(c, () => {
+          eff.isEnabled = (eff.isEnabled === false) ? true : false;
+        });
+        saveData();
+        renderUseScreen();
+      }
     }
 
     function removeEffect(effectId) {
@@ -2590,6 +3499,47 @@
       switchSessionTab(currentSessionTab);
     }
 
+    const PARENT_SUB_SPELLS = {
+      "Reaction spells": [
+        { name: "Reaction Spell: Magic sensing (1MP)", description: "Detect and trace sources of magic." },
+        { name: "Reaction Spell: Dispel (1MP)", description: "Cancel a magical effect (burning, curse, slow, petrification) on a person. Or use 2MP to cast it as an area-of-effect." },
+        { name: "Reaction Spell: Diffuse (xMP)", description: "A last-ditch defense spell that can be cast as a reaction. Reduce the damage of an incoming hit by 5+xd6. Where x is the amount of mana input." },
+        { name: "Reaction Spell: Magical device (1MP)", description: "Channel magic to use magical machinery." }
+      ]
+    };
+
+    function getSubSpellsForParent(parentName) {
+      const clean = (parentName || '').trim().toLowerCase();
+      for (const [p, subs] of Object.entries(PARENT_SUB_SPELLS)) {
+        if (p.toLowerCase() === clean) return subs;
+      }
+      return [];
+    }
+
+    function isSubSpell(abilityName) {
+      const clean = (abilityName || '').trim().toLowerCase();
+      return clean.startsWith("reaction spell:") || clean.startsWith("reaction spell -");
+    }
+
+    function getParentForSubSpell(abilityName) {
+      const clean = (abilityName || '').trim().toLowerCase();
+      if (clean.startsWith("reaction spell:") || clean.startsWith("reaction spell -")) {
+        return "Reaction spells";
+      }
+      return null;
+    }
+
+    let collapsedParentAbilityIds = new Set();
+
+    function toggleParentAbilityCollapse(parentId) {
+      if (collapsedParentAbilityIds.has(parentId)) {
+        collapsedParentAbilityIds.delete(parentId);
+      } else {
+        collapsedParentAbilityIds.add(parentId);
+      }
+      renderAbilitiesScreen();
+    }
+
     function renderAbilitiesScreen() {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
@@ -2602,7 +3552,12 @@
         return;
       }
 
-      container.innerHTML = abilities.map(a => {
+      const topLevelAbilities = abilities.filter(a => {
+        const parentName = getParentForSubSpell(a.name);
+        return !parentName || !abilities.some(p => p.name.trim().toLowerCase() === parentName.toLowerCase());
+      });
+
+      container.innerHTML = topLevelAbilities.map(a => {
         const evalDesc = formatAbilityDescription(c, a.description);
         const showFormula = a.description && (a.description !== evalDesc);
         const maxCharLimit = 130;
@@ -2610,10 +3565,53 @@
         const isLong = evalDesc.length > maxCharLimit;
         const displayText = (isLong && !isExpanded) ? (evalDesc.slice(0, maxCharLimit) + '...') : evalDesc;
 
+        // Check if this ability is a parent with sub-spells in character abilities
+        const subSpells = abilities.filter(sub => {
+          const parentName = getParentForSubSpell(sub.name);
+          return parentName && parentName.toLowerCase() === a.name.trim().toLowerCase();
+        });
+        const hasSubSpells = subSpells.length > 0;
+        const isCollapsed = collapsedParentAbilityIds.has(a.id);
+
+        let subSpellsHtml = '';
+        if (hasSubSpells && !isCollapsed) {
+          subSpellsHtml = `
+            <div style="margin-top: 10px; padding-left: 12px; border-left: 2px solid rgba(255,193,7,0.4); display: flex; flex-direction: column; gap: 8px;">
+              ${subSpells.map(sub => {
+                const subEval = formatAbilityDescription(c, sub.description);
+                const subIsExpanded = expandedCardIds.has(sub.id);
+                const subIsLong = subEval.length > maxCharLimit;
+                const subDisplay = (subIsLong && !subIsExpanded) ? (subEval.slice(0, maxCharLimit) + '...') : subEval;
+
+                return `
+                  <div class="item-card" style="background: var(--surface-variant); border: 1px solid rgba(255,193,7,0.25); padding: 10px 12px; border-radius: 8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <span style="font-weight:bold; font-size:14px; color:var(--gold-accent);">↳ ${sub.name}</span>
+                      <div>
+                        <button class="action-icon-btn edit-btn" title="Edit Ability" onclick="openEditAbilityModal('${sub.id}')">✏️</button>
+                        <button class="action-icon-btn delete-btn" title="Delete Ability" onclick="deleteAbility('${sub.id}')">🗑</button>
+                      </div>
+                    </div>
+                    ${subEval ? `
+                      <div style="background:var(--surface-dark); padding:8px; border-radius:6px; margin-top:6px; cursor:${subIsLong ? 'pointer' : 'default'};" ${subIsLong ? `onclick="toggleCardExpansion('${sub.id}')"` : ''}>
+                        <div style="font-size:13px; font-weight:500; color:var(--text-primary); white-space:pre-line;">${subDisplay}</div>
+                        ${subIsLong ? `<div style="font-size:11px; font-weight:bold; color:var(--gold-accent); margin-top:4px;">${subIsExpanded ? '▲ Tap to collapse' : '▼ Tap to expand'}</div>` : ''}
+                      </div>
+                    ` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        }
+
         return `
           <div class="item-card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-weight:bold; font-size:16px; color:var(--gold-accent);">${a.name}</span>
+              <span style="font-weight:bold; font-size:16px; color:var(--gold-accent); display:inline-flex; align-items:center; gap:6px;">
+                <span>${a.name}</span>
+                ${(a.tier !== undefined && a.tier !== null) ? `<span style="background:rgba(255,193,7,0.18); border:1px solid rgba(255,193,7,0.5); color:var(--gold-accent); font-size:11px; font-weight:bold; padding:2px 6px; border-radius:4px;">Tier ${a.tier}</span>` : ''}
+              </span>
               <div>
                 <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('abilities', '${a.id}', 'up')">🔼</button>
                 <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Down" onclick="moveItem('abilities', '${a.id}', 'down')">🔽</button>
@@ -2623,11 +3621,21 @@
             </div>
 
             ${evalDesc ? `
-              <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'};" ${isLong ? `onclick="toggleCardExpansion('${a.id}')"` : ''}>
+              <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'}; margin-top: 6px;" ${isLong ? `onclick="toggleCardExpansion('${a.id}')"` : ''}>
                 <div style="font-size:14px; font-weight:500; color:var(--text-primary); white-space:pre-line;">${displayText}</div>
                 ${isLong ? `<div style="font-size:11px; font-weight:bold; color:var(--gold-accent); margin-top:4px;">${isExpanded ? '▲ Tap to collapse' : '▼ Tap to expand'}</div>` : ''}
                 ${showFormula ? `<div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Formula: ${a.description}</div>` : ''}
               </div>
+            ` : ''}
+
+            ${hasSubSpells ? `
+              <div style="margin-top: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255,193,7,0.3); border-radius: 8px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleParentAbilityCollapse('${a.id}')">
+                <span style="font-size: 12px; font-weight: bold; color: var(--gold-accent); display: flex; align-items: center; gap: 6px;">
+                  <span>${isCollapsed ? '▶' : '▼'}</span> ${subSpells.length} Sub-spells (${isCollapsed ? 'Tap to expand' : 'Tap to collapse'})
+                </span>
+                <span style="font-size: 10px; font-weight: bold; color: ${isCollapsed ? 'var(--text-secondary)' : 'var(--green-hp)'};">${isCollapsed ? 'COLLAPSED' : 'EXPANDED'}</span>
+              </div>
+              ${subSpellsHtml}
             ` : ''}
           </div>
         `;
@@ -2653,12 +3661,26 @@
       }
     }
 
+    function checkAbilityNameMagic() {
+      const name = (document.getElementById('abilityInputName').value || '').trim();
+      const tierGroup = document.getElementById('abilityTierGroup');
+      if (tierGroup) {
+        if (name.toLowerCase().startsWith('magic:')) {
+          tierGroup.classList.remove('hidden');
+        } else {
+          tierGroup.classList.add('hidden');
+        }
+      }
+    }
+
     function openAddAbilityModal() {
       editingAbilityId = null;
       document.getElementById('addAbilityModalTitle').innerText = 'ADD ABILITY';
       document.getElementById('addAbilityModalSaveBtn').innerText = 'SAVE ABILITY';
       document.getElementById('abilityInputName').value = '';
       document.getElementById('abilityInputDesc').value = '';
+      document.getElementById('abilityInputTier').value = '';
+      checkAbilityNameMagic();
       updateAbilityPreview();
       document.getElementById('addAbilityModal').classList.remove('hidden');
     }
@@ -2674,12 +3696,411 @@
       document.getElementById('addAbilityModalSaveBtn').innerText = 'SAVE CHANGES';
       document.getElementById('abilityInputName').value = a.name;
       document.getElementById('abilityInputDesc').value = a.description;
+      document.getElementById('abilityInputTier').value = (a.tier !== undefined && a.tier !== null) ? a.tier : '';
+      checkAbilityNameMagic();
       updateAbilityPreview();
       document.getElementById('addAbilityModal').classList.remove('hidden');
     }
 
     function closeAddAbilityModal() {
       document.getElementById('addAbilityModal').classList.add('hidden');
+    }
+
+    // ── Choose from Skills Modal Functions ──────────────────────────────
+    const SKILL_CATEGORIES = [
+      "Weapon & Combat",
+      "Professions",
+      "Utility",
+      "Magic",
+      "Faith",
+      "Advanced combat moves",
+      "Other advanced skills"
+    ];
+    let activeSkillTab = "Weapon & Combat";
+
+    function openChooseSkillModal() {
+      document.getElementById('skillSearchInput').value = '';
+      activeSkillTab = "Weapon & Combat";
+      const wrapper = document.getElementById('skillTabsWrapper');
+      const hint = document.getElementById('skillTabsHint');
+      if (wrapper) wrapper.style.display = 'flex';
+      if (hint) hint.style.display = 'flex';
+      renderSkillCategories();
+      renderSkillList();
+      const modal = document.getElementById('chooseSkillModal');
+      modal.classList.remove('hidden');
+      const tabsBar = document.getElementById('skillTabsBar');
+      if (tabsBar) {
+        tabsBar.scrollLeft = 0;
+      }
+      setTimeout(() => {
+        initTabsDragScroll('skillTabsBar');
+        updateTabsOverflowIndicators('skillTabsBar');
+      }, 50);
+    }
+
+    function closeChooseSkillModal() {
+      document.getElementById('chooseSkillModal').classList.add('hidden');
+    }
+
+    function renderSkillCategories() {
+      const tabsBar = document.getElementById('skillTabsBar');
+      if (!tabsBar) return;
+      tabsBar.innerHTML = SKILL_CATEGORIES.map(cat => {
+        const isActive = cat === activeSkillTab;
+        return `
+          <button type="button" class="prompt-btn ${isActive ? 'tab-active' : ''}" data-active="${isActive}" style="flex:none; width:auto; padding:6px 12px; font-size:11px; white-space:nowrap; border-radius:14px; background:${isActive ? 'var(--gold-accent)' : 'var(--surface-variant)'}; color:${isActive ? 'var(--bg-dark)' : 'var(--text-secondary)'}; font-weight:${isActive ? 'bold' : 'normal'}; border:1px solid ${isActive ? 'var(--gold-accent)' : 'transparent'}; cursor:pointer;" onclick="switchSkillTab('${cat}')">
+            ${cat}
+          </button>
+        `;
+      }).join('');
+      setTimeout(() => updateTabsOverflowIndicators('skillTabsBar'), 50);
+    }
+
+    function switchSkillTab(cat) {
+      activeSkillTab = cat;
+      renderSkillCategories();
+      renderSkillList();
+      const tabsBar = document.getElementById('skillTabsBar');
+      if (tabsBar) {
+        const activeBtn = tabsBar.querySelector('[data-active="true"]');
+        if (activeBtn) {
+          activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        }
+      }
+    }
+
+    function filterSkills() {
+      const query = (document.getElementById('skillSearchInput').value || '').trim();
+      const wrapper = document.getElementById('skillTabsWrapper');
+      const hint = document.getElementById('skillTabsHint');
+      if (wrapper) wrapper.style.display = query ? 'none' : 'flex';
+      if (hint) hint.style.display = query ? 'none' : 'flex';
+      renderSkillList();
+      if (!query) {
+        setTimeout(() => updateTabsOverflowIndicators('skillTabsBar'), 50);
+      }
+    }
+
+    function initTabsDragScroll(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container || container.dataset.dragInitialized) return;
+      container.dataset.dragInitialized = 'true';
+
+      let isDown = false;
+      let startX = 0;
+      let scrollLeft = 0;
+      let hasDragged = false;
+
+      container.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        isDown = true;
+        hasDragged = false;
+        startX = e.pageX - container.offsetLeft;
+        scrollLeft = container.scrollLeft;
+        container.style.cursor = 'grabbing';
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        const x = e.pageX - container.offsetLeft;
+        const walk = x - startX;
+        if (Math.abs(walk) > 5) {
+          hasDragged = true;
+        }
+        container.scrollLeft = scrollLeft - walk;
+        updateTabsOverflowIndicators(containerId);
+      });
+
+      const endDrag = () => {
+        if (!isDown) return;
+        isDown = false;
+        container.style.cursor = 'grab';
+      };
+
+      window.addEventListener('mouseup', endDrag);
+
+      // Prevent button click if the mouse was dragged
+      container.addEventListener('click', (e) => {
+        if (hasDragged) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          hasDragged = false;
+        }
+      }, true);
+
+      // Mouse wheel horizontal scrolling
+      container.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0 || e.deltaX !== 0) {
+          const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+          container.scrollLeft += delta;
+          updateTabsOverflowIndicators(containerId);
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      // Native touch / momentum scroll
+      container.addEventListener('scroll', () => {
+        updateTabsOverflowIndicators(containerId);
+      });
+
+      window.addEventListener('resize', () => {
+        updateTabsOverflowIndicators(containerId);
+      });
+    }
+
+    function scrollTabsHorizontal(containerId, offset) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.scrollBy({ left: offset, behavior: 'smooth' });
+      setTimeout(() => updateTabsOverflowIndicators(containerId), 250);
+    }
+
+    function updateTabsOverflowIndicators(containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const leftArrow = document.getElementById('skillTabsArrowLeft');
+      const rightArrow = document.getElementById('skillTabsArrowRight');
+      const leftFade = document.getElementById('skillTabsFadeLeft');
+      const rightFade = document.getElementById('skillTabsFadeRight');
+      const hint = document.getElementById('skillTabsHint');
+
+      const scrollLeft = container.scrollLeft;
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      const hasOverflow = maxScroll > 4;
+
+      const canScrollLeft = scrollLeft > 6;
+      const canScrollRight = scrollLeft < maxScroll - 6;
+
+      if (leftArrow) {
+        if (hasOverflow && canScrollLeft) leftArrow.classList.remove('hidden');
+        else leftArrow.classList.add('hidden');
+      }
+      if (rightArrow) {
+        if (hasOverflow && canScrollRight) rightArrow.classList.remove('hidden');
+        else rightArrow.classList.add('hidden');
+      }
+      if (leftFade) {
+        if (hasOverflow && canScrollLeft) leftFade.classList.remove('hidden');
+        else leftFade.classList.add('hidden');
+      }
+      if (rightFade) {
+        if (hasOverflow && canScrollRight) rightFade.classList.remove('hidden');
+        else rightFade.classList.add('hidden');
+      }
+      if (hint) {
+        hint.style.visibility = hasOverflow ? 'visible' : 'hidden';
+      }
+    }
+
+    function checkSkillUnlocked(skill, character) {
+      if (!character) return { unlocked: true, reason: null };
+      const normalize = s => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const charAbilities = (character.abilities || []).map(a => normalize(a.name));
+
+      // 1. Check required stats
+      if (skill.requiredStats) {
+        for (const [stat, minVal] of Object.entries(skill.requiredStats)) {
+          const statLower = stat.toLowerCase();
+          const charVal = character[statLower] || 0;
+          if (charVal < minVal) {
+            const statLabel = stat.slice(0, 3).toUpperCase();
+            return { unlocked: false, reason: `Requires ${statLabel} ${minVal} (Base: ${charVal})` };
+          }
+        }
+      }
+
+      // 2. Check required skills
+      if (skill.requiredSkills && skill.requiredSkills.length > 0) {
+        for (const req of skill.requiredSkills) {
+          const reqLower = normalize(req);
+          const hasSkill = charAbilities.some(a => a === reqLower || a.startsWith(reqLower + ' -') || a.startsWith(reqLower + ':'));
+          if (!hasSkill) {
+            return { unlocked: false, reason: `Requires: ${req}` };
+          }
+        }
+      }
+
+      // 3. Check special requirements
+      if (skill.specialReq) {
+        if (skill.specialReq === 'any_ranged_spec') {
+          const rangedSpecs = ['bow specialization', 'crossbow specialization', 'pistol specialization', 'rifle specialization'];
+          const hasRanged = charAbilities.some(a => rangedSpecs.some(r => a.includes(r)));
+          if (!hasRanged) return { unlocked: false, reason: 'Requires: Any ranged weapon specialization' };
+        } else if (skill.specialReq === 'any_ranged_expert') {
+          const rangedExperts = ['bow specialization (expert)', 'crossbow specialization (expert)', 'pistol specialization (expert)', 'rifle specialization (expert)'];
+          const hasRangedExpert = charAbilities.some(a => rangedExperts.some(r => a.includes(r)));
+          if (!hasRangedExpert) return { unlocked: false, reason: 'Requires: Any ranged weapon (Expert)' };
+        } else if (skill.specialReq === 'bow_or_crossbow_expert') {
+          const bowCross = ['bow specialization (expert)', 'crossbow specialization (expert)'];
+          const hasBowCross = charAbilities.some(a => bowCross.some(r => a.includes(r)));
+          if (!hasBowCross) return { unlocked: false, reason: 'Requires: Bow or Crossbow (Expert)' };
+        } else if (skill.specialReq === 'any_weapon_expert') {
+          const hasExpert = charAbilities.some(a => a.includes('(expert)'));
+          if (!hasExpert) return { unlocked: false, reason: 'Requires: Any weapon specialization (Expert)' };
+        } else if (skill.specialReq === 'melee_weapon_expert') {
+          const meleeList = ['dagger', 'one-handed swords', 'one-handed blunt', 'one-handed axe', 'two-handed swords', 'two-handed axe', 'two-handed blunt', 'polearm', 'exotic'];
+          const hasMelee = charAbilities.some(a => a.includes('(expert)') && meleeList.some(m => a.includes(m)));
+          if (!hasMelee) return { unlocked: false, reason: 'Requires: Any melee weapon specialization (Expert)' };
+        } else if (skill.specialReq === 'any_bible') {
+          const hasBible = charAbilities.some(a => a.startsWith('bible of') || a.includes('bible'));
+          if (!hasBible) return { unlocked: false, reason: 'Requires: A Bible (Faith)' };
+        }
+      }
+
+      return { unlocked: true, reason: null };
+    }
+
+    function isSkillAlreadyAdded(skill, character) {
+      if (!character || !character.abilities) return false;
+      const normalize = s => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const skillNameLower = normalize(skill.name);
+      return character.abilities.some(a => {
+        const clean = normalize(a.name);
+        return clean === skillNameLower || clean.startsWith(skillNameLower + ' -') || clean.startsWith(skillNameLower + ':');
+      });
+    }
+
+    function renderSkillList() {
+      const container = document.getElementById('skillsContainer');
+      const searchInput = document.getElementById('skillSearchInput');
+      const query = (searchInput.value || '').trim().toLowerCase();
+      const c = characters.find(item => item.id === activeCharId);
+
+      const db = (typeof SKILLS_DATABASE !== 'undefined') ? SKILLS_DATABASE : [];
+
+      let list = [];
+      if (query) {
+        list = db.filter(s => s.name.toLowerCase().includes(query) || (s.description && s.description.toLowerCase().includes(query)));
+      } else {
+        list = db.filter(s => s.category === activeSkillTab);
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:30px 10px; color:var(--text-secondary); font-size:13px;">${query ? "No skills matching '" + query + "'" : "No skills found in this category."}</div>`;
+        return;
+      }
+
+      container.innerHTML = list.map(s => {
+        const alreadyAdded = isSkillAlreadyAdded(s, c);
+        const status = checkSkillUnlocked(s, c);
+        const isSelectable = !alreadyAdded && status.unlocked;
+        const missingText = status.reason || s.reqText || '';
+        const parentSubSpells = getSubSpellsForParent(s.name);
+
+        const escapedName = s.name.replace(/'/g, "\\'");
+
+        let badgeHtml = '';
+        if (alreadyAdded) {
+          badgeHtml = `
+            <div style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:bold; color:var(--green-hp); background:rgba(76,175,80,0.15); border:1px solid rgba(76,175,80,0.4); padding:2px 8px; border-radius:4px; white-space:nowrap;">
+              <span>✓</span> Added
+            </div>
+          `;
+        } else if (parentSubSpells.length > 0) {
+          badgeHtml = `
+            <div style="display:inline-flex; align-items:center; font-size:10px; font-weight:bold; color:var(--gold-accent); background:rgba(255,193,7,0.15); border:1px solid rgba(255,193,7,0.4); padding:2px 6px; border-radius:4px; white-space:nowrap;">
+              Parent Skill
+            </div>
+          `;
+        }
+
+        let statusHtml = '';
+        if (!alreadyAdded) {
+          if (!status.unlocked) {
+            statusHtml = `
+              <div style="display:flex; align-items:flex-start; gap:4px; font-size:11px; font-weight:600; color:var(--crimson-primary); margin-top:4px; line-height:1.3;">
+                <span>🔒</span> <span>${missingText}</span>
+              </div>
+            `;
+          } else if (s.reqText) {
+            statusHtml = `
+              <div style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:500; color:var(--green-hp); margin-top:4px; line-height:1.3;">
+                <span>✓</span> <span>Req: ${s.reqText}</span>
+              </div>
+            `;
+          }
+        }
+
+        let parentInfoHtml = '';
+        if (parentSubSpells.length > 0) {
+          parentInfoHtml = `
+            <div style="font-size:10px; font-weight:500; color:var(--gold-accent); margin-top:4px; line-height:1.3;">
+              Includes ${parentSubSpells.length} sub-spells: ${parentSubSpells.map(x => x.name.replace('Reaction Spell: ', '')).join(', ')}
+            </div>
+          `;
+        }
+
+        let borderColor = 'rgba(229,57,53,0.3)';
+        let bgColor = 'var(--surface-dark)';
+        let opacity = '0.55';
+        let cursor = 'not-allowed';
+
+        if (alreadyAdded) {
+          borderColor = 'rgba(76, 175, 80, 0.45)';
+          bgColor = 'var(--surface-dark)';
+          opacity = '0.65';
+          cursor = 'not-allowed';
+        } else if (isSelectable) {
+          borderColor = 'rgba(255,193,7,0.35)';
+          bgColor = 'var(--surface-variant)';
+          opacity = '1.0';
+          cursor = 'pointer';
+        }
+
+        return `
+          <div style="background:${bgColor}; border:1px solid ${borderColor}; border-radius:10px; padding:10px 12px; cursor:${cursor}; opacity:${opacity}; transition:transform 0.15s, border-color 0.15s;"
+               onclick="selectSkill('${escapedName}')">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <div style="font-weight:bold; font-size:13px; color:${isSelectable ? 'var(--gold-accent)' : 'var(--text-secondary)'}; flex:1;">
+                ${s.name}
+              </div>
+              ${badgeHtml}
+            </div>
+            ${statusHtml}
+            ${parentInfoHtml}
+            <div style="font-size:11px; color:var(--text-primary); margin-top:6px; line-height:1.4;">
+              ${s.description}
+            </div>
+            ${query ? `<div style="font-size:9px; color:var(--text-secondary); margin-top:4px;">Category: ${s.category}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectSkill(skillName) {
+      const db = (typeof SKILLS_DATABASE !== 'undefined') ? SKILLS_DATABASE : [];
+      const skill = db.find(s => s.name === skillName);
+      if (!skill) return;
+
+      const c = characters.find(item => item.id === activeCharId);
+      if (isSkillAlreadyAdded(skill, c)) {
+        alert("This skill is already added.");
+        return;
+      }
+      const status = checkSkillUnlocked(skill, c);
+      if (!status.unlocked) {
+        alert(status.reason || "Requirements not met for this skill.");
+        return;
+      }
+
+      const subSpells = getSubSpellsForParent(skill.name);
+      if (subSpells.length > 0) {
+        const subList = subSpells.map(s => `• ${s.name}`).join('\n');
+        alert(`Parent Skill Selected: "${skill.name}"\n\nSelecting this skill will automatically add the following ${subSpells.length} sub-skills:\n${subList}`);
+        showToast(`Selected "${skill.name}" (+ ${subSpells.length} sub-skills)`, 'var(--gold-accent)');
+      }
+
+      document.getElementById('abilityInputName').value = skill.name;
+      document.getElementById('abilityInputDesc').value = skill.description;
+      checkAbilityNameMagic();
+      if (skill.name.toLowerCase().startsWith('magic:')) {
+        const tierInput = document.getElementById('abilityInputTier');
+        if (!tierInput.value) tierInput.value = '1';
+      }
+      updateAbilityPreview();
+      closeChooseSkillModal();
     }
 
     function saveNewAbility() {
@@ -2691,6 +4112,9 @@
 
       if (!name) { alert("Please enter an ability name"); return; }
 
+      const isMagic = name.toLowerCase().startsWith('magic:');
+      const tierVal = isMagic ? (parseInt(document.getElementById('abilityInputTier').value) || null) : null;
+
       if (!c.abilities) c.abilities = [];
 
       if (editingAbilityId) {
@@ -2698,13 +4122,35 @@
         if (a) {
           a.name = name;
           a.description = description;
+          a.tier = tierVal;
         }
       } else {
         c.abilities.push({
           id: Date.now().toString(),
           name,
-          description
+          description,
+          tier: tierVal
         });
+
+        // Automatically add sub-spells for parent skill
+        const subSpells = getSubSpellsForParent(name);
+        if (subSpells.length > 0) {
+          let addedCount = 0;
+          subSpells.forEach((sub, idx) => {
+            const alreadyHas = c.abilities.some(a => a.name.trim().toLowerCase() === sub.name.trim().toLowerCase());
+            if (!alreadyHas) {
+              c.abilities.push({
+                id: (Date.now() + idx + 1).toString(),
+                name: sub.name,
+                description: sub.description
+              });
+              addedCount++;
+            }
+          });
+          if (addedCount > 0) {
+            showToast(`Added "${name}" and ${addedCount} sub-skills`, 'var(--gold-accent)');
+          }
+        }
       }
 
       saveData();
@@ -2719,6 +4165,391 @@
       c.abilities = c.abilities.filter(a => a.id !== abilityId);
       saveData();
       switchSessionTab(currentSessionTab);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    /* SPELLBOOK TAB */
+    let selectedSpellBookIndex = 0;
+    let spellBookSearchQuery = '';
+
+    function isMagicOrBibleAbility(name) {
+      if (!name) return false;
+      const clean = name.trim().toLowerCase();
+      return clean.startsWith('magic:') || clean.startsWith('bible') || clean.includes('bible') || clean.startsWith('faith') || clean.includes('faith');
+    }
+
+    function findSpellBookForAbility(abilityName) {
+      if (typeof SPELLBOOKS_DATABASE === 'undefined') return null;
+      const clean = (abilityName || '').trim().toLowerCase();
+
+      // 1. Direct name match
+      for (const key of Object.keys(SPELLBOOKS_DATABASE)) {
+        const book = SPELLBOOKS_DATABASE[key];
+        if (book.name && book.name.trim().toLowerCase() === clean) return book;
+      }
+
+      // 2. Starts with / prefix match
+      for (const key of Object.keys(SPELLBOOKS_DATABASE)) {
+        const book = SPELLBOOKS_DATABASE[key];
+        const bClean = (book.name || '').trim().toLowerCase();
+        if (clean.startsWith(bClean) || bClean.startsWith(clean)) return book;
+      }
+
+      // 3. Alias match
+      for (const key of Object.keys(SPELLBOOKS_DATABASE)) {
+        const book = SPELLBOOKS_DATABASE[key];
+        if (book.aliases && Array.isArray(book.aliases)) {
+          for (const alias of book.aliases) {
+            const aClean = alias.trim().toLowerCase();
+            if (clean === aClean || clean.startsWith(aClean) || clean.includes(aClean) || aClean.includes(clean)) {
+              return book;
+            }
+          }
+        }
+      }
+
+      // 4. Deity keyword match
+      if (clean.includes('felis')) return SPELLBOOKS_DATABASE['Bible of Felis'];
+      if (clean.includes('illumus')) return SPELLBOOKS_DATABASE['Bible of Illumus'];
+      if (clean.includes('zuul')) return SPELLBOOKS_DATABASE['Bible of Zuul'];
+
+      // 5. Fallback for faith / bible
+      if (clean === 'faith' || clean.startsWith('faith:') || clean === 'bible' || clean.startsWith('bible:')) {
+        return SPELLBOOKS_DATABASE['Bible of Felis'] || Object.values(SPELLBOOKS_DATABASE).find(b => b.type === 'faith');
+      }
+
+      return null;
+    }
+
+    function updateSpellBookTabVisibility() {
+      const tabSpellbook = document.getElementById('tabSpellbook');
+      if (!tabSpellbook) return;
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c || !c.abilities) {
+        tabSpellbook.classList.add('hidden');
+        return;
+      }
+      const hasMagicBible = c.abilities.some(a => isMagicOrBibleAbility(a.name));
+      if (hasMagicBible) {
+        tabSpellbook.classList.remove('hidden');
+      } else {
+        tabSpellbook.classList.add('hidden');
+        if (currentSessionTab === 'spellbook') {
+          switchSessionTab('abilities');
+        }
+      }
+    }
+
+    function selectSpellBookTab(index) {
+      selectedSpellBookIndex = index;
+      renderSpellBookScreen();
+    }
+
+    function setSpellBookSearch(val) {
+      spellBookSearchQuery = val;
+      renderSpellBookList();
+    }
+
+    function clearSpellBookSearch() {
+      spellBookSearchQuery = '';
+      const input = document.getElementById('spellBookSearchInput');
+      if (input) input.value = '';
+      renderSpellBookList();
+    }
+
+    function renderSpellBookScreen() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const container = document.getElementById('spellbookContainer');
+      if (!container) return;
+
+      const magicAbilities = (c.abilities || []).filter(a => isMagicOrBibleAbility(a.name));
+
+      if (magicAbilities.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; padding:50px 20px; color:var(--text-secondary);">
+            <div style="font-size:48px; margin-bottom:12px;">📖</div>
+            <div style="font-size:18px; font-weight:bold; color:var(--text-primary); margin-bottom:6px;">No Spell Book Unlocked</div>
+            <div style="font-size:13px; max-width:320px; margin:0 auto; line-height:1.4;">Add a Magic or Bible skill (e.g. <i>Magic: Water</i>, <i>Bible of Felis</i>) from the Abilities tab to view its grimoires and prayers.</div>
+          </div>
+        `;
+        return;
+      }
+
+      if (selectedSpellBookIndex >= magicAbilities.length) {
+        selectedSpellBookIndex = 0;
+      }
+      const activeAbility = magicAbilities[selectedSpellBookIndex];
+      const book = findSpellBookForAbility(activeAbility.name);
+
+      let chipsHtml = '';
+      if (magicAbilities.length > 1) {
+        chipsHtml = `
+          <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:8px; -webkit-overflow-scrolling:touch;">
+            ${magicAbilities.map((ab, idx) => {
+              const isSelected = idx === selectedSpellBookIndex;
+              const isMagic = ab.name.trim().toLowerCase().startsWith('magic:');
+              const tierBadge = (isMagic && ab.tier) ? ` (Tier ${ab.tier})` : '';
+              const icon = isMagic ? '✨' : '📜';
+              return `
+                <button type="button" onclick="selectSpellBookTab(${idx})" style="
+                  flex:none; padding:8px 14px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;
+                  background:${isSelected ? 'rgba(212,175,55,0.2)' : 'var(--surface-dark)'};
+                  color:${isSelected ? 'var(--gold-accent)' : 'var(--text-secondary)'};
+                  border:1px solid ${isSelected ? 'var(--gold-accent)' : 'var(--border-color)'};
+                  transition:all 0.2s;
+                  white-space:nowrap;
+                ">
+                  ${icon} ${escapeHtml(ab.name)}${tierBadge}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      // Title Card for the Active Spell Book
+      let bookHeaderHtml = '';
+      if (book) {
+        if (book.type === 'magic') {
+          const charTier = parseInt(activeAbility.tier) || 1;
+          bookHeaderHtml = `
+            <div class="char-card" style="padding:14px; border-left:4px solid var(--gold-accent); margin-bottom:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <h3 style="font-family:var(--font-heading); font-size:16px; color:var(--text-primary); margin:0;">${escapeHtml(book.displayName || book.name)}</h3>
+                  <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Grimoire of Magic</div>
+                </div>
+                <div style="text-align:right;">
+                  <span style="background:rgba(212,175,55,0.15); color:var(--gold-accent); border:1px solid var(--gold-accent); padding:4px 10px; border-radius:14px; font-size:12px; font-weight:bold;">
+                    Unlocked: Tier ${charTier}
+                  </span>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          bookHeaderHtml = `
+            <div class="char-card" style="padding:14px; border-left:4px solid #b388ff; margin-bottom:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <h3 style="font-family:var(--font-heading); font-size:16px; color:var(--text-primary); margin:0;">${escapeHtml(book.name)}</h3>
+                  <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">Holy Scripture & Prayers of Faith</div>
+                </div>
+                <span style="background:rgba(179,136,255,0.15); color:#b388ff; border:1px solid rgba(179,136,255,0.4); padding:4px 10px; border-radius:14px; font-size:11px; font-weight:bold;">
+                  d100 Prayers
+                </span>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // Equipped Spell Modifiers Banner (between spell book title and search bar)
+      const equippedMagicItems = (c.inventory || []).filter(i => i.isEquipped && i.hasMagic);
+      const totalSpellDamage = equippedMagicItems.reduce((acc, i) => acc + (parseInt(i.spellDamageModifier) || 0), 0);
+      const totalSpellHealing = equippedMagicItems.reduce((acc, i) => acc + (parseInt(i.spellHealingModifier) || 0), 0);
+
+      let spellModBannerHtml = '';
+      if (equippedMagicItems.length > 0 && (totalSpellDamage !== 0 || totalSpellHealing !== 0)) {
+        const dmgColor = totalSpellDamage > 0 ? 'var(--gold-accent)' : (totalSpellDamage < 0 ? 'var(--crimson-primary)' : 'var(--text-primary)');
+        const healColor = totalSpellHealing > 0 ? 'var(--green-hp)' : (totalSpellHealing < 0 ? 'var(--crimson-primary)' : 'var(--text-primary)');
+        spellModBannerHtml = `
+          <div class="char-card" style="padding:10px 14px; margin-bottom:10px; border:1px solid rgba(212,175,55,0.35); background:rgba(212,175,55,0.06); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+              <div style="font-size:11px; font-weight:bold; color:var(--gold-accent); letter-spacing:0.5px;">EQUIPPED SPELL MODIFIERS</div>
+              <div style="font-size:10px; color:var(--text-secondary); margin-top:2px;">From ${equippedMagicItems.length} equipped magic ${equippedMagicItems.length === 1 ? 'item' : 'items'}</div>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <span style="background:rgba(212,175,55,0.15); border:1px solid rgba(212,175,55,0.5); padding:3px 8px; border-radius:6px; font-size:12px; font-weight:bold; color:${dmgColor};">
+                🔮 Dmg: ${totalSpellDamage > 0 ? '+' + totalSpellDamage : totalSpellDamage}
+              </span>
+              <span style="background:rgba(76,175,80,0.15); border:1px solid rgba(76,175,80,0.5); padding:3px 8px; border-radius:6px; font-size:12px; font-weight:bold; color:${healColor};">
+                💖 Heal: ${totalSpellHealing > 0 ? '+' + totalSpellHealing : totalSpellHealing}
+              </span>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        ${chipsHtml}
+        ${bookHeaderHtml}
+        ${spellModBannerHtml}
+        <div style="position:relative; margin-bottom:10px;">
+          <input id="spellBookSearchInput" type="text" placeholder="Search spells, costs, descriptions..." 
+            value="${escapeHtml(spellBookSearchQuery)}" 
+            oninput="setSpellBookSearch(this.value)"
+            style="width:100%; box-sizing:border-box; background:var(--surface-dark); border:1px solid var(--border-color); border-radius:10px; padding:10px 36px 10px 14px; color:var(--text-primary); font-size:13px; outline:none;"
+          />
+          ${spellBookSearchQuery ? `
+            <button onclick="clearSpellBookSearch()" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:16px;">✖</button>
+          ` : ''}
+        </div>
+        <div id="spellBookListContainer"></div>
+      `;
+
+      renderSpellBookList();
+    }
+
+    function renderSpellBookList() {
+      const c = characters.find(item => item.id === activeCharId);
+      if (!c) return;
+      const listContainer = document.getElementById('spellBookListContainer');
+      if (!listContainer) return;
+
+      const magicAbilities = (c.abilities || []).filter(a => isMagicOrBibleAbility(a.name));
+      if (magicAbilities.length === 0) return;
+      const activeAbility = magicAbilities[selectedSpellBookIndex] || magicAbilities[0];
+      const book = findSpellBookForAbility(activeAbility.name);
+
+      if (!book) {
+        listContainer.innerHTML = `
+          <div class="char-card" style="text-align:center; padding:24px;">
+            <div style="font-size:32px; margin-bottom:8px;">❓</div>
+            <div style="font-weight:bold; color:var(--gold-accent); font-size:15px; margin-bottom:4px;">No Book Found</div>
+            <div style="font-size:13px; color:var(--text-secondary); line-height:1.4;">
+              We couldn't find a matching grimoire or bible for "<b>${escapeHtml(activeAbility.name)}</b>".<br>
+              Make sure the ability name starts with <i>Magic: [School]</i> or <i>Bible of [Deity]</i>.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const query = (spellBookSearchQuery || '').trim().toLowerCase();
+
+      if (book.type === 'magic') {
+        const charTier = parseInt(activeAbility.tier) || 1;
+        const allSpells = book.spells || [];
+        const filteredSpells = query ? allSpells.filter(s => 
+          (s.name && s.name.toLowerCase().includes(query)) ||
+          (s.cost && s.cost.toLowerCase().includes(query)) ||
+          (s.description && s.description.toLowerCase().includes(query)) ||
+          (`tier ${s.tier}`.includes(query))
+        ) : allSpells;
+
+        let spellsByTierHtml = '';
+        for (let t = 1; t <= 5; t++) {
+          const tierSpells = filteredSpells.filter(s => s.tier === t);
+          if (tierSpells.length === 0) continue;
+
+          const isUnlocked = t <= charTier;
+          spellsByTierHtml += `
+            <div style="margin-top:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; padding:0 2px;">
+                <span style="font-size:12px; font-weight:bold; letter-spacing:0.5px; color:${isUnlocked ? 'var(--gold-accent)' : 'var(--text-secondary)'};">
+                  ${isUnlocked ? '✨' : '🔒'} TIER ${t} ${isUnlocked ? '• UNLOCKED' : `• LOCKED (Requires Tier ${t})`}
+                </span>
+                <span style="font-size:11px; color:var(--text-secondary);">${tierSpells.length} spells</span>
+              </div>
+              <div class="spell-tier-grid" style="display:flex; flex-direction:column; gap:8px;">
+                ${tierSpells.map(s => `
+                  <div style="
+                    background:${isUnlocked ? 'var(--surface-dark)' : 'rgba(255,255,255,0.02)'};
+                    border:1px solid ${isUnlocked ? 'rgba(212,175,55,0.25)' : 'rgba(255,255,255,0.06)'};
+                    border-radius:10px;
+                    padding:12px 14px;
+                    opacity:${isUnlocked ? '1' : '0.6'};
+                    box-shadow:${isUnlocked ? '0 2px 8px rgba(0,0,0,0.2)' : 'none'};
+                  ">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                      <span style="font-size:14px; font-weight:700; color:${isUnlocked ? 'var(--gold-accent)' : 'var(--text-secondary)'};">
+                        ${escapeHtml(s.name)}
+                      </span>
+                      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                        <span style="background:rgba(33,150,243,0.15); color:#64b5f6; border:1px solid rgba(33,150,243,0.3); font-size:11px; font-weight:700; padding:2px 8px; border-radius:12px;">
+                          ${escapeHtml(s.cost)}
+                        </span>
+                        <span style="font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px; background:${isUnlocked ? 'rgba(76,175,80,0.15)' : 'rgba(255,255,255,0.05)'}; color:${isUnlocked ? '#81c784' : 'var(--text-secondary)'};">
+                          ${isUnlocked ? 'T' + s.tier : 'LOCKED'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style="font-size:13px; color:var(--text-primary); margin-top:6px; line-height:1.45; white-space:pre-line;">
+                      ${escapeHtml(s.description)}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+
+        if (!spellsByTierHtml) {
+          spellsByTierHtml = `
+            <div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:13px;">
+              No spells found matching "<b>${escapeHtml(query)}</b>".
+            </div>
+          `;
+        }
+
+        listContainer.innerHTML = spellsByTierHtml;
+
+      } else if (book.type === 'faith' || book.type === 'bible') {
+        const allPrayers = book.prayers || [];
+        const filteredPrayers = query ? allPrayers.filter(p =>
+          (p.name && p.name.toLowerCase().includes(query)) ||
+          ((p.percentage || p.roll) && (p.percentage || p.roll).toLowerCase().includes(query)) ||
+          ((p.quote || p.scripture) && (p.quote || p.scripture).toLowerCase().includes(query)) ||
+          (p.effect && p.effect.toLowerCase().includes(query))
+        ) : allPrayers;
+
+        let prayersHtml = '';
+        if (filteredPrayers.length === 0) {
+          prayersHtml = `
+            <div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:13px;">
+              No prayers found matching "<b>${escapeHtml(query)}</b>".
+            </div>
+          `;
+        } else {
+          prayersHtml = filteredPrayers.map(p => {
+            const rollText = p.percentage || p.roll || '';
+            const quoteText = p.quote || p.scripture || '';
+            return `
+            <div style="
+              background:var(--surface-dark);
+              border:1px solid rgba(212,175,55,0.25);
+              border-radius:10px;
+              padding:12px 14px;
+              box-shadow:0 2px 8px rgba(0,0,0,0.2);
+            ">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="background:rgba(212,175,55,0.18); color:var(--gold-accent); border:1px solid rgba(212,175,55,0.4); padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold; flex-shrink:0;">
+                  ${escapeHtml(rollText)}
+                </span>
+                <span style="font-size:14px; font-weight:700; color:var(--text-primary); flex:1;">
+                  ${escapeHtml(p.name)}
+                </span>
+              </div>
+              ${quoteText ? `
+                <div style="font-style:italic; font-size:12px; color:var(--gold-accent); opacity:0.92; margin-top:8px; border-left:2px solid var(--gold-accent); padding-left:10px; line-height:1.4;">
+                  "${escapeHtml(quoteText)}"
+                </div>
+              ` : ''}
+              <div style="font-size:13px; color:var(--text-primary); margin-top:8px; line-height:1.45; white-space:pre-line;">
+                ${escapeHtml(p.effect)}
+              </div>
+            </div>
+          `;
+          }).join('');
+        }
+
+        listContainer.innerHTML = `
+          <div class="spell-tier-grid" style="display:flex; flex-direction:column; gap:10px;">
+            ${prayersHtml}
+          </div>
+        `;
+      }
     }
 
     /* NOTES TAB */
@@ -2895,7 +4726,12 @@
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push(item);
       });
-      const categories = c.equipmentCategoryOrder || Object.keys(grouped).sort();
+      const presentCats = Object.keys(grouped);
+      let categories = c.equipmentCategoryOrder ? [...c.equipmentCategoryOrder] : [];
+      categories = categories.filter(cat => presentCats.includes(cat));
+      presentCats.forEach(cat => {
+        if (!categories.includes(cat)) categories.push(cat);
+      });
       c.equipmentCategoryOrder = categories; // save it back
       
       let htmlStr = '';
@@ -2903,7 +4739,7 @@
         const items = grouped[cat];
         if (!items || items.length === 0) return;
         
-        const isCollapsed = !c.equipmentCategoryCollapsed || c.equipmentCategoryCollapsed[cat] !== false;
+        const isCollapsed = c.equipmentCategoryCollapsed && c.equipmentCategoryCollapsed[cat] === true;
         
         htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
         htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('equipment', '${cat}')">`;
@@ -2942,7 +4778,14 @@
                 ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
               </div>
               ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
-              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}
+              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px; margin-top:4px;">✨ Equipped Effect: ${escapeHtml(item.specialEffectsText)}</div>` : ''}
+              ${(item.hasSpecialEffects && item.onHandSpecialEffectsText) ? `<div style="font-size:12px; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px; margin-top:4px;">🗡️ On-Hand Effect: ${escapeHtml(item.onHandSpecialEffectsText)}</div>` : ''}
+              ${item.hasMagic && (item.spellDamageModifier || item.spellHealingModifier) ? `
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+                  ${item.spellDamageModifier ? `<span class="save-badge" style="background:rgba(212,175,55,0.15); color:var(--gold-accent); border:1px solid rgba(212,175,55,0.4);">🔮 Spell Dmg: ${item.spellDamageModifier > 0 ? '+' + item.spellDamageModifier : item.spellDamageModifier}</span>` : ''}
+                  ${item.spellHealingModifier ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:var(--green-hp); border:1px solid rgba(76,175,80,0.4);">💖 Spell Heal: ${item.spellHealingModifier > 0 ? '+' + item.spellHealingModifier : item.spellHealingModifier}</span>` : ''}
+                </div>
+              ` : ''}
               <button class="prompt-btn" style="background:rgba(229, 57, 53, 0.15); color:var(--crimson-primary);" onclick="toggleEquip('${item.id}')">✖ UNEQUIP (MOVE TO INVENTORY)</button>
             </div>`;
           });
@@ -2969,7 +4812,12 @@
         if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push(item);
       });
-      const categories = c.inventoryCategoryOrder || Object.keys(grouped).sort();
+      const presentCats = Object.keys(grouped);
+      let categories = c.inventoryCategoryOrder ? [...c.inventoryCategoryOrder] : [];
+      categories = categories.filter(cat => presentCats.includes(cat));
+      presentCats.forEach(cat => {
+        if (!categories.includes(cat)) categories.push(cat);
+      });
       c.inventoryCategoryOrder = categories; 
       
       let htmlStr = '';
@@ -2977,7 +4825,7 @@
         const items = grouped[cat];
         if (!items || items.length === 0) return;
         
-        const isCollapsed = !c.inventoryCategoryCollapsed || c.inventoryCategoryCollapsed[cat] !== false;
+        const isCollapsed = c.inventoryCategoryCollapsed && c.inventoryCategoryCollapsed[cat] === true;
         
         htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
         htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('inventory', '${cat}')">`;
@@ -3016,7 +4864,14 @@
                 ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
               </div>
               ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
-              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px;">✨ Special Effect: ${item.specialEffectsText}</div>` : ''}`;
+              ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px; margin-top:4px;">✨ Equipped Effect: ${escapeHtml(item.specialEffectsText)}</div>` : ''}
+              ${(item.hasSpecialEffects && item.onHandSpecialEffectsText) ? `<div style="font-size:12px; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px; margin-top:4px;">🗡️ On-Hand Effect: ${escapeHtml(item.onHandSpecialEffectsText)}</div>` : ''}
+              ${item.hasMagic && (item.spellDamageModifier || item.spellHealingModifier) ? `
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+                  ${item.spellDamageModifier ? `<span class="save-badge" style="background:rgba(212,175,55,0.15); color:var(--gold-accent); border:1px solid rgba(212,175,55,0.4);">🔮 Spell Dmg: ${item.spellDamageModifier > 0 ? '+' + item.spellDamageModifier : item.spellDamageModifier}</span>` : ''}
+                  ${item.spellHealingModifier ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:var(--green-hp); border:1px solid rgba(76,175,80,0.4);">💖 Spell Heal: ${item.spellHealingModifier > 0 ? '+' + item.spellHealingModifier : item.spellHealingModifier}</span>` : ''}
+                </div>
+              ` : ''}`;
               
               if (item.isConsumable) {
                 htmlStr += `<div style="display:flex; align-items:center; gap:8px; margin-top:8px;">`;
@@ -3148,7 +5003,6 @@
       const hasAttacks = document.getElementById('chkHasAttacks').checked;
       const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
 
-
       if (hasArmor) document.getElementById('armorInputBlock').classList.remove('hidden');
       else document.getElementById('armorInputBlock').classList.add('hidden');
 
@@ -3167,6 +5021,10 @@
 
       if (hasSpecialEffects) document.getElementById('specialEffectsInputBlock').classList.remove('hidden');
       else document.getElementById('specialEffectsInputBlock').classList.add('hidden');
+
+      const hasMagic = document.getElementById('chkHasMagic').checked;
+      if (hasMagic) document.getElementById('magicInputBlock').classList.remove('hidden');
+      else document.getElementById('magicInputBlock').classList.add('hidden');
 
       let isEquipped = document.getElementById('itemInputEquipped').value === 'true';
       let chkIsConsumable = document.getElementById('chkIsConsumable');
@@ -3234,6 +5092,11 @@
 
       document.getElementById('chkHasSpecialEffects').checked = false;
       document.getElementById('itemInputSpecialEffects').value = '';
+      document.getElementById('itemInputOnHandSpecialEffects').value = '';
+
+      document.getElementById('chkHasMagic').checked = false;
+      document.getElementById('itemInputSpellDamage').value = '0';
+      document.getElementById('itemInputSpellHealing').value = '0';
 
       document.getElementById('chkIsConsumable').checked = false;
       document.getElementById('itemInputConsumableAmount').value = '1';
@@ -3273,6 +5136,11 @@
 
       document.getElementById('chkHasSpecialEffects').checked = item.hasSpecialEffects || false;
       document.getElementById('itemInputSpecialEffects').value = item.specialEffectsText || '';
+      document.getElementById('itemInputOnHandSpecialEffects').value = item.onHandSpecialEffectsText || '';
+
+      document.getElementById('chkHasMagic').checked = item.hasMagic || false;
+      document.getElementById('itemInputSpellDamage').value = item.spellDamageModifier || 0;
+      document.getElementById('itemInputSpellHealing').value = item.spellHealingModifier || 0;
 
       document.getElementById('chkIsConsumable').checked = item.isConsumable || false;
       document.getElementById('itemInputConsumableAmount').value = item.consumableAmount || 1;
@@ -3315,6 +5183,11 @@
 
       const hasSpecialEffects = document.getElementById('chkHasSpecialEffects').checked;
       const specialEffectsText = hasSpecialEffects ? document.getElementById('itemInputSpecialEffects').value.trim() : '';
+      const onHandSpecialEffectsText = hasSpecialEffects ? document.getElementById('itemInputOnHandSpecialEffects').value.trim() : '';
+
+      const hasMagic = document.getElementById('chkHasMagic').checked;
+      const spellDamageModifier = hasMagic ? (parseInt(document.getElementById('itemInputSpellDamage').value) || 0) : 0;
+      const spellHealingModifier = hasMagic ? (parseInt(document.getElementById('itemInputSpellHealing').value) || 0) : 0;
 
       const isConsumable = document.getElementById('chkIsConsumable').checked;
       const consumableAmount = isConsumable ? (parseInt(document.getElementById('itemInputConsumableAmount').value) || 1) : 0;
@@ -3346,6 +5219,11 @@
             
             item.hasSpecialEffects = hasSpecialEffects;
             item.specialEffectsText = specialEffectsText;
+            item.onHandSpecialEffectsText = onHandSpecialEffectsText;
+
+            item.hasMagic = hasMagic;
+            item.spellDamageModifier = spellDamageModifier;
+            item.spellHealingModifier = spellHealingModifier;
 
             item.isConsumable = isConsumable;
             item.consumableAmount = consumableAmount;
@@ -3367,18 +5245,24 @@
             attackDamage,
             hasSpecialEffects,
             specialEffectsText,
+            onHandSpecialEffectsText,
+            hasMagic,
+            spellDamageModifier,
+            spellHealingModifier,
             isConsumable,
             consumableAmount
           };
           c.inventory.push(newItem);
-          
-          if (isEquipped) {
-            if (!c.equipmentCategoryOrder) c.equipmentCategoryOrder = [];
-            if (!c.equipmentCategoryOrder.includes(category)) c.equipmentCategoryOrder.push(category);
-          } else {
-            if (!c.inventoryCategoryOrder) c.inventoryCategoryOrder = [];
-            if (!c.inventoryCategoryOrder.includes(category)) c.inventoryCategoryOrder.push(category);
-          }
+        }
+
+        if (isEquipped) {
+          if (!c.equipmentCategoryOrder) c.equipmentCategoryOrder = [];
+          if (!c.equipmentCategoryOrder.includes(category)) c.equipmentCategoryOrder.push(category);
+          if (c.equipmentCategoryCollapsed) c.equipmentCategoryCollapsed[category] = false;
+        } else {
+          if (!c.inventoryCategoryOrder) c.inventoryCategoryOrder = [];
+          if (!c.inventoryCategoryOrder.includes(category)) c.inventoryCategoryOrder.push(category);
+          if (c.inventoryCategoryCollapsed) c.inventoryCategoryCollapsed[category] = false;
         }
         
         c.currentArmor = null;
@@ -3854,11 +5738,48 @@
       if (banner) banner.classList.add('hidden');
     }
 
+    async function updateServiceWorkerVersionDisplay() {
+      const badge = document.getElementById('webVersionBadge');
+      if (!badge) return;
+
+      if ('caches' in window) {
+        try {
+          const keys = await caches.keys();
+          const swKey = keys.find(k => k.startsWith('rpg-companion-'));
+          if (swKey) {
+            const ver = swKey.replace('rpg-companion-', '');
+            badge.textContent = ver;
+            badge.title = `Service Worker: ${ver}`;
+          }
+        } catch (e) {}
+      }
+
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+          const channel = new MessageChannel();
+          channel.port1.onmessage = (event) => {
+            if (event.data && event.data.version) {
+              badge.textContent = event.data.version;
+              badge.title = `Service Worker: ${event.data.version}`;
+            }
+          };
+          navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [channel.port2]);
+        } catch (e) {}
+      }
+    }
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('PWA Service Worker registered successfully:', reg.scope))
+          .then(reg => {
+            console.log('PWA Service Worker registered successfully:', reg.scope);
+            updateServiceWorkerVersionDisplay();
+          })
           .catch(err => console.log('PWA Service Worker registration failed:', err));
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          updateServiceWorkerVersionDisplay();
+        });
       });
     }
 

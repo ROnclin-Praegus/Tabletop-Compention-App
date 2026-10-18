@@ -1,10 +1,23 @@
-const CACHE_NAME = 'rpg-companion-v1.5.1';
+const SW_VERSION = 'v1.6.0b';
+const CACHE_NAME = `rpg-companion-${SW_VERSION}`;
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './skills.js',
+  './skills.json',
+  './spellbooks.js',
+  './spellbooks.json'
 ];
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'GET_VERSION') {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ version: SW_VERSION, cacheName: CACHE_NAME });
+    }
+  }
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

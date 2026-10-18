@@ -39,7 +39,8 @@ data class Character(
     val inventory: List<EquipmentItem> = emptyList(),
     val abilities: List<CharacterAbility> = emptyList(),
     val notes: List<CharacterNote> = emptyList(),
-    val effects: List<CharacterEffect> = emptyList()
+    val effects: List<CharacterEffect> = emptyList(),
+    val onHandWeaponId: String? = null
 ) {
     fun getTotalArmor(): Int = inventory
         .filter { it.isEquipped && (it.hasArmor || it.armorSave > 0) }
@@ -63,7 +64,7 @@ data class Character(
 
         // 2. From active stat effects
         val effectMod = effects
-            .filter { it.effectType == EffectType.STAT_MODIFIER }
+            .filter { it.enabled && it.effectType == EffectType.STAT_MODIFIER }
             .sumOf { effect ->
                 val legacyVal = if (effect.targetStat?.lowercase() == keyLower) effect.value else 0
                 val mapVal = effect.statModifiers?.get(keyLower) ?: 0
