@@ -4,6 +4,7 @@ build/
 app/build/
 */build/
 *.apk
+*.aab
 *.ap_
 *.dex
 *.class
@@ -15,6 +16,7 @@ app/build/
 build_err.txt
 *.tmp
 *.bak
+*.hprof
 .tmp/
 
 # Local configuration files
@@ -42,6 +44,7 @@ out/
 
 # Kotlin / JVM
 .kotlin/
+kotlin-js-store/
 
 # Web App / Node (if applicable)
 node_modules/
@@ -69,9 +72,15 @@ platform-tools-latest-windows.zip
 
 # Temporary scripts and assets
 AppIcons(1)/
+/src/
+/Premium/
 CropImage.java
 crop_image.py
 modify.py
+update_dialog.py
+update.js
+script.js
+/UpdateAvailableDialog.kt
 icon_cropped.png
 err.txt
 /app/src/main/res/drawable/images1.jpg

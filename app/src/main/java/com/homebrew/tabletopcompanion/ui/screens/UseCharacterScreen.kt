@@ -96,6 +96,7 @@ fun UseCharacterScreen(
     var effectToEdit by remember { mutableStateOf<CharacterEffect?>(null) }
     var collapsedParentAbilityNames by remember { mutableStateOf(setOf<String>()) }
     var showSelectOnHandDialog by remember { mutableStateOf(false) }
+    var selectOnHandTargetIsOffHand by remember { mutableStateOf(false) }
 
     var recentChangeArmor by remember { mutableStateOf<Int?>(null) }
     var recentChangeWard by remember { mutableStateOf<Int?>(null) }
@@ -1356,9 +1357,13 @@ fun UseCharacterScreen(
                         val equippedItemsForOnHand = remember(activeCharacter.inventory) {
                             activeCharacter.inventory.filter { it.isEquipped }
                         }
-                        val onHandWeapon = remember(equippedItemsForOnHand, activeCharacter.onHandWeaponId) {
+                        val mainHandWeapon = remember(equippedItemsForOnHand, activeCharacter.onHandWeaponId) {
                             equippedItemsForOnHand.find { it.id == activeCharacter.onHandWeaponId }
                         }
+                        val offHandWeapon = remember(equippedItemsForOnHand, activeCharacter.offHandWeaponId) {
+                            equippedItemsForOnHand.find { it.id == activeCharacter.offHandWeaponId }
+                        }
+                        val isDualWielding = mainHandWeapon != null && offHandWeapon != null
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -1370,7 +1375,7 @@ fun UseCharacterScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -1386,231 +1391,63 @@ fun UseCharacterScreen(
                                             fontSize = 15.sp
                                         )
                                         Text(
-                                            text = "ON-HAND WEAPON",
+                                            text = "ON-HAND WEAPONS",
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp,
                                             color = GoldAccent
                                         )
                                     }
 
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Button(
-                                            onClick = { showSelectOnHandDialog = true },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (onHandWeapon != null) DarkSurfaceVariant else GoldAccent,
-                                                contentColor = if (onHandWeapon != null) GoldAccent else DarkBackground
-                                            ),
-                                            shape = RoundedCornerShape(8.dp),
-                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                            modifier = Modifier.height(30.dp),
-                                            border = if (onHandWeapon != null) BorderStroke(1.dp, GoldAccent) else null
+                                    if (isDualWielding) {
+                                        Surface(
+                                            color = GoldAccent.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(6.dp),
+                                            border = BorderStroke(1.dp, GoldAccent)
                                         ) {
                                             Text(
-                                                text = if (onHandWeapon != null) "Switch" else "Select Weapon",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
+                                                text = "⚔️ DUAL WIELDING",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = GoldAccent,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                             )
                                         }
-
-                                        if (onHandWeapon != null) {
-                                            IconButton(
-                                                onClick = {
-                                                    val updated = activeCharacter.copy(onHandWeaponId = null)
-                                                    activeCharacter = updated
-                                                    onCharacterUpdated(updated)
-                                                },
-                                                modifier = Modifier.size(30.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Close,
-                                                    contentDescription = "Clear on-hand",
-                                                    tint = CrimsonPrimary,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
                                     }
                                 }
 
-                                if (onHandWeapon != null) {
-                                    Surface(
-                                        color = DarkSurfaceVariant,
-                                        shape = RoundedCornerShape(10.dp),
-                                        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.25f)),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(12.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.Top
-                                            ) {
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = onHandWeapon.name,
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 16.sp,
-                                                        color = TextPrimary
-                                                    )
-                                                    Text(
-                                                        text = onHandWeapon.category.ifBlank { "Weapon" },
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.SemiBold,
-                                                        color = GoldAccent
-                                                    )
-                                                }
-
-                                                if (onHandWeapon.hasAttacks) {
-                                                    Surface(
-                                                        color = GoldAccent.copy(alpha = 0.15f),
-                                                        border = BorderStroke(1.dp, GoldAccent),
-                                                        shape = RoundedCornerShape(8.dp)
-                                                    ) {
-                                                        Column(
-                                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                            horizontalAlignment = Alignment.End
-                                                        ) {
-                                                            Text(
-                                                                text = "ATTACK",
-                                                                fontSize = 9.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = TextSecondary
-                                                            )
-                                                            Text(
-                                                                text = "${onHandWeapon.attackCount} × ${if (onHandWeapon.attackDamage.isNotBlank()) onHandWeapon.attackDamage else "Base"} Dmg",
-                                                                fontSize = 13.sp,
-                                                                fontWeight = FontWeight.ExtraBold,
-                                                                color = GoldAccent
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            // Badges for armor, ward, stats
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                            ) {
-                                                if (onHandWeapon.hasArmor && onHandWeapon.armorSave > 0) {
-                                                    Surface(
-                                                        color = GoldAccent.copy(alpha = 0.15f),
-                                                        shape = RoundedCornerShape(4.dp),
-                                                        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
-                                                    ) {
-                                                        Text(
-                                                            text = "Armor: ${onHandWeapon.armorSave}",
-                                                            fontSize = 11.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = GoldAccent,
-                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                        )
-                                                    }
-                                                }
-                                                if (onHandWeapon.hasWard && onHandWeapon.wardSave > 0) {
-                                                    Surface(
-                                                        color = CyanAccent.copy(alpha = 0.15f),
-                                                        shape = RoundedCornerShape(4.dp),
-                                                        border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.5f))
-                                                    ) {
-                                                        Text(
-                                                            text = "Ward: ${onHandWeapon.wardSave}",
-                                                            fontSize = 11.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = CyanAccent,
-                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                        )
-                                                    }
-                                                }
-                                                onHandWeapon.statModifiers?.forEach { (stat, mod) ->
-                                                    if (mod != 0) {
-                                                        Surface(
-                                                            color = if (mod > 0) GreenHp.copy(alpha = 0.15f) else CrimsonPrimary.copy(alpha = 0.15f),
-                                                            shape = RoundedCornerShape(4.dp)
-                                                        ) {
-                                                            Text(
-                                                                text = "${stat.take(3).uppercase()}: ${if (mod > 0) "+$mod" else "$mod"}",
-                                                                fontSize = 11.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                color = if (mod > 0) GreenHp else CrimsonPrimary,
-                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            if (onHandWeapon.hasSpecialEffects && onHandWeapon.safeOnHandSpecialEffectsText.isNotBlank()) {
-                                                Surface(
-                                                    color = GoldAccent.copy(alpha = 0.12f),
-                                                    shape = RoundedCornerShape(6.dp),
-                                                    border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f)),
-                                                    modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                    Column(modifier = Modifier.padding(8.dp)) {
-                                                        Text(
-                                                            text = "⚔️ ON-HAND SPECIAL EFFECT",
-                                                            fontSize = 10.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = GoldAccent
-                                                        )
-                                                        Spacer(modifier = Modifier.height(2.dp))
-                                                        Text(
-                                                            text = onHandWeapon.safeOnHandSpecialEffectsText,
-                                                            fontSize = 12.sp,
-                                                            color = TextPrimary,
-                                                            lineHeight = 15.sp
-                                                        )
-                                                    }
-                                                }
-                                            }
-
-                                            if (onHandWeapon.hasSpecialEffects && onHandWeapon.safeSpecialEffectsText.isNotBlank()) {
-                                                Surface(
-                                                    color = CyanAccent.copy(alpha = 0.1f),
-                                                    shape = RoundedCornerShape(6.dp),
-                                                    border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.35f)),
-                                                    modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                    Column(modifier = Modifier.padding(8.dp)) {
-                                                        Text(
-                                                            text = "🛡️ EQUIPPED SPECIAL EFFECT",
-                                                            fontSize = 10.sp,
-                                                            fontWeight = FontWeight.Bold,
-                                                            color = CyanAccent
-                                                        )
-                                                        Spacer(modifier = Modifier.height(2.dp))
-                                                        Text(
-                                                            text = onHandWeapon.safeSpecialEffectsText,
-                                                            fontSize = 12.sp,
-                                                            color = TextPrimary,
-                                                            lineHeight = 15.sp
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
+                                // MAIN HAND SLOT
+                                OnHandWeaponSlotSection(
+                                    slotLabel = "MAIN HAND",
+                                    slotIcon = "🗡️",
+                                    weapon = mainHandWeapon,
+                                    onSelectClick = {
+                                        selectOnHandTargetIsOffHand = false
+                                        showSelectOnHandDialog = true
+                                    },
+                                    onClearClick = {
+                                        val updated = activeCharacter.copy(onHandWeaponId = null)
+                                        activeCharacter = updated
+                                        onCharacterUpdated(updated)
                                     }
-                                } else {
-                                    Surface(
-                                        color = DarkBackground,
-                                        shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            text = "No weapon on hand. Tap 'Select Weapon' to choose from your equipped items.",
-                                            fontSize = 12.sp,
-                                            color = TextSecondary,
-                                            textAlign = TextAlign.Center,
-                                            modifier = Modifier.padding(14.dp)
-                                        )
+                                )
+
+                                HorizontalDivider(color = DarkSurfaceVariant, thickness = 1.dp)
+
+                                // OFF-HAND SLOT
+                                OnHandWeaponSlotSection(
+                                    slotLabel = "OFF-HAND",
+                                    slotIcon = "🛡️",
+                                    weapon = offHandWeapon,
+                                    onSelectClick = {
+                                        selectOnHandTargetIsOffHand = true
+                                        showSelectOnHandDialog = true
+                                    },
+                                    onClearClick = {
+                                        val updated = activeCharacter.copy(offHandWeaponId = null)
+                                        activeCharacter = updated
+                                        onCharacterUpdated(updated)
                                     }
-                                }
+                                )
                             }
                         }
                     }
@@ -3036,9 +2873,14 @@ fun UseCharacterScreen(
     if (showSelectOnHandDialog) {
         SelectOnHandWeaponDialog(
             character = activeCharacter,
+            initialIsOffHand = selectOnHandTargetIsOffHand,
             onDismissRequest = { showSelectOnHandDialog = false },
-            onSelectWeapon = { selectedWeapon ->
-                val updated = activeCharacter.copy(onHandWeaponId = selectedWeapon?.id)
+            onSelectWeapon = { isOffHand, selectedWeapon ->
+                val updated = if (isOffHand) {
+                    activeCharacter.copy(offHandWeaponId = selectedWeapon?.id)
+                } else {
+                    activeCharacter.copy(onHandWeaponId = selectedWeapon?.id)
+                }
                 activeCharacter = updated
                 onCharacterUpdated(updated)
                 showSelectOnHandDialog = false
@@ -4074,14 +3916,266 @@ fun StatDisplayCard(
 }
 
 @Composable
+fun OnHandWeaponSlotSection(
+    slotLabel: String,
+    slotIcon: String,
+    weapon: EquipmentItem?,
+    onSelectClick: () -> Unit,
+    onClearClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(text = slotIcon, fontSize = 13.sp)
+                Text(
+                    text = slotLabel,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(
+                    onClick = onSelectClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (weapon != null) DarkSurfaceVariant else GoldAccent,
+                        contentColor = if (weapon != null) GoldAccent else DarkBackground
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.height(28.dp),
+                    border = if (weapon != null) BorderStroke(1.dp, GoldAccent) else null
+                ) {
+                    Text(
+                        text = if (weapon != null) "Switch" else "Select Weapon",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                if (weapon != null) {
+                    IconButton(
+                        onClick = onClearClick,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Clear $slotLabel",
+                            tint = CrimsonPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        if (weapon != null) {
+            Surface(
+                color = DarkSurfaceVariant,
+                shape = RoundedCornerShape(10.dp),
+                border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.25f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = weapon.name,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = weapon.category.ifBlank { "Weapon" },
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = GoldAccent
+                            )
+                        }
+
+                        if (weapon.hasAttacks) {
+                            Surface(
+                                color = GoldAccent.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, GoldAccent),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    horizontalAlignment = Alignment.End
+                                ) {
+                                    Text(
+                                        text = "ATTACK",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextSecondary
+                                    )
+                                    Text(
+                                        text = "${weapon.attackCount} × ${if (weapon.attackDamage.isNotBlank()) weapon.attackDamage else "Base"} Dmg",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = GoldAccent
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Badges for armor, ward, stats
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (weapon.hasArmor && weapon.armorSave > 0) {
+                            Surface(
+                                color = GoldAccent.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp),
+                                border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
+                            ) {
+                                Text(
+                                    text = "Armor: ${weapon.armorSave}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldAccent,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        if (weapon.hasWard && weapon.wardSave > 0) {
+                            Surface(
+                                color = CyanAccent.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp),
+                                border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.5f))
+                            ) {
+                                Text(
+                                    text = "Ward: ${weapon.wardSave}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CyanAccent,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        weapon.statModifiers?.forEach { (stat, mod) ->
+                            if (mod != 0) {
+                                Surface(
+                                    color = if (mod > 0) GreenHp.copy(alpha = 0.15f) else CrimsonPrimary.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "${stat.take(3).uppercase()}: ${if (mod > 0) "+$mod" else "$mod"}",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (mod > 0) GreenHp else CrimsonPrimary,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (weapon.hasSpecialEffects && weapon.safeOnHandSpecialEffectsText.isNotBlank()) {
+                        Surface(
+                            color = GoldAccent.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text(
+                                    text = "⚔️ ON-HAND SPECIAL EFFECT",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GoldAccent
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = weapon.safeOnHandSpecialEffectsText,
+                                    fontSize = 12.sp,
+                                    color = TextPrimary,
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+                    }
+
+                    if (weapon.hasSpecialEffects && weapon.safeSpecialEffectsText.isNotBlank()) {
+                        Surface(
+                            color = CyanAccent.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text(
+                                    text = "🛡️ EQUIPPED SPECIAL EFFECT",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CyanAccent
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = weapon.safeSpecialEffectsText,
+                                    fontSize = 12.sp,
+                                    color = TextPrimary,
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Surface(
+                color = DarkBackground,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelectClick() }
+            ) {
+                Text(
+                    text = "No ${slotLabel.lowercase()} weapon selected. Tap 'Select Weapon' to choose from your equipped items.",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun SelectOnHandWeaponDialog(
     character: Character,
+    initialIsOffHand: Boolean = false,
     onDismissRequest: () -> Unit,
-    onSelectWeapon: (EquipmentItem?) -> Unit
+    onSelectWeapon: (isOffHand: Boolean, EquipmentItem?) -> Unit
 ) {
+    var isOffHand by remember(initialIsOffHand) { mutableStateOf(initialIsOffHand) }
     val equippedItems = remember(character.inventory) {
         character.inventory.filter { it.isEquipped }
     }
+    val currentSlotWeaponId = if (isOffHand) character.offHandWeaponId else character.onHandWeaponId
 
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
@@ -4104,7 +4198,7 @@ fun SelectOnHandWeaponDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Select On-Hand Weapon",
+                        text = if (isOffHand) "Select Off-Hand Weapon" else "Select Main Hand Weapon",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = GoldAccent
@@ -4114,8 +4208,68 @@ fun SelectOnHandWeaponDialog(
                     }
                 }
 
+                // Hand slot selector tabs
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = !isOffHand,
+                        onClick = { isOffHand = false },
+                        label = {
+                            Text(
+                                text = "🗡️ Main Hand",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = GoldAccent.copy(alpha = 0.2f),
+                            selectedLabelColor = GoldAccent,
+                            containerColor = DarkSurfaceVariant,
+                            labelColor = TextSecondary
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = !isOffHand,
+                            selectedBorderColor = GoldAccent,
+                            borderColor = Color.Transparent
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    FilterChip(
+                        selected = isOffHand,
+                        onClick = { isOffHand = true },
+                        label = {
+                            Text(
+                                text = "🛡️ Off-Hand",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = GoldAccent.copy(alpha = 0.2f),
+                            selectedLabelColor = GoldAccent,
+                            containerColor = DarkSurfaceVariant,
+                            labelColor = TextSecondary
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isOffHand,
+                            selectedBorderColor = GoldAccent,
+                            borderColor = Color.Transparent
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
                 Text(
-                    text = "Choose an equipped item to keep active on hand:",
+                    text = "Choose an equipped item for your ${if (isOffHand) "off-hand" else "main hand"}:",
                     fontSize = 12.sp,
                     color = TextSecondary
                 )
@@ -4142,9 +4296,11 @@ fun SelectOnHandWeaponDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(equippedItems) { item ->
-                            val isSelected = item.id == character.onHandWeaponId
+                            val isSelected = item.id == currentSlotWeaponId
+                            val isInMainHand = item.id == character.onHandWeaponId
+                            val isInOffHand = item.id == character.offHandWeaponId
                             Surface(
-                                onClick = { onSelectWeapon(item) },
+                                onClick = { onSelectWeapon(isOffHand, item) },
                                 shape = RoundedCornerShape(8.dp),
                                 color = if (isSelected) GoldAccent.copy(alpha = 0.15f) else DarkSurfaceVariant,
                                 border = BorderStroke(1.dp, if (isSelected) GoldAccent else Color.Transparent),
@@ -4158,12 +4314,45 @@ fun SelectOnHandWeaponDialog(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = item.name,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp,
-                                            color = if (isSelected) GoldAccent else TextPrimary
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = item.name,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = if (isSelected) GoldAccent else TextPrimary
+                                            )
+                                            if (isInMainHand) {
+                                                Surface(
+                                                    color = GoldAccent.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "MAIN",
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.ExtraBold,
+                                                        color = GoldAccent,
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                            }
+                                            if (isInOffHand) {
+                                                Surface(
+                                                    color = CyanAccent.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "OFF",
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.ExtraBold,
+                                                        color = CyanAccent,
+                                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
                                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                             Text(
                                                 text = item.category.ifBlank { "Item" },
@@ -4199,8 +4388,8 @@ fun SelectOnHandWeaponDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    TextButton(onClick = { onSelectWeapon(null) }) {
-                        Text("Clear / None", color = CrimsonPrimary, fontSize = 12.sp)
+                    TextButton(onClick = { onSelectWeapon(isOffHand, null) }) {
+                        Text("Clear ${if (isOffHand) "Off-Hand" else "Main Hand"}", color = CrimsonPrimary, fontSize = 12.sp)
                     }
                     TextButton(onClick = onDismissRequest) {
                         Text("Close", color = TextSecondary, fontSize = 12.sp)
