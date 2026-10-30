@@ -376,7 +376,9 @@ fun CreateCharacterDialog(
                                 inventory = characterToEdit?.inventory ?: emptyList(),
                                 effects = characterToEdit?.effects ?: emptyList(),
                                 abilities = characterToEdit?.abilities ?: emptyList(),
-                                notes = characterToEdit?.notes ?: emptyList()
+                                notes = characterToEdit?.notes ?: emptyList(),
+                                onHandWeaponId = characterToEdit?.onHandWeaponId,
+                                offHandWeaponId = characterToEdit?.offHandWeaponId
                             )
 
                             val newMaxHp = tempChar.getEffectiveMaxHp()

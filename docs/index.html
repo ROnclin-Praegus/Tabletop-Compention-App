@@ -1146,7 +1146,7 @@
     </button>
 
     <!-- App Version Badge (Bottom Left) -->
-    <div id="webVersionBadge" class="web-version-badge" title="Service Worker v1.6.0">v1.6.0</div>
+    <div id="webVersionBadge" class="web-version-badge" title="Service Worker v1.6.1">v1.6.1</div>
   </div>
 
     <!-- Level Up Modal -->
@@ -1642,15 +1642,23 @@
   <div id="selectOnHandModal" class="modal-overlay hidden">
     <div class="modal-card" style="max-height: 85vh; width: 100%; max-width: 480px; display: flex; flex-direction: column;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h3 style="font-size:16px; color:var(--gold-accent); margin:0;">SELECT ON-HAND WEAPON</h3>
+        <h3 id="selectOnHandModalTitle" style="font-size:16px; color:var(--gold-accent); margin:0;">SELECT MAIN HAND WEAPON</h3>
         <button class="action-icon-btn" onclick="closeSelectOnHandModal()">✖</button>
       </div>
-      <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
-        Choose an equipped item to keep active on hand:
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button id="selectOnHandTabMain" class="prompt-btn" style="flex:1; padding:8px; font-size:12px; font-weight:bold; background:rgba(212,175,55,0.2); color:var(--gold-accent); border:1px solid var(--gold-accent);" onclick="switchSelectOnHandSlot(false)">
+          🗡️ Main Hand
+        </button>
+        <button id="selectOnHandTabOff" class="prompt-btn" style="flex:1; padding:8px; font-size:12px; font-weight:bold; background:var(--surface-variant); color:var(--text-secondary); border:1px solid transparent;" onclick="switchSelectOnHandSlot(true)">
+          🛡️ Off-Hand
+        </button>
+      </div>
+      <div id="selectOnHandModalSubtitle" style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+        Choose an equipped item for your main hand:
       </div>
       <div id="selectOnHandList" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px;"></div>
       <div style="display:flex; justify-content:space-between; gap:10px; margin-top:16px;">
-        <button class="prompt-btn" style="background:rgba(229,57,53,0.15); color:var(--crimson-primary); flex:1;" onclick="clearOnHandWeapon()">CLEAR ON-HAND</button>
+        <button id="selectOnHandClearBtn" class="prompt-btn" style="background:rgba(229,57,53,0.15); color:var(--crimson-primary); flex:1;" onclick="clearOnHandWeapon(selectOnHandTargetIsOffHand)">CLEAR MAIN HAND</button>
         <button class="prompt-btn" style="background:var(--surface-variant); color:var(--text-secondary); flex:1;" onclick="closeSelectOnHandModal()">CANCEL</button>
       </div>
     </div>
@@ -2863,87 +2871,112 @@
       renderItemSpecialEffectsSection(c);
     }
 
-    function renderOnHandWeaponSection(c) {
-      const container = document.getElementById('onHandWeaponCard');
-      if (!container) return;
+    let selectOnHandTargetIsOffHand = false;
 
-      const equippedItems = (c.inventory || []).filter(i => i.isEquipped);
-      const onHandItem = equippedItems.find(i => i.id === c.onHandWeaponId);
-
-      if (!onHandItem) {
-        container.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:16px;">⚔️</span>
-              <h4 style="font-size: 12px; color: var(--gold-accent); margin:0;">ON-HAND WEAPON</h4>
+    function renderWeaponSlotHtml(slotLabel, slotIcon, weapon, isOffHand) {
+      if (!weapon) {
+        return `
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:13px;">${slotIcon}</span>
+                <span style="font-size:12px; font-weight:bold; color:var(--text-secondary);">${slotLabel}</span>
+              </div>
+              <button class="prompt-btn" style="flex:none; width:auto; background:var(--gold-accent); color:var(--bg-dark); padding:4px 10px; font-size:11px; font-weight:700;" onclick="openSelectOnHandModal(${isOffHand})">
+                SELECT WEAPON
+              </button>
             </div>
-            <button class="prompt-btn" style="flex:none; width:auto; background:var(--gold-accent); color:var(--bg-dark); padding:4px 12px; font-weight:700;" onclick="openSelectOnHandModal()">
-              SELECT WEAPON
-            </button>
-          </div>
-          <div style="text-align:center; padding:12px; background:var(--surface-variant); border-radius:8px; margin-top:8px; border:1px dashed var(--border-color);">
-            <div style="font-size:13px; color:var(--text-secondary);">No weapon currently on hand.</div>
-            <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">Tap 'SELECT WEAPON' to choose from your equipped gear.</div>
+            <div onclick="openSelectOnHandModal(${isOffHand})" style="text-align:center; padding:12px; background:var(--bg-dark); border-radius:8px; border:1px dashed var(--border-color); cursor:pointer;">
+              <div style="font-size:12px; color:var(--text-secondary);">No ${slotLabel.toLowerCase()} weapon selected. Tap 'SELECT WEAPON' to choose from your equipped items.</div>
+            </div>
           </div>
         `;
-        return;
       }
 
       let statBadges = '';
-      if (onHandItem.hasStatModifiers && onHandItem.statModifiers) {
-        statBadges = Object.entries(onHandItem.statModifiers)
+      if (weapon.hasStatModifiers && weapon.statModifiers) {
+        statBadges = Object.entries(weapon.statModifiers)
           .filter(([_, val]) => val !== 0)
           .map(([st, val]) => `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>`)
           .join('');
       }
 
-      container.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:16px;">⚔️</span>
-            <h4 style="font-size: 12px; color: var(--gold-accent); margin:0;">ON-HAND WEAPON</h4>
-          </div>
-          <div style="display:flex; gap:6px;">
-            <button class="prompt-btn" style="flex:none; width:auto; background:var(--surface-variant); color:var(--gold-accent); border:1px solid var(--gold-accent); padding:4px 10px; font-size:11px;" onclick="openSelectOnHandModal()">
-              🔄 SWITCH
-            </button>
-            <button class="prompt-btn" style="flex:none; width:auto; background:rgba(229,57,53,0.15); color:var(--crimson-primary); padding:4px 8px; font-size:11px;" title="Clear on-hand" onclick="clearOnHandWeapon()">
-              ✖
-            </button>
-          </div>
-        </div>
-
-        <div style="background:var(--surface-variant); border:1px solid rgba(212,175,55,0.3); border-radius:10px; padding:12px; margin-top:8px;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-            <div>
-              <div style="font-size:16px; font-weight:bold; color:var(--text-primary);">${escapeHtml(onHandItem.name)}</div>
-              <div style="font-size:11px; color:var(--gold-accent); margin-top:2px; font-weight:600;">${escapeHtml(onHandItem.category || 'Weapon')}</div>
+      return `
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:13px;">${slotIcon}</span>
+              <span style="font-size:12px; font-weight:bold; color:var(--text-secondary);">${slotLabel}</span>
             </div>
-            ${onHandItem.hasAttacks ? `
-              <div style="background:rgba(212,175,55,0.15); border:1px solid var(--gold-accent); padding:4px 10px; border-radius:8px; text-align:right; flex-shrink:0;">
-                <div style="font-size:9px; font-weight:bold; color:var(--text-secondary); letter-spacing:0.5px;">ATTACK</div>
-                <div style="font-size:13px; font-weight:800; color:var(--gold-accent);">${onHandItem.attackCount || 1} × ${escapeHtml(onHandItem.attackDamage || 'Base')} Dmg</div>
+            <div style="display:flex; gap:6px;">
+              <button class="prompt-btn" style="flex:none; width:auto; background:var(--surface-variant); color:var(--gold-accent); border:1px solid var(--gold-accent); padding:4px 10px; font-size:11px;" onclick="openSelectOnHandModal(${isOffHand})">
+                🔄 SWITCH
+              </button>
+              <button class="prompt-btn" style="flex:none; width:auto; background:rgba(229,57,53,0.15); color:var(--crimson-primary); padding:4px 8px; font-size:11px;" title="Clear ${slotLabel}" onclick="clearOnHandWeapon(${isOffHand})">
+                ✖
+              </button>
+            </div>
+          </div>
+
+          <div style="background:var(--surface-variant); border:1px solid rgba(212,175,55,0.3); border-radius:10px; padding:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+              <div>
+                <div style="font-size:16px; font-weight:bold; color:var(--text-primary);">${escapeHtml(weapon.name)}</div>
+                <div style="font-size:11px; color:var(--gold-accent); margin-top:2px; font-weight:600;">${escapeHtml(weapon.category || 'Weapon')}</div>
+              </div>
+              ${weapon.hasAttacks ? `
+                <div style="background:rgba(212,175,55,0.15); border:1px solid var(--gold-accent); padding:4px 10px; border-radius:8px; text-align:right; flex-shrink:0;">
+                  <div style="font-size:9px; font-weight:bold; color:var(--text-secondary); letter-spacing:0.5px;">ATTACK</div>
+                  <div style="font-size:13px; font-weight:800; color:var(--gold-accent);">${weapon.attackCount || 1} × ${escapeHtml(weapon.attackDamage || 'Base')} Dmg</div>
+                </div>
+              ` : ''}
+            </div>
+
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+              ${(weapon.hasArmor && weapon.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${weapon.armorSave}</span>` : ''}
+              ${(weapon.hasWard && weapon.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${weapon.wardSave}</span>` : ''}
+              ${statBadges}
+            </div>
+
+            ${(weapon.hasSpecialEffects && weapon.onHandSpecialEffectsText) ? `
+              <div style="font-size:12px; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:6px 10px; border-radius:6px; margin-top:8px; line-height:1.4;">
+                🗡️ <b>On-Hand Effect:</b> ${escapeHtml(weapon.onHandSpecialEffectsText)}
+              </div>
+            ` : ''}
+            ${(weapon.hasSpecialEffects && weapon.specialEffectsText) ? `
+              <div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:6px 10px; border-radius:6px; margin-top:6px; line-height:1.4;">
+                ✨ <b>Equipped Effect:</b> ${escapeHtml(weapon.specialEffectsText)}
               </div>
             ` : ''}
           </div>
+        </div>
+      `;
+    }
 
-          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
-            ${(onHandItem.hasArmor && onHandItem.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${onHandItem.armorSave}</span>` : ''}
-            ${(onHandItem.hasWard && onHandItem.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${onHandItem.wardSave}</span>` : ''}
-            ${statBadges}
+    function renderOnHandWeaponSection(c) {
+      const container = document.getElementById('onHandWeaponCard');
+      if (!container) return;
+
+      const equippedItems = (c.inventory || []).filter(i => i.isEquipped);
+      const mainHandItem = equippedItems.find(i => i.id === c.onHandWeaponId);
+      const offHandItem = equippedItems.find(i => i.id === c.offHandWeaponId);
+      const isDualWielding = !!(mainHandItem && offHandItem);
+
+      container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">⚔️</span>
+            <h4 style="font-size: 12px; color: var(--gold-accent); margin:0;">ON-HAND WEAPONS</h4>
           </div>
-
-          ${(onHandItem.hasSpecialEffects && onHandItem.onHandSpecialEffectsText) ? `
-            <div style="font-size:12px; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:6px 10px; border-radius:6px; margin-top:8px; line-height:1.4;">
-              🗡️ <b>On-Hand Effect:</b> ${escapeHtml(onHandItem.onHandSpecialEffectsText)}
-            </div>
-          ` : ''}
-          ${(onHandItem.hasSpecialEffects && onHandItem.specialEffectsText) ? `
-            <div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:6px 10px; border-radius:6px; margin-top:6px; line-height:1.4;">
-              ✨ <b>Equipped Effect:</b> ${escapeHtml(onHandItem.specialEffectsText)}
-            </div>
+          ${isDualWielding ? `
+            <span style="background:rgba(212,175,55,0.2); border:1px solid var(--gold-accent); color:var(--gold-accent); font-size:10px; font-weight:800; padding:3px 8px; border-radius:6px;">
+              ⚔️ DUAL WIELDING
+            </span>
           ` : ''}
         </div>
+        ${renderWeaponSlotHtml('MAIN HAND', '🗡️', mainHandItem, false)}
+        <hr style="border:none; border-top:1px solid var(--surface-variant); margin:12px 0;">
+        ${renderWeaponSlotHtml('OFF-HAND', '🛡️', offHandItem, true)}
       `;
     }
 
@@ -2992,12 +3025,57 @@
       `;
     }
 
-    function openSelectOnHandModal() {
+    function openSelectOnHandModal(isOffHand = false) {
+      selectOnHandTargetIsOffHand = !!isOffHand;
+      renderSelectOnHandModalContent();
+      document.getElementById('selectOnHandModal').classList.remove('hidden');
+    }
+
+    function switchSelectOnHandSlot(isOffHand) {
+      selectOnHandTargetIsOffHand = !!isOffHand;
+      renderSelectOnHandModalContent();
+    }
+
+    function renderSelectOnHandModalContent() {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
 
+      const titleEl = document.getElementById('selectOnHandModalTitle');
+      const subtitleEl = document.getElementById('selectOnHandModalSubtitle');
+      const clearBtnEl = document.getElementById('selectOnHandClearBtn');
+      const tabMainEl = document.getElementById('selectOnHandTabMain');
+      const tabOffEl = document.getElementById('selectOnHandTabOff');
+
+      if (titleEl) {
+        titleEl.textContent = selectOnHandTargetIsOffHand ? 'SELECT OFF-HAND WEAPON' : 'SELECT MAIN HAND WEAPON';
+      }
+      if (subtitleEl) {
+        subtitleEl.textContent = `Choose an equipped item for your ${selectOnHandTargetIsOffHand ? 'off-hand' : 'main hand'}:`;
+      }
+      if (clearBtnEl) {
+        clearBtnEl.textContent = selectOnHandTargetIsOffHand ? 'CLEAR OFF-HAND' : 'CLEAR MAIN HAND';
+      }
+      if (tabMainEl && tabOffEl) {
+        if (!selectOnHandTargetIsOffHand) {
+          tabMainEl.style.background = 'rgba(212,175,55,0.2)';
+          tabMainEl.style.color = 'var(--gold-accent)';
+          tabMainEl.style.borderColor = 'var(--gold-accent)';
+          tabOffEl.style.background = 'var(--surface-variant)';
+          tabOffEl.style.color = 'var(--text-secondary)';
+          tabOffEl.style.borderColor = 'transparent';
+        } else {
+          tabOffEl.style.background = 'rgba(212,175,55,0.2)';
+          tabOffEl.style.color = 'var(--gold-accent)';
+          tabOffEl.style.borderColor = 'var(--gold-accent)';
+          tabMainEl.style.background = 'var(--surface-variant)';
+          tabMainEl.style.color = 'var(--text-secondary)';
+          tabMainEl.style.borderColor = 'transparent';
+        }
+      }
+
       const equippedItems = (c.inventory || []).filter(i => i.isEquipped);
       const listContainer = document.getElementById('selectOnHandList');
+      const currentSlotWeaponId = selectOnHandTargetIsOffHand ? c.offHandWeaponId : c.onHandWeaponId;
 
       if (equippedItems.length === 0) {
         listContainer.innerHTML = `
@@ -3009,7 +3087,9 @@
         `;
       } else {
         listContainer.innerHTML = equippedItems.map(item => {
-          const isSelected = item.id === c.onHandWeaponId;
+          const isSelected = item.id === currentSlotWeaponId;
+          const isInMainHand = item.id === c.onHandWeaponId;
+          const isInOffHand = item.id === c.offHandWeaponId;
           return `
             <div onclick="setOnHandWeapon('${item.id}')" style="
               background:${isSelected ? 'rgba(212,175,55,0.15)' : 'var(--surface-variant)'};
@@ -3023,7 +3103,11 @@
               transition:all 0.15s;
             ">
               <div>
-                <div style="font-size:14px; font-weight:bold; color:${isSelected ? 'var(--gold-accent)' : 'var(--text-primary)'};">${escapeHtml(item.name)}</div>
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                  <span style="font-size:14px; font-weight:bold; color:${isSelected ? 'var(--gold-accent)' : 'var(--text-primary)'};">${escapeHtml(item.name)}</span>
+                  ${isInMainHand ? `<span style="background:rgba(212,175,55,0.2); color:var(--gold-accent); font-size:9px; font-weight:800; padding:1px 5px; border-radius:4px;">MAIN</span>` : ''}
+                  ${isInOffHand ? `<span style="background:rgba(0,188,212,0.2); color:var(--cyan-accent); font-size:9px; font-weight:800; padding:1px 5px; border-radius:4px;">OFF</span>` : ''}
+                </div>
                 <div style="display:flex; gap:6px; align-items:center; margin-top:2px;">
                   <span style="font-size:11px; color:var(--text-secondary);">${escapeHtml(item.category || 'Item')}</span>
                   ${item.hasAttacks ? `<span style="font-size:11px; font-weight:bold; color:var(--gold-accent);">• ${item.attackCount || 1} × (${escapeHtml(item.attackDamage || 'Base')})</span>` : ''}
@@ -3036,8 +3120,6 @@
           `;
         }).join('');
       }
-
-      document.getElementById('selectOnHandModal').classList.remove('hidden');
     }
 
     function closeSelectOnHandModal() {
@@ -3047,16 +3129,24 @@
     function setOnHandWeapon(itemId) {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
-      c.onHandWeaponId = itemId;
+      if (selectOnHandTargetIsOffHand) {
+        c.offHandWeaponId = itemId;
+      } else {
+        c.onHandWeaponId = itemId;
+      }
       saveData();
       closeSelectOnHandModal();
       renderUseScreen();
     }
 
-    function clearOnHandWeapon() {
+    function clearOnHandWeapon(isOffHand = selectOnHandTargetIsOffHand) {
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
-      c.onHandWeaponId = null;
+      if (isOffHand) {
+        c.offHandWeaponId = null;
+      } else {
+        c.onHandWeaponId = null;
+      }
       saveData();
       closeSelectOnHandModal();
       renderUseScreen();

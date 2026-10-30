@@ -1,4 +1,4 @@
-const SW_VERSION = 'v1.6.0b';
+const SW_VERSION = 'v1.6.1';
 const CACHE_NAME = `rpg-companion-${SW_VERSION}`;
 const ASSETS_TO_CACHE = [
   './',

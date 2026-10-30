@@ -40,7 +40,8 @@ data class Character(
     val abilities: List<CharacterAbility> = emptyList(),
     val notes: List<CharacterNote> = emptyList(),
     val effects: List<CharacterEffect> = emptyList(),
-    val onHandWeaponId: String? = null
+    val onHandWeaponId: String? = null,
+    val offHandWeaponId: String? = null
 ) {
     fun getTotalArmor(): Int = inventory
         .filter { it.isEquipped && (it.hasArmor || it.armorSave > 0) }
