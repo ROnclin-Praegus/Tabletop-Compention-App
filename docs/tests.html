@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Hero data tests</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="hero-utils.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #121218; color: #eee; padding: 16px; }
+    .pass { color: #4caf50; } .fail { color: #e53935; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Hero data tests</h1>
+  <p>Serve the docs folder over http (for example "python -m http.server" in docs/) and open this page. Every line must be green.</p>
+  <ul id="results"></ul>
+  <script>
+    const results = document.getElementById('results');
+    function check(name, condition) {
+      const li = document.createElement('li');
+      li.className = condition ? 'pass' : 'fail';
+      li.textContent = (condition ? 'PASS  ' : 'FAIL  ') + name;
+      results.appendChild(li);
+    }
+    const hero = extra => Object.assign({ id: 'a1', name: 'Test', race: 'Elf' }, extra);
+
+    // escapeHtml
+    check('escapeHtml escapes tags and quotes',
+      escapeHtml('<img src="x" onerror=\'1\'>&') === '&lt;img src=&quot;x&quot; onerror=&#039;1&#039;&gt;&amp;');
+    check('escapeHtml(null) is empty', escapeHtml(null) === '');
+
+    // normalizeCharacter: rejecting
+    check('rejects a non-object', normalizeCharacter('x') === null && normalizeCharacter(null) === null && normalizeCharacter([]) === null);
+    check('rejects a number as name', normalizeCharacter(hero({ name: 5 })) === null);
+    check('rejects a blank name', normalizeCharacter(hero({ name: '   ' })) === null);
+
+    // normalizeCharacter: cleaning
+    check('hero id loses quotes and brackets', normalizeCharacter(hero({ id: "x'); alert(1);//" })).id === 'xalert1');
+    check('empty id gets a new safe id', /^[A-Za-z0-9_-]+$/.test(normalizeCharacter(hero({ id: '' })).id));
+    const noLists = normalizeCharacter(hero({ inventory: null, abilities: 'x', notes: undefined }));
+    check('missing or wrong lists become empty lists',
+      Array.isArray(noLists.inventory) && Array.isArray(noLists.abilities) && Array.isArray(noLists.notes) && Array.isArray(noLists.effects));
+    const items = normalizeCharacter(hero({ inventory: [null, 7, { id: "q'", name: 'Sword', attackCount: '<s>', statModifiers: { '<k>': '<v>' } }] }));
+    check('non-object list entries are dropped', items.inventory.length === 1);
+    check('item id is cleaned', items.inventory[0].id === 'q');
+    check('item numbers are really numbers', items.inventory[0].attackCount === 0 && items.inventory[0].statModifiers['<k>'] === 0);
+    check('stat numbers given as text become numbers', normalizeCharacter(hero({ maxHp: '9' })).maxHp === 9);
+    check('statModifiers given as an array becomes an object',
+      !Array.isArray(normalizeCharacter(hero({ inventory: [{ statModifiers: [1, 2] }] })).inventory[0].statModifiers));
+    check('a valid hero keeps its data', (() => {
+      const c = normalizeCharacter(hero({ maxHp: 12, gold: 3, inventory: [{ id: 'i1', name: 'Axe' }] }));
+      return c.name === 'Test' && c.maxHp === 12 && c.gold === 3 && c.inventory[0].name === 'Axe';
+    })());
+
+    const fx = normalizeCharacter(hero({ effects: [{ id: 'e', changeMode: '<b>', damageType: '<i>', effectType: '<u>' }] })).effects[0];
+    check('effect words outside the known list are replaced', fx.changeMode === 'DMG' && fx.damageType === 'unsaveable' && fx.effectType === 'STAT_MODIFIER');
+    check('known effect words are kept', (() => {
+      const e = normalizeCharacter(hero({ effects: [{ id: 'e', changeMode: 'HEAL', damageType: 'PHYSICAL', effectType: 'MP_CHANGE_PER_ROUND' }] })).effects[0];
+      return e.changeMode === 'HEAL' && e.damageType === 'physical' && e.effectType === 'MP_CHANGE_PER_ROUND';
+    })());
+
+    // damage type written by the Android app
+    check('damageType PHYSICAL from Android becomes physical',
+      normalizeCharacter(hero({ effects: [{ id: 'e', damageType: 'PHYSICAL' }] })).effects[0].damageType === 'physical');
+
+    // absorbDamage
+    const fighter = extra => Object.assign({ currentHp: 20, boostHp: 0, currentArmor: 5, currentWard: 3, boostArmor: 0, boostWard: 0, inventory: [] }, extra);
+    let f, r;
+    f = fighter({ currentArmor: null, inventory: [{ isEquipped: true, hasArmor: true, armorSave: 4 }] }); absorbDamage(f, 1, 'physical');
+    check('missing current armor starts from the equipped armor', f.currentArmor === 3);
+
+    // capDefensesToGear
+    let g = { currentArmor: 0, currentWard: null, inventory: [{ isEquipped: false, hasArmor: true, armorSave: 6 }] };
+    g.inventory[0].isEquipped = true; capDefensesToGear(g);
+    check('damaged armor stays damaged when gear is put back on', g.currentArmor === 0);
+    g = { currentArmor: 6, currentWard: null, inventory: [] }; capDefensesToGear(g);
+    check('armor is capped to the new total', g.currentArmor === 0);
+    g = { currentArmor: null, currentWard: null, inventory: [{ isEquipped: true, hasArmor: true, armorSave: 6 }] }; capDefensesToGear(g);
+    check('untouched armor (null) stays full', g.currentArmor === null && getTotalArmor(g) === 6);
+
+    // jsArg: text put into an inline onclick must stay one string argument and must not add attributes
+    const evil = `x'); alert(1);//" onmouseover="y`;
+    const holder = document.createElement('div');
+    holder.innerHTML = `<b onclick="f(${jsArg(evil)})">t</b>`;
+    let seen;
+    new Function('f', holder.firstChild.getAttribute('onclick'))(v => { seen = v; });
+    check('jsArg keeps hostile text as one string and adds no attribute', seen === evil && holder.firstChild.attributes.length === 1);
+    check('jsArg(null) is an empty string', jsArg(null) === '&quot;&quot;');
+
+    // hashText
+    check('hashText is stable and differs for different text', hashText('abc') === hashText('abc') && hashText('abc') !== hashText('abd'));
+
+    // Damage cases shared with the Android unit tests (RuleCasesTest.kt). Needs http(s), not file://.
+    const setTitle = () => {
+      const failed = document.querySelectorAll('.fail').length;
+      document.title = (failed ? 'FAILED ' + failed : 'ALL PASSED') + ' - Hero data tests';
+    };
+    fetch('rule-cases.json').then(res => res.json()).then(data => {
+      data.absorbDamage.forEach(c => {
+        const s = c.start;
+        const hero = { currentHp: s.hp, boostHp: s.boostHp, currentArmor: s.armor, currentWard: s.ward, boostArmor: s.boostArmor, boostWard: s.boostWard, inventory: [] };
+        absorbDamage(hero, c.amount, c.type);
+        const e = c.expect;
+        check('shared case: ' + c.name, hero.currentHp === e.hp && hero.boostHp === e.boostHp && hero.currentArmor === e.armor &&
+          hero.currentWard === e.ward && hero.boostArmor === e.boostArmor && hero.boostWard === e.boostWard);
+      });
+      data.tickRound.forEach(c => {
+        const hero = Object.assign({ currentHp: 0, currentMp: 0, endurance: 0, intelligence: 0, spirit: 0, inventory: [], effects: [] }, JSON.parse(JSON.stringify(c.hero)));
+        const maxHp = hero.endurance * 10, maxMp = hero.intelligence;
+        const r = tickRound(hero, maxHp, maxMp, hero.spirit, c.diceRolls || {});
+        const e = c.expect;
+        const effectsOk = JSON.stringify(hero.effects.map(x => [x.id, x.roundsRemaining || 0])) === JSON.stringify(e.effects.map(x => [x.id, x.roundsRemaining]));
+        check('shared case: ' + c.name, hero.currentHp === e.hp && (e.mp === undefined || hero.currentMp === e.mp) &&
+          (e.boostHp === undefined || hero.boostHp === e.boostHp) && effectsOk && JSON.stringify(r.expired) === JSON.stringify(e.expired));
+      });
+    }).catch(err => check('shared damage cases could not be loaded (serve this folder over http): ' + err, false))
+      .finally(setTitle);
+  </script>
+</body>
+</html>

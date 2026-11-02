@@ -219,7 +219,7 @@ fun CreateCharacterDialog(
                             if (str.isEmpty()) {
                                 level = 1
                             } else {
-                                str.toIntOrNull()?.let { level = it }
+                                str.toIntOrNull()?.let { level = it.coerceIn(1, 99) }
                             }
                         },
                         label = { Text("Level") },
@@ -346,9 +346,6 @@ fun CreateCharacterDialog(
                                 errorMessage = "Please enter a race"
                                 return@Button
                             }
-                            val oldMaxHp = characterToEdit?.getEffectiveMaxHp() ?: 0
-                            val oldMaxMp = characterToEdit?.getEffectiveMaxMp() ?: 0
-
                             val hp = end * 10
                             val mp = intStat * 1
 
@@ -357,12 +354,10 @@ fun CreateCharacterDialog(
                                 name = name.trim(),
                                 race = race.trim(),
                                 level = level,
-                                maxHp = hp,
                                 currentHp = characterToEdit?.currentHp ?: hp,
                                 boostHp = characterToEdit?.boostHp ?: 0,
                                 currentArmor = characterToEdit?.currentArmor,
                                 currentWard = characterToEdit?.currentWard,
-                                maxMp = mp,
                                 currentMp = characterToEdit?.currentMp ?: mp,
                                 hideMp = hideMp,
                                 gold = characterToEdit?.gold ?: 0,
@@ -381,20 +376,7 @@ fun CreateCharacterDialog(
                                 offHandWeaponId = characterToEdit?.offHandWeaponId
                             )
 
-                            val newMaxHp = tempChar.getEffectiveMaxHp()
-                            val newMaxMp = tempChar.getEffectiveMaxMp()
-
-                            val finalHp = if (characterToEdit != null) {
-                                val hpDelta = newMaxHp - oldMaxHp
-                                (characterToEdit.currentHp + hpDelta).coerceIn(0, newMaxHp)
-                            } else hp
-
-                            val finalMp = if (characterToEdit != null) {
-                                val mpDelta = newMaxMp - oldMaxMp
-                                (characterToEdit.currentMp + mpDelta).coerceIn(0, newMaxMp)
-                            } else mp
-
-                            val updatedChar = tempChar.copy(currentHp = finalHp, currentMp = finalMp)
+                            val updatedChar = characterToEdit?.withVitalsAdjustedTo(tempChar) ?: tempChar
                             onCharacterCreated(updatedChar)
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)

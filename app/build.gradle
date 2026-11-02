@@ -4,6 +4,14 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
+// Release signing: put keystore.properties (git-ignored) in the repo root with
+// storeFile, storePassword, keyAlias, keyPassword. Without it the build falls back to the debug key.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
 android {
     namespace 'com.homebrew.tabletopcompanion'
     compileSdk 34
@@ -12,8 +20,8 @@ android {
         applicationId "com.homebrew.tabletopcompanion"
         minSdk 24
         targetSdk 34
-        versionCode 12
-        versionName "1.6.1"
+        versionCode 14
+        versionName "1.6.3"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -21,11 +29,22 @@ android {
         }
     }
 
+    signingConfigs {
+        if (keystorePropsFile.exists()) {
+            release {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             crunchPngs false
-            signingConfig signingConfigs.debug
+            signingConfig keystorePropsFile.exists() ? signingConfigs.release : signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -52,6 +71,7 @@ android {
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-process:2.7.0'
     implementation 'androidx.activity:activity-compose:1.8.2'
     implementation platform('androidx.compose:compose-bom:2024.02.00')
     implementation 'androidx.compose.ui:ui'
@@ -61,7 +81,6 @@ dependencies {
     implementation 'androidx.compose.material:material-icons-extended:1.6.2'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'io.coil-kt:coil-compose:2.6.0'
-    implementation 'org.nanohttpd:nanohttpd:2.3.1'
     implementation 'androidx.work:work-runtime-ktx:2.9.0'
 
     testImplementation 'junit:junit:4.13.2'
@@ -71,4 +90,28 @@ dependencies {
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
+}
+
+// A release APK signed with the (per-machine) debug key can't update installs signed with the real key.
+// So building a release without keystore.properties is an error, not a silent fallback.
+gradle.taskGraph.whenReady { graph ->
+    def buildsRelease = graph.allTasks.any { it.name in ['assembleRelease', 'bundleRelease', 'packageRelease'] }
+    if (buildsRelease && !keystorePropsFile.exists()) {
+        throw new GradleException('Release build needs keystore.properties in the repo root (see app/build.gradle).')
+    }
+}
+
+// skills.json and spellbooks.json live only in docs/ (the web app reads them there).
+// They are copied into the app's assets at build time, so there is no second copy to keep in sync.
+def docsDataDir = layout.buildDirectory.dir('generated/docsAssets')
+tasks.register('copyDocsData', Copy) {
+    from rootProject.file('docs/skills.json'), rootProject.file('docs/spellbooks.json')
+    into docsDataDir
+}
+android.sourceSets.main.assets.srcDir(docsDataDir)
+tasks.named('preBuild') { dependsOn 'copyDocsData' }
+
+// Some unit tests read these files at run time (VersionSyncTest, RuleCasesTest). Declared so Gradle re-runs the tests when they change.
+tasks.withType(Test).configureEach {
+    inputs.files(rootProject.file('docs/sw.js'), rootProject.file('docs/rule-cases.json'))
 }

@@ -8,6 +8,7 @@ import java.io.InputStreamReader
 
 object SpellBooksRepository {
     private var cachedBooks: Map<String, SpellBook>? = null
+    private val BIBLE_OR_FAITH = Regex("\\b(bible|faith)\\b")
 
     fun getSpellBooks(context: Context): Map<String, SpellBook> {
         cachedBooks?.let { return it }
@@ -27,7 +28,8 @@ object SpellBooksRepository {
 
     fun isMagicOrBibleAbility(abilityName: String): Boolean {
         val clean = abilityName.trim().lowercase()
-        return clean.startsWith("magic:") || clean.startsWith("bible") || clean.contains("bible") || clean.startsWith("faith") || clean.contains("faith")
+        // "bible" and "faith" count only as whole words, so "Faithful Blade" is not magic.
+        return clean.startsWith("magic:") || BIBLE_OR_FAITH.containsMatchIn(clean)
     }
 
     fun findSpellBookForAbility(abilityName: String, context: Context): SpellBook? {
@@ -42,14 +44,14 @@ object SpellBooksRepository {
         // 2. Starts with / prefix match
         for ((_, book) in books) {
             val bookNameClean = book.name.trim().lowercase()
-            if (clean.startsWith(bookNameClean) || bookNameClean.startsWith(clean)) return book
+            if (bookNameClean.isNotEmpty() && clean.length >= 3 && (clean.startsWith(bookNameClean) || bookNameClean.startsWith(clean))) return book
         }
 
         // 3. Alias match
         for ((_, book) in books) {
             for (alias in book.aliases) {
                 val aliasClean = alias.trim().lowercase()
-                if (clean == aliasClean || clean.startsWith(aliasClean) || clean.contains(aliasClean) || aliasClean.contains(clean)) {
+                if (clean == aliasClean || (aliasClean.isNotEmpty() && clean.length >= 3 && (clean.startsWith(aliasClean) || clean.contains(aliasClean) || aliasClean.contains(clean)))) {
                     return book
                 }
             }

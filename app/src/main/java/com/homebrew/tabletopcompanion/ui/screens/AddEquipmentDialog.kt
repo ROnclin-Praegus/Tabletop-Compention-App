@@ -455,11 +455,11 @@ fun AddEquipmentDialog(
                                 return@Button
                             }
 
-                            val rawArmorPts = armorSaveText.toIntOrNull() ?: 0
+                            val rawArmorPts = (armorSaveText.toIntOrNull() ?: 0).coerceAtLeast(0)
                             val finalHasArmor = hasArmor || rawArmorPts > 0
                             val armorPts = if (finalHasArmor) rawArmorPts else 0
 
-                            val rawWardPts = wardSaveText.toIntOrNull() ?: 0
+                            val rawWardPts = (wardSaveText.toIntOrNull() ?: 0).coerceAtLeast(0)
                             val finalHasWard = hasWard || rawWardPts > 0
                             val wardPts = if (finalHasWard) rawWardPts else 0
 

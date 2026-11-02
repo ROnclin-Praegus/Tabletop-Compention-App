@@ -81,10 +81,11 @@ object GitHubUpdateChecker {
         }
     }
 
-    private fun isVersionNewer(latest: String, current: String): Boolean {
+    // Compares dotted versions. "1.6.1-beta" counts as 1.6.1 (leading digits of each part).
+    internal fun isVersionNewer(latest: String, current: String): Boolean {
         if (latest.isBlank()) return false
-        val latestParts = latest.split(".").mapNotNull { it.toIntOrNull() }
-        val currentParts = current.split(".").mapNotNull { it.toIntOrNull() }
+        val latestParts = latest.split(".").mapNotNull { it.takeWhile(Char::isDigit).toIntOrNull() }
+        val currentParts = current.split(".").mapNotNull { it.takeWhile(Char::isDigit).toIntOrNull() }
 
         val maxLen = maxOf(latestParts.size, currentParts.size)
         for (i in 0 until maxLen) {

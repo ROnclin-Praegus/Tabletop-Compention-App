@@ -8,6 +8,10 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.work.*
 import com.homebrew.tabletopcompanion.MainActivity
 import com.homebrew.tabletopcompanion.R
@@ -37,56 +41,17 @@ class PhotoApiWorker(
             return Result.success()
         }
 
-        var photoPath: String? = null
-        try {
-            Log.d("PhotoAPI", "PhotoApiWorker fetching from '$photoApiUrl'")
-            val conn = URL(photoApiUrl).openConnection() as HttpURLConnection
-            conn.requestMethod = "GET"
-            conn.setRequestProperty("Accept", "image/*, application/json")
-            if (photoApiKey.isNotBlank()) {
-                conn.setRequestProperty("Authorization", "Bearer $photoApiKey")
-            }
-            conn.connectTimeout = 10_000
-            conn.readTimeout = 10_000
-            conn.instanceFollowRedirects = true
-
-            val code = conn.responseCode
-            val contentType = conn.contentType ?: "unknown"
-            Log.d("PhotoAPI", "PhotoApiWorker response: HTTP $code ($contentType)")
-
-            if (code in 200..299) {
-                if (contentType.contains("json", ignoreCase = true)) {
-                    val json = conn.inputStream.bufferedReader().readText()
-                    val imageUrl = extractImageUrl(json)
-                    Log.d("PhotoAPI", "PhotoApiWorker JSON image URL extracted: $imageUrl")
-
-                    if (!imageUrl.isNullOrBlank()) {
-                        val imgConn = URL(imageUrl).openConnection() as HttpURLConnection
-                        imgConn.connectTimeout = 10_000
-                        imgConn.readTimeout = 10_000
-                        val tempFile = File(context.cacheDir, "premium_photo_${System.currentTimeMillis()}.jpg")
-                        imgConn.inputStream.use { input ->
-                            tempFile.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                        photoPath = tempFile.absolutePath
-                    }
-                } else {
-                    val tempFile = File(context.cacheDir, "premium_photo_${System.currentTimeMillis()}.jpg")
-                    conn.inputStream.use { input ->
-                        tempFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    photoPath = tempFile.absolutePath
-                }
-            } else {
-                Log.e("PhotoAPI", "PhotoApiWorker fetch HTTP error: $code")
-            }
-        } catch (e: Exception) {
-            Log.e("PhotoAPI", "PhotoApiWorker fetch EXCEPTION: ${e.message}", e)
+        // While the app is open, its own timer shows the photo. Skip here so one interval gives one photo.
+        val appIsOpen = withContext(Dispatchers.Main) {
+            ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
         }
+        if (appIsOpen) {
+            Log.d("PhotoAPI", "PhotoApiWorker: app is open, the foreground timer handles this round")
+            scheduleNext(context, intervalMinutes, ExistingWorkPolicy.APPEND_OR_REPLACE)
+            return Result.success()
+        }
+
+        val photoPath: String? = fetchPhoto(context, photoApiUrl, photoApiKey)
 
         // Post appropriate notification based on fetch result
         if (!photoPath.isNullOrBlank()) {
@@ -97,18 +62,23 @@ class PhotoApiWorker(
                 message = "a suprise is ready for you",
                 photoPath = photoPath
             )
+            repository.setPhotoLastFailed(false)
         } else {
-            Log.w("PhotoAPI", "PhotoApiWorker fetch FAILED -> posting notification 'no photo was found'")
-            showNotification(
-                context = context,
-                title = "🖼 Premium Photo Feed",
-                message = "no photo was found",
-                photoPath = null
-            )
+            // Tell the user once per outage, not once per interval.
+            if (!repository.getPhotoLastFailed()) {
+                Log.w("PhotoAPI", "PhotoApiWorker fetch FAILED -> posting notification 'no photo was found'")
+                showNotification(
+                    context = context,
+                    title = "🖼 Premium Photo Feed",
+                    message = "no photo was found",
+                    photoPath = null
+                )
+            }
+            repository.setPhotoLastFailed(true)
         }
 
         // Schedule next execution according to configured interval
-        scheduleNext(context, intervalMinutes)
+        scheduleNext(context, intervalMinutes, ExistingWorkPolicy.APPEND_OR_REPLACE)
 
         return Result.success()
     }
@@ -143,30 +113,6 @@ class PhotoApiWorker(
         notificationManager.notify(NOTIFICATION_ID, builder.build())
     }
 
-    private fun extractImageUrl(json: String): String? {
-        return try {
-            val obj = JSONObject(json)
-            for (key in listOf("url", "download_url", "link", "image_url", "photo_url", "file_url")) {
-                if (obj.has(key) && !obj.isNull(key)) {
-                    val v = obj.optString(key)
-                    if (v.startsWith("http")) return v
-                }
-            }
-            if (obj.has("urls")) {
-                val urls = obj.optJSONObject("urls")
-                val v = urls?.optString("regular") ?: urls?.optString("full") ?: ""
-                if (v.startsWith("http")) return v
-            }
-            if (obj.has("src")) {
-                val src = obj.optJSONObject("src")
-                val v = src?.optString("original") ?: src?.optString("large") ?: ""
-                if (v.startsWith("http")) return v
-            }
-            null
-        } catch (e: Exception) {
-            null
-        }
-    }
 
     companion object {
         const val CHANNEL_ID = "photo_feed_channel"
@@ -174,6 +120,83 @@ class PhotoApiWorker(
         const val WORK_NAME = "PhotoApiWorkerWork"
         const val EXTRA_OPEN_PHOTO = "open_premium_photo"
         const val EXTRA_PHOTO_PATH = "premium_photo_path"
+
+        private const val MAX_KEPT_PHOTOS = 3
+
+        /**
+         * Downloads one photo into the cache and returns its path, or null on failure.
+         * Blocking: call it off the main thread. Shared by the background worker and the foreground timer.
+         */
+        fun fetchPhoto(context: Context, photoApiUrl: String, photoApiKey: String): String? {
+            return try {
+                val conn = openConnection(photoApiUrl, photoApiKey)
+                val code = conn.responseCode
+                val contentType = conn.contentType ?: ""
+                Log.d("PhotoAPI", "Photo response: HTTP $code ($contentType)")
+                when {
+                    code !in 200..299 -> null
+                    contentType.contains("json", ignoreCase = true) -> {
+                        val json = conn.inputStream.bufferedReader().use { it.readText() }
+                        val imageUrl = extractImageUrl(json)
+                        if (imageUrl.isNullOrBlank()) null else savePhoto(context, openConnection(imageUrl, null))
+                    }
+                    // An HTML/text answer is an error page, not a photo.
+                    contentType.startsWith("text/", ignoreCase = true) -> null
+                    else -> savePhoto(context, conn)
+                }
+            } catch (e: Exception) {
+                Log.e("PhotoAPI", "Photo fetch failed: ${e.message}", e)
+                null
+            }
+        }
+
+        private fun openConnection(url: String, key: String?): HttpURLConnection {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("Accept", "image/*, application/json")
+            if (!key.isNullOrBlank()) conn.setRequestProperty("Authorization", "Bearer $key")
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
+            conn.instanceFollowRedirects = true
+            return conn
+        }
+
+        private fun savePhoto(context: Context, conn: HttpURLConnection): String {
+            val file = File(context.cacheDir, "premium_photo_${System.currentTimeMillis()}.jpg")
+            try {
+                conn.inputStream.use { input -> file.outputStream().use { input.copyTo(it) } }
+            } catch (e: Exception) {
+                file.delete() // never leave a half-written photo behind
+                throw e
+            }
+            // Photos from notifications nobody opened would pile up: keep only the newest few.
+            context.cacheDir.listFiles { f -> f.name.startsWith("premium_photo_") }
+                ?.sortedByDescending { it.lastModified() }
+                ?.drop(MAX_KEPT_PHOTOS)
+                ?.forEach { it.delete() }
+            return file.absolutePath
+        }
+
+        private fun extractImageUrl(json: String): String? {
+            return try {
+                val obj = JSONObject(json)
+                for (key in listOf("url", "download_url", "link", "image_url", "photo_url", "file_url")) {
+                    if (obj.has(key) && !obj.isNull(key)) {
+                        val v = obj.optString(key)
+                        if (v.startsWith("http")) return v
+                    }
+                }
+                val urls = obj.optJSONObject("urls")
+                val u = urls?.optString("regular")?.takeIf { it.isNotEmpty() } ?: urls?.optString("full") ?: ""
+                if (u.startsWith("http")) return u
+                val src = obj.optJSONObject("src")
+                val s = src?.optString("original")?.takeIf { it.isNotEmpty() } ?: src?.optString("large") ?: ""
+                if (s.startsWith("http")) return s
+                null
+            } catch (e: Exception) {
+                null
+            }
+        }
 
         fun createNotificationChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -189,7 +212,11 @@ class PhotoApiWorker(
             }
         }
 
-        fun scheduleNext(context: Context, intervalMinutes: Int) {
+        /**
+         * [policy]: REPLACE when the user changes the interval, KEEP at app start (so opening the app does not
+         * push the next run back), APPEND_OR_REPLACE when the worker schedules its own successor.
+         */
+        fun scheduleNext(context: Context, intervalMinutes: Int, policy: ExistingWorkPolicy = ExistingWorkPolicy.REPLACE) {
             val delay = if (intervalMinutes < 1) 15L else intervalMinutes.toLong()
             Log.d("PhotoAPI", "Scheduling next PhotoApiWorker in $delay minutes")
             val workRequest = OneTimeWorkRequestBuilder<PhotoApiWorker>()
@@ -198,7 +225,7 @@ class PhotoApiWorker(
 
             WorkManager.getInstance(context).enqueueUniqueWork(
                 WORK_NAME,
-                ExistingWorkPolicy.REPLACE,
+                policy,
                 workRequest
             )
         }

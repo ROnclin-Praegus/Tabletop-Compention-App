@@ -7,8 +7,8 @@
   
   <!-- PWA Manifest & App Icons -->
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/svg+xml" href="icon.svg">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
   <meta name="theme-color" content="#121218">
   
   <!-- Apple iOS Native PWA Meta Tags -->
@@ -16,9 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="RPG Companion">
 
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="skills.js"></script>
-  <script src="spellbooks.js"></script>
+  <script src="hero-utils.js"></script>
   <style>
     :root {
       --bg-dark: #121218;
@@ -31,8 +29,8 @@
       --blue-mp: #2196f3;
       --text-primary: #f5f5f7;
       --text-secondary: #a0a0b0;
-      --font-heading: 'Cinzel', serif;
-      --font-body: 'Inter', sans-serif;
+      --font-heading: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-body: 'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
     * {
@@ -931,7 +929,7 @@
     <!-- iOS PWA Install Banner -->
     <div id="iosInstallBanner" class="ios-install-banner hidden">
       <div style="display:flex; align-items:center; gap:10px;">
-        <img src="icon.svg" style="width:34px; height:34px; border-radius:8px;">
+        <img src="icon.png" alt="" style="width:34px; height:34px; border-radius:8px;">
         <div>
           <div style="font-weight:bold; font-size:12px; color:var(--gold-accent);">Install RPG Companion on iOS</div>
           <div style="font-size:11px; color:var(--text-primary);">Tap Share <span style="font-size:13px;">⎋</span> and select 'Add to Home Screen' <span style="font-size:13px;">➕</span></div>
@@ -957,7 +955,6 @@
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
-        <button id="headerApiBtn" class="action-icon-btn" title="API Sync" onclick="openApiModal()">📡</button>
         <button id="headerRefreshBtn" class="action-icon-btn" title="Hard Refresh" onclick="location.reload(true)">🔄</button>
         <button id="headerLvlBtn" class="gold-header-btn hidden" title="Level Up" onclick="openLevelUpModal()" style="color:var(--text-primary); font-weight:bold;">
           LVL <span id="headerLvlText">1</span>
@@ -1242,32 +1239,6 @@
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
         <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeDamageModal()">CANCEL</button>
         <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--crimson-primary); color:var(--text-primary);" onclick="confirmApplyDamage()">APPLY DAMAGE</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- API Modal -->
-  <div id="apiModal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <h2 style="color:var(--cyan-accent)">API SYNC</h2>
-      <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Sync your character to the Local Android App Server.</p>
-      
-      <div class="form-group">
-        <label>Server URL (e.g. 192.168.1.5:8080)</label>
-        <input id="apiServerUrl" type="text" placeholder="192.168.1.5:8080">
-      </div>
-      <div class="form-group">
-        <label>API Key</label>
-        <input id="apiKeyInput" type="text" placeholder="Enter API Key">
-      </div>
-      <div class="form-group" style="display:flex; align-items:center; gap:8px;">
-        <input id="apiAutoSync" type="checkbox" onchange="toggleAutoSync()">
-          <label style="margin:0; display:flex; align-items:center; gap:4px;">Auto-sync every <input type="number" id="apiSyncIntervalMins" value="3" style="width:50px; text-align:center; padding:2px; height:auto; color:white; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:4px;" onchange="toggleAutoSync()"> mins (Requires open tab)</label>
-      </div>
-
-      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
-        <button class="prompt-btn" style="flex:none; width:auto;" onclick="closeApiModal()">CLOSE</button>
-        <button class="prompt-btn" style="flex:none; width:auto; background-color:var(--green-hp); color:var(--bg-dark);" onclick="manualApiSync()">SYNC NOW</button>
       </div>
     </div>
   </div>
@@ -1907,7 +1878,7 @@
   <!-- Fullscreen Premium Photo Viewer Modal -->
   <div id="premiumPhotoViewerModal" class="modal-overlay hidden" style="background: black; z-index: 10000; padding:0;">
     <div style="position:relative; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-      <img id="premiumPhotoImg" src="" style="max-width:100%; max-height:calc(100% - 80px); object-fit:contain;">
+      <img id="premiumPhotoImg" src="" alt="Premium photo" style="max-width:100%; max-height:calc(100% - 80px); object-fit:contain;">
       <button class="prompt-btn" style="position:absolute; bottom:32px; width:auto; padding:12px 32px; background:var(--gold-accent); color:var(--bg-dark); font-weight:bold; font-size:14px; border-radius:24px;" onclick="closePremiumPhotoViewerModal()">Close</button>
     </div>
   </div>
@@ -1949,9 +1920,28 @@
     let tempStatMods = { ...defaultStats };
 
     function init() {
+      // Old sync settings (the sync feature was removed): don't leave the key in storage.
+      try { ['apiServerUrl', 'apiKeyInput', 'apiAutoSync', 'apiSyncIntervalMins'].forEach(k => localStorage.removeItem(k)); } catch (e) {}
       const saved = localStorage.getItem(STORAGE_KEY);
+      let loaded = null;
+      let unreadableCount = 0; // heroes left out; -1 = the whole save could not be read
       if (saved) {
-        characters = JSON.parse(saved);
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            loaded = parsed.map(normalizeCharacter).filter(Boolean);
+            unreadableCount = parsed.length - loaded.length;
+          }
+        } catch (e) { console.error('Saved heroes could not be read.', e); }
+        if (!loaded) unreadableCount = -1;
+        if (unreadableCount !== 0) {
+          // Keep a copy of the unreadable data (one per distinct save) so it can be recovered
+          // even after the next save replaces the main list.
+          try { localStorage.setItem(STORAGE_KEY + '_corrupt_backup_' + hashText(saved), saved); } catch (e) {}
+        }
+      }
+      if (loaded) {
+        characters = loaded;
       } else {
         characters = [
           {
@@ -2024,24 +2014,21 @@
         startPhotoTimer();
       }
       updateServiceWorkerVersionDisplay();
+      if (unreadableCount !== 0) {
+        alert(unreadableCount < 0
+          ? "Your saved heroes could not be read. A copy of the data was kept in this browser."
+          : unreadableCount + " saved hero(es) could not be read and were left out. A copy of the data was kept in this browser.");
+      }
     }
 
     function saveData() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
-    }
-
-    function getTotalArmor(c) {
-      if (!c || !c.inventory) return 0;
-      return c.inventory
-        .filter(i => i.isEquipped && (i.hasArmor || i.armorSave > 0))
-        .reduce((sum, i) => sum + (parseInt(i.armorSave) || 0), 0);
-    }
-
-    function getTotalWard(c) {
-      if (!c || !c.inventory) return 0;
-      return c.inventory
-        .filter(i => i.isEquipped && (i.hasWard || i.wardSave > 0))
-        .reduce((sum, i) => sum + (parseInt(i.wardSave) || 0), 0);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
+      } catch (e) {
+        // Storage full or blocked: say so, instead of looking saved while nothing is.
+        console.error('Could not save heroes.', e);
+        showToast('Could not save! Storage is full. Export your heroes now.', 'var(--crimson-primary)');
+      }
     }
 
     function getEquippedStatModifier(c, statKey) {
@@ -2131,7 +2118,7 @@
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
 
-      const activeDiceEffects = (c.effects || []).filter(e => e.isDiceRoll && (e.effectType === 'HP_CHANGE_PER_ROUND' || e.effectType === 'MP_CHANGE_PER_ROUND'));
+      const activeDiceEffects = (c.effects || []).filter(e => e.isEnabled !== false && e.isDiceRoll && (e.effectType === 'HP_CHANGE_PER_ROUND' || e.effectType === 'MP_CHANGE_PER_ROUND'));
       if (activeDiceEffects.length > 0) {
         openRollDiceRoundModal(activeDiceEffects);
       } else {
@@ -2240,8 +2227,7 @@
         const inputEl = document.getElementById(`rollInput_${e.id}`);
         const rollVal = Math.abs(parseInt(inputEl ? inputEl.value : 0) || 0);
         const mode = pendingDiceModes[e.id] || e.changeMode || 'DMG';
-        const signedVal = (mode === 'DMG') ? -rollVal : rollVal;
-        rollResults[e.id] = signedVal;
+        rollResults[e.id] = (mode === 'DMG') ? -rollVal : rollVal;
       });
       closeRollDiceRoundModal();
       executeRoundTick(rollResults);
@@ -2251,199 +2237,39 @@
       const c = characters.find(item => item.id === activeCharId);
       if (!c) return;
 
-      c.currentArmor = getTotalArmor(c);
-      c.currentWard = getTotalWard(c);
-
-      const maxHp = getEffectiveMaxHp(c);
-      const maxMp = getEffectiveMaxMp(c);
-      const spirit = getEffectiveSpirit(c);
-
-      const maxBoost = (c.maxBoostHp !== undefined && c.maxBoostHp !== null) ? c.maxBoostHp : (c.boostHp || 0);
-      let turns = c.boostHpTurns !== undefined ? c.boostHpTurns : 0;
-      const resetBoostOnNextRound = c.boostHpResetOnNextRound !== false;
-
-      const expiredList = [];
-
-      // Reset Boost HP if reset flag is true and Boost HP is active
-      if (maxBoost > 0 && resetBoostOnNextRound && (turns > 0 || (turns === 0 && c.boostHp > 0))) {
-        c.boostHp = maxBoost;
-      }
-      
-      const maxArmorBoost = (c.maxBoostArmor !== undefined && c.maxBoostArmor !== null) ? c.maxBoostArmor : (c.boostArmor || 0);
-      let armorTurns = c.boostArmorTurns !== undefined ? c.boostArmorTurns : 0;
-      const resetArmorBoostOnNextRound = c.boostArmorResetOnNextRound !== false;
-      if (maxArmorBoost > 0 && resetArmorBoostOnNextRound && (armorTurns > 0 || (armorTurns === 0 && c.boostArmor > 0))) {
-        c.boostArmor = maxArmorBoost;
-      }
-
-      const maxWardBoost = (c.maxBoostWard !== undefined && c.maxBoostWard !== null) ? c.maxBoostWard : (c.boostWard || 0);
-      let wardTurns = c.boostWardTurns !== undefined ? c.boostWardTurns : 0;
-      const resetWardBoostOnNextRound = c.boostWardResetOnNextRound !== false;
-      if (maxWardBoost > 0 && resetWardBoostOnNextRound && (wardTurns > 0 || (wardTurns === 0 && c.boostWard > 0))) {
-        c.boostWard = maxWardBoost;
-      }
-
-      // Spirit MP Recharge on Next Round (1 Spirit = +1 MP/turn)
-      if (maxMp > 0 && spirit > 0) {
-        c.currentMp = Math.min(maxMp, c.currentMp + spirit);
-      }
-
-      // Process per-round HP/MP effects
-      if (c.effects && c.effects.length > 0) {
-        const nextEffects = [];
-        c.effects.forEach(e => {
-          if (e.effectType === "HP_CHANGE_PER_ROUND") {
-            const val = (e.isDiceRoll && diceRollResults && diceRollResults.hasOwnProperty(e.id))
-              ? (parseInt(diceRollResults[e.id]) || 0)
-              : (parseInt(e.value) || 0);
-
-            if (val > 0) {
-              let oldHp = c.currentHp;
-              c.currentHp = Math.max(0, Math.min(maxHp, c.currentHp + val));
-              let change = c.currentHp - oldHp;
-              if (change > 0) showFloatingDamage('useHpFill', change, true);
-            } else if (val < 0) {
-              let rem = Math.abs(val);
-              const dmgType = e.damageType || "unsaveable";
-
-              if (dmgType === "physical") {
-                let armorChange = 0;
-                let curBoostArmor = c.boostArmor || 0;
-                if (rem > 0 && curBoostArmor > 0) {
-                  if (rem <= curBoostArmor) {
-                    armorChange += rem;
-                    curBoostArmor -= rem;
-                    rem = 0;
-                  } else {
-                    armorChange += curBoostArmor;
-                    rem -= curBoostArmor;
-                    curBoostArmor = 0;
-                  }
-                  c.boostArmor = curBoostArmor;
-                }
-                if (rem > 0 && c.currentArmor > 0) {
-                  if (rem <= c.currentArmor) {
-                    armorChange += rem;
-                    c.currentArmor -= rem;
-                    rem = 0;
-                  } else {
-                    armorChange += c.currentArmor;
-                    rem -= c.currentArmor;
-                    c.currentArmor = 0;
-                  }
-                }
-                if (armorChange > 0) showFloatingDamage('useArmorFill', armorChange);
-              } else if (dmgType === "magical") {
-                let wardChange = 0;
-                let curBoostWard = c.boostWard || 0;
-                if (rem > 0 && curBoostWard > 0) {
-                  if (rem <= curBoostWard) {
-                    wardChange += rem;
-                    curBoostWard -= rem;
-                    rem = 0;
-                  } else {
-                    wardChange += curBoostWard;
-                    rem -= curBoostWard;
-                    curBoostWard = 0;
-                  }
-                  c.boostWard = curBoostWard;
-                }
-                if (rem > 0 && c.currentWard > 0) {
-                  if (rem <= c.currentWard) {
-                    wardChange += rem;
-                    c.currentWard -= rem;
-                    rem = 0;
-                  } else {
-                    wardChange += c.currentWard;
-                    rem -= c.currentWard;
-                    c.currentWard = 0;
-                  }
-                }
-                if (wardChange > 0) showFloatingDamage('useWardFill', wardChange);
-              }
-
-              let hpDmg = rem;
-              // Boost HP is affected FIRST before current HP!
-              if (rem > 0 && c.boostHp > 0) {
-                if (rem <= c.boostHp) {
-                  c.boostHp -= rem;
-                  rem = 0;
-                } else {
-                  rem -= c.boostHp;
-                  c.boostHp = 0;
-                }
-              }
-
-              if (rem > 0) {
-                c.currentHp = Math.max(0, c.currentHp - rem);
-              }
-              
-              if (hpDmg > 0) {
-                showFloatingDamage('useHpFill', hpDmg);
-              }
-            }
-          }
-          if (e.effectType === "MP_CHANGE_PER_ROUND" && maxMp > 0) {
-            const val = (e.isDiceRoll && diceRollResults && diceRollResults.hasOwnProperty(e.id))
-              ? (parseInt(diceRollResults[e.id]) || 0)
-              : (parseInt(e.value) || 0);
-            c.currentMp = Math.max(0, Math.min(maxMp, c.currentMp + val));
-          }
-
-          let r = parseInt(e.roundsRemaining) || 0;
-          if (r > 1) {
-            nextEffects.push({ ...e, roundsRemaining: r - 1 });
-          } else if (r === 1) {
-            expiredList.push(`Effect expired: ${e.name}`);
-          } else if (r === 0) {
-            nextEffects.push(e); // Unlimited
-          }
-        });
-        c.effects = nextEffects;
-      }
-
-      // Decrement Boost HP turns
-      if (turns > 1) {
-        c.boostHpTurns = turns - 1;
-      } else if (turns === 1) {
-        c.boostHpTurns = 0;
-        c.boostHp = 0;
-        c.maxBoostHp = 0;
-        expiredList.push("Boost HP duration has ended!");
-      }
-
-      if (armorTurns > 1) {
-        c.boostArmorTurns = armorTurns - 1;
-      } else if (armorTurns === 1) {
-        c.boostArmorTurns = 0;
-        c.boostArmor = 0;
-        c.maxBoostArmor = 0;
-        expiredList.push("Boost Armor duration has ended!");
-      }
-
-      if (wardTurns > 1) {
-        c.boostWardTurns = wardTurns - 1;
-      } else if (wardTurns === 1) {
-        c.boostWardTurns = 0;
-        c.boostWard = 0;
-        c.maxBoostWard = 0;
-        expiredList.push("Boost Ward Save duration has ended!");
-      }
-
-      if (expiredList.length > 0) {
-        showExpiredPopup(expiredList);
-      }
+      const r = tickRound(c, getEffectiveMaxHp(c), getEffectiveMaxMp(c), getEffectiveSpirit(c), diceRollResults);
+      if (r.armorLost > 0) showFloatingDamage('useArmorFill', r.armorLost);
+      if (r.wardLost > 0) showFloatingDamage('useWardFill', r.wardLost);
+      if (r.hpLost > 0) showFloatingDamage('useHpFill', r.hpLost);
+      if (r.hpGained > 0) showFloatingDamage('useHpFill', r.hpGained, true);
+      if (r.expired.length > 0) showExpiredPopup(r.expired);
 
       saveData();
       renderUseScreen();
     }
 
+    // The photo is shrunk before it is stored: hero data lives in localStorage (about 5 MB for everything),
+    // and a raw phone photo as text can fill it alone.
     function handlePhotoUpload(input) {
       if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-          uploadedImageBase64 = e.target.result;
-          document.getElementById('photoPreviewContent').innerHTML = `<img src="${uploadedImageBase64}">`;
+          const img = new Image();
+          img.onload = function() {
+            const MAX = 256;
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(img.width * scale));
+            canvas.height = Math.max(1, Math.round(img.height * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#121218'; // JPEG has no transparency
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            uploadedImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            document.getElementById('photoPreviewContent').innerHTML = `<img src="${uploadedImageBase64}" alt="Hero picture">`;
+          };
+          img.onerror = function() { showToast('That file is not a picture I can read.', 'var(--crimson-primary)'); };
+          img.src = e.target.result;
         };
         reader.readAsDataURL(input.files[0]);
       }
@@ -2498,7 +2324,6 @@
       document.getElementById('selectScreen').classList.remove('hidden');
       document.getElementById('useScreen').classList.add('hidden');
       document.getElementById('backBtn').classList.add('hidden');
-      document.getElementById('headerApiBtn').classList.add('hidden');
       document.getElementById('headerRefreshBtn').classList.remove('hidden');
       document.getElementById('headerAvatarBox').classList.add('hidden');
       document.getElementById('sessionTabsBar').classList.add('hidden');
@@ -2554,11 +2379,11 @@
         <div class="char-card">
           <div class="card-top">
             <div class="avatar-circle">
-              ${c.imageUri ? `<img src="${c.imageUri}">` : c.name[0].toUpperCase()}
+              ${c.imageUri ? `<img src="${escapeHtml(c.imageUri)}" alt="">` : escapeHtml(String(c.name)[0].toUpperCase())}
             </div>
             <div class="card-meta">
-              <h3>${c.name}</h3>
-              <p>${c.race} • 🪙 ${c.gold || 0}</p>
+              <h3>${escapeHtml(c.name)}</h3>
+              <p>${escapeHtml(c.race)} • 🪙 ${c.gold || 0}</p>
             </div>
             <button class="action-icon-btn edit-btn" title="Export Hero" onclick="exportCharacter('${c.id}')">📤</button>
             <button class="action-icon-btn edit-btn" title="Duplicate Hero" onclick="duplicateCharacter('${c.id}')">📋</button>
@@ -2615,7 +2440,6 @@
       document.getElementById('useScreen').classList.remove('hidden');
       document.getElementById('backBtn').classList.remove('hidden');
       document.getElementById('headerRefreshBtn').classList.add('hidden');
-      document.getElementById('headerApiBtn').classList.remove('hidden');
       document.getElementById('sessionTabsBar').classList.remove('hidden');
       document.getElementById('headerLvlBtn').classList.remove('hidden');
       document.getElementById('headerLvlText').innerText = c.level || 1;
@@ -2625,7 +2449,7 @@
       document.getElementById('createFab').classList.add('hidden');
 
       if (c.imageUri) {
-        document.getElementById('headerAvatarBox').innerHTML = `<img src="${c.imageUri}">`;
+        document.getElementById('headerAvatarBox').innerHTML = `<img src="${escapeHtml(c.imageUri)}" alt="">`;
         document.getElementById('headerAvatarBox').classList.remove('hidden');
       } else {
         document.getElementById('headerAvatarBox').classList.add('hidden');
@@ -2654,7 +2478,6 @@
 
     function switchSessionTab(tab) {
       currentSessionTab = tab;
-      const c = characters.find(item => item.id === activeCharId);
 
       document.getElementById('tabVitals').classList.remove('active');
       document.getElementById('tabAbilities').classList.remove('active');
@@ -2720,8 +2543,6 @@
       const effTotalWard = totalWard + (c.maxBoostWard || 0);
       const curArmor = (c.currentArmor !== null && c.currentArmor !== undefined) ? c.currentArmor : totalArmor;
       const curWard = (c.currentWard !== null && c.currentWard !== undefined) ? c.currentWard : totalWard;
-      const effCurArmor = curArmor + (c.boostArmor || 0);
-      const effCurWard = curWard + (c.boostWard || 0);
 
       if (effTotalArmor > 0) {
         document.getElementById('armorBarBlock').classList.remove('hidden');
@@ -2811,20 +2632,20 @@
             descHtml = entries.map(([k, v]) => {
               const valStr = v > 0 ? `+${v}` : `${v}`;
               const col = v >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
-              return `<span style="color:${col}">${k.toUpperCase()}: ${valStr}</span>`;
+              return `<span style="color:${col}">${escapeHtml(k.toUpperCase())}: ${valStr}</span>`;
             }).join('<span style="color:var(--text-secondary)">, </span>');
           } else if (e.effectType === "HP_CHANGE_PER_ROUND") {
             if (e.isDiceRoll) {
               const mode = e.changeMode || 'DMG';
               const col = mode === 'HEAL' ? 'var(--green-hp)' : 'var(--crimson-primary)';
-              const dt = (mode !== 'HEAL' && e.damageType) ? ` ${e.damageType.toUpperCase()}` : '';
-              descHtml = `<span style="color:${col}">🎲 ${escapeHtml(e.diceFormula || '1d6')} (${mode})${dt} HP / round</span>`;
+              const dt = (mode !== 'HEAL' && e.damageType) ? ` ${escapeHtml(e.damageType.toUpperCase())}` : '';
+              descHtml = `<span style="color:${col}">🎲 ${escapeHtml(e.diceFormula || '1d6')} (${escapeHtml(mode)})${dt} HP / round</span>`;
             } else {
               const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
               const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
               if (e.value < 0) {
                 const dt = (e.damageType || 'unsaveable').toUpperCase();
-                descHtml = `<span style="color:${col}">${valStr} ${dt} HP / round</span>`;
+                descHtml = `<span style="color:${col}">${valStr} ${escapeHtml(dt)} HP / round</span>`;
               } else {
                 descHtml = `<span style="color:${col}">${valStr} HP / round</span>`;
               }
@@ -2833,7 +2654,7 @@
             if (e.isDiceRoll) {
               const mode = e.changeMode || 'DMG';
               const col = mode === 'HEAL' ? 'var(--green-hp)' : 'var(--crimson-primary)';
-              descHtml = `<span style="color:${col}">🎲 ${escapeHtml(e.diceFormula || '1d6')} (${mode}) MP / round</span>`;
+              descHtml = `<span style="color:${col}">🎲 ${escapeHtml(e.diceFormula || '1d6')} (${escapeHtml(mode)}) MP / round</span>`;
             } else {
               const valStr = e.value > 0 ? `+${e.value}` : `${e.value}`;
               const col = e.value >= 0 ? 'var(--green-hp)' : 'var(--crimson-primary)';
@@ -2897,7 +2718,7 @@
       if (weapon.hasStatModifiers && weapon.statModifiers) {
         statBadges = Object.entries(weapon.statModifiers)
           .filter(([_, val]) => val !== 0)
-          .map(([st, val]) => `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>`)
+          .map(([st, val]) => `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${escapeHtml(st.toUpperCase())}: ${val > 0 ? '+' + val : val}</span>`)
           .join('');
       }
 
@@ -2986,7 +2807,7 @@
 
       const equippedItems = (c.inventory || []).filter(i => i.isEquipped && i.hasSpecialEffects && i.specialEffectsText && i.specialEffectsText.trim().length > 0);
 
-      let itemsHtml = '';
+      let itemsHtml;
       if (equippedItems.length === 0) {
         itemsHtml = `
           <div style="text-align:center; padding:12px; background:var(--surface-variant); border-radius:8px; margin-top:8px; border:1px dashed var(--border-color);">
@@ -3380,7 +3201,7 @@
           targetEffect.damageType = 'unsaveable';
           targetEffect.isEnabled = document.getElementById('effectInputEnabled').checked;
         } else {
-          targetEffect.isEnabled = true;
+          if (targetEffect.isEnabled === undefined) targetEffect.isEnabled = true; // editing keeps a paused effect paused
           targetEffect.statModifiers = {};
           if (currentEffectValueMode === 'dice') {
             const formula = document.getElementById('effectInputDiceFormula').value.trim() || '1d6';
@@ -3411,7 +3232,7 @@
       const eff = c.effects.find(e => e.id === effectId);
       if (eff) {
         adjustVitalsOnMaxChange(c, () => {
-          eff.isEnabled = (eff.isEnabled === false) ? true : false;
+          eff.isEnabled = eff.isEnabled === false;
         });
         saveData();
         renderUseScreen();
@@ -3468,91 +3289,10 @@
 
       const selectedType = document.querySelector('input[name="dmgType"]:checked').value;
 
-      const totalArmor = getTotalArmor(c);
-      const totalWard = getTotalWard(c);
-
-      let curArmor = (c.currentArmor !== null && c.currentArmor !== undefined) ? c.currentArmor : totalArmor;
-      let curWard = (c.currentWard !== null && c.currentWard !== undefined) ? c.currentWard : totalWard;
-      let rem = amount;
-
-      let curBoostArmor = c.boostArmor || 0;
-      let curBoostWard = c.boostWard || 0;
-
-      if (selectedType === 'physical') {
-        let armorChange = 0;
-        if (rem > 0 && curBoostArmor > 0) {
-          if (rem <= curBoostArmor) {
-            armorChange += rem;
-            curBoostArmor -= rem;
-            rem = 0;
-          } else {
-            armorChange += curBoostArmor;
-            rem -= curBoostArmor;
-            curBoostArmor = 0;
-          }
-        }
-        if (rem > 0 && curArmor > 0) {
-          if (rem <= curArmor) {
-            armorChange += rem;
-            curArmor -= rem;
-            rem = 0;
-          } else {
-            armorChange += curArmor;
-            rem -= curArmor;
-            curArmor = 0;
-          }
-        }
-        if (armorChange > 0) showFloatingDamage('useArmorFill', armorChange);
-      } else if (selectedType === 'magical') {
-        let wardChange = 0;
-        if (rem > 0 && curBoostWard > 0) {
-          if (rem <= curBoostWard) {
-            wardChange += rem;
-            curBoostWard -= rem;
-            rem = 0;
-          } else {
-            wardChange += curBoostWard;
-            rem -= curBoostWard;
-            curBoostWard = 0;
-          }
-        }
-        if (rem > 0 && curWard > 0) {
-          if (rem <= curWard) {
-            wardChange += rem;
-            curWard -= rem;
-            rem = 0;
-          } else {
-            wardChange += curWard;
-            rem -= curWard;
-            curWard = 0;
-          }
-        }
-        if (wardChange > 0) showFloatingDamage('useWardFill', wardChange);
-      }
-
-      let hpDmg = rem;
-      if (rem > 0 && c.boostHp > 0) {
-        if (rem <= c.boostHp) {
-          c.boostHp -= rem;
-          rem = 0;
-        } else {
-          rem -= c.boostHp;
-          c.boostHp = 0;
-        }
-      }
-
-      if (rem > 0) {
-        c.currentHp = Math.max(0, c.currentHp - rem);
-      }
-      
-      if (hpDmg > 0) {
-        showFloatingDamage('useHpFill', hpDmg);
-      }
-
-      c.currentArmor = curArmor;
-      c.currentWard = curWard;
-      c.boostArmor = curBoostArmor;
-      c.boostWard = curBoostWard;
+      const result = absorbDamage(c, amount, selectedType);
+      if (result.armorChange > 0) showFloatingDamage('useArmorFill', result.armorChange);
+      if (result.wardChange > 0) showFloatingDamage('useWardFill', result.wardChange);
+      if (result.hpChange > 0) showFloatingDamage('useHpFill', result.hpChange);
 
       saveData();
       closeDamageModal();
@@ -3676,7 +3416,7 @@
                 return `
                   <div class="item-card" style="background: var(--surface-variant); border: 1px solid rgba(255,193,7,0.25); padding: 10px 12px; border-radius: 8px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                      <span style="font-weight:bold; font-size:14px; color:var(--gold-accent);">↳ ${sub.name}</span>
+                      <span style="font-weight:bold; font-size:14px; color:var(--gold-accent);">↳ ${escapeHtml(sub.name)}</span>
                       <div>
                         <button class="action-icon-btn edit-btn" title="Edit Ability" onclick="openEditAbilityModal('${sub.id}')">✏️</button>
                         <button class="action-icon-btn delete-btn" title="Delete Ability" onclick="deleteAbility('${sub.id}')">🗑</button>
@@ -3684,7 +3424,7 @@
                     </div>
                     ${subEval ? `
                       <div style="background:var(--surface-dark); padding:8px; border-radius:6px; margin-top:6px; cursor:${subIsLong ? 'pointer' : 'default'};" ${subIsLong ? `onclick="toggleCardExpansion('${sub.id}')"` : ''}>
-                        <div style="font-size:13px; font-weight:500; color:var(--text-primary); white-space:pre-line;">${subDisplay}</div>
+                        <div style="font-size:13px; font-weight:500; color:var(--text-primary); white-space:pre-line;">${escapeHtml(subDisplay)}</div>
                         ${subIsLong ? `<div style="font-size:11px; font-weight:bold; color:var(--gold-accent); margin-top:4px;">${subIsExpanded ? '▲ Tap to collapse' : '▼ Tap to expand'}</div>` : ''}
                       </div>
                     ` : ''}
@@ -3699,7 +3439,7 @@
           <div class="item-card">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span style="font-weight:bold; font-size:16px; color:var(--gold-accent); display:inline-flex; align-items:center; gap:6px;">
-                <span>${a.name}</span>
+                <span>${escapeHtml(a.name)}</span>
                 ${(a.tier !== undefined && a.tier !== null) ? `<span style="background:rgba(255,193,7,0.18); border:1px solid rgba(255,193,7,0.5); color:var(--gold-accent); font-size:11px; font-weight:bold; padding:2px 6px; border-radius:4px;">Tier ${a.tier}</span>` : ''}
               </span>
               <div>
@@ -3712,9 +3452,9 @@
 
             ${evalDesc ? `
               <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'}; margin-top: 6px;" ${isLong ? `onclick="toggleCardExpansion('${a.id}')"` : ''}>
-                <div style="font-size:14px; font-weight:500; color:var(--text-primary); white-space:pre-line;">${displayText}</div>
+                <div style="font-size:14px; font-weight:500; color:var(--text-primary); white-space:pre-line;">${escapeHtml(displayText)}</div>
                 ${isLong ? `<div style="font-size:11px; font-weight:bold; color:var(--gold-accent); margin-top:4px;">${isExpanded ? '▲ Tap to collapse' : '▼ Tap to expand'}</div>` : ''}
-                ${showFormula ? `<div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Formula: ${a.description}</div>` : ''}
+                ${showFormula ? `<div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">Formula: ${escapeHtml(a.description)}</div>` : ''}
               </div>
             ` : ''}
 
@@ -3839,8 +3579,8 @@
       tabsBar.innerHTML = SKILL_CATEGORIES.map(cat => {
         const isActive = cat === activeSkillTab;
         return `
-          <button type="button" class="prompt-btn ${isActive ? 'tab-active' : ''}" data-active="${isActive}" style="flex:none; width:auto; padding:6px 12px; font-size:11px; white-space:nowrap; border-radius:14px; background:${isActive ? 'var(--gold-accent)' : 'var(--surface-variant)'}; color:${isActive ? 'var(--bg-dark)' : 'var(--text-secondary)'}; font-weight:${isActive ? 'bold' : 'normal'}; border:1px solid ${isActive ? 'var(--gold-accent)' : 'transparent'}; cursor:pointer;" onclick="switchSkillTab('${cat}')">
-            ${cat}
+          <button type="button" class="prompt-btn ${isActive ? 'tab-active' : ''}" data-active="${isActive}" style="flex:none; width:auto; padding:6px 12px; font-size:11px; white-space:nowrap; border-radius:14px; background:${isActive ? 'var(--gold-accent)' : 'var(--surface-variant)'}; color:${isActive ? 'var(--bg-dark)' : 'var(--text-secondary)'}; font-weight:${isActive ? 'bold' : 'normal'}; border:1px solid ${isActive ? 'var(--gold-accent)' : 'transparent'}; cursor:pointer;" onclick="switchSkillTab(${jsArg(cat)})">
+            ${escapeHtml(cat)}
           </button>
         `;
       }).join('');
@@ -4060,7 +3800,7 @@
 
       const db = (typeof SKILLS_DATABASE !== 'undefined') ? SKILLS_DATABASE : [];
 
-      let list = [];
+      let list;
       if (query) {
         list = db.filter(s => s.name.toLowerCase().includes(query) || (s.description && s.description.toLowerCase().includes(query)));
       } else {
@@ -4068,7 +3808,7 @@
       }
 
       if (list.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:30px 10px; color:var(--text-secondary); font-size:13px;">${query ? "No skills matching '" + query + "'" : "No skills found in this category."}</div>`;
+        container.innerHTML = `<div style="text-align:center; padding:30px 10px; color:var(--text-secondary); font-size:13px;">${query ? "No skills matching '" + escapeHtml(query) + "'" : "No skills found in this category."}</div>`;
         return;
       }
 
@@ -4144,16 +3884,16 @@
                onclick="selectSkill('${escapedName}')">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
               <div style="font-weight:bold; font-size:13px; color:${isSelectable ? 'var(--gold-accent)' : 'var(--text-secondary)'}; flex:1;">
-                ${s.name}
+                ${escapeHtml(s.name)}
               </div>
               ${badgeHtml}
             </div>
             ${statusHtml}
             ${parentInfoHtml}
             <div style="font-size:11px; color:var(--text-primary); margin-top:6px; line-height:1.4;">
-              ${s.description}
+              ${escapeHtml(s.description)}
             </div>
-            ${query ? `<div style="font-size:9px; color:var(--text-secondary); margin-top:4px;">Category: ${s.category}</div>` : ''}
+            ${query ? `<div style="font-size:9px; color:var(--text-secondary); margin-top:4px;">Category: ${escapeHtml(s.category)}</div>` : ''}
           </div>
         `;
       }).join('');
@@ -4257,16 +3997,6 @@
       switchSessionTab(currentSessionTab);
     }
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-    }
-
     /* SPELLBOOK TAB */
     let selectedSpellBookIndex = 0;
     let spellBookSearchQuery = '';
@@ -4274,7 +4004,8 @@
     function isMagicOrBibleAbility(name) {
       if (!name) return false;
       const clean = name.trim().toLowerCase();
-      return clean.startsWith('magic:') || clean.startsWith('bible') || clean.includes('bible') || clean.startsWith('faith') || clean.includes('faith');
+      // "bible" and "faith" count only as whole words, so "Faithful Blade" is not magic.
+      return clean.startsWith('magic:') || /\b(bible|faith)\b/.test(clean);
     }
 
     function findSpellBookForAbility(abilityName) {
@@ -4291,7 +4022,8 @@
       for (const key of Object.keys(SPELLBOOKS_DATABASE)) {
         const book = SPELLBOOKS_DATABASE[key];
         const bClean = (book.name || '').trim().toLowerCase();
-        if (clean.startsWith(bClean) || bClean.startsWith(clean)) return book;
+        // Fuzzy steps need 3+ characters, otherwise "a" matches the first book that starts with "a".
+        if (bClean && clean.length >= 3 && (clean.startsWith(bClean) || bClean.startsWith(clean))) return book;
       }
 
       // 3. Alias match
@@ -4300,7 +4032,7 @@
         if (book.aliases && Array.isArray(book.aliases)) {
           for (const alias of book.aliases) {
             const aClean = alias.trim().toLowerCase();
-            if (clean === aClean || clean.startsWith(aClean) || clean.includes(aClean) || aClean.includes(clean)) {
+            if (clean === aClean || (aClean && clean.length >= 3 && (clean.startsWith(aClean) || clean.includes(aClean) || aClean.includes(clean)))) {
               return book;
             }
           }
@@ -4594,7 +4326,7 @@
           (p.effect && p.effect.toLowerCase().includes(query))
         ) : allPrayers;
 
-        let prayersHtml = '';
+        let prayersHtml;
         if (filteredPrayers.length === 0) {
           prayersHtml = `
             <div style="text-align:center; padding:30px; color:var(--text-secondary); font-size:13px;">
@@ -4701,8 +4433,8 @@
           <div class="item-card" style="${n.isArchived ? 'opacity:0.65; border:1px dashed var(--surface-variant);' : ''}">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-weight:bold; font-size:16px; color:${n.isArchived ? 'var(--text-secondary)' : 'var(--gold-accent)'};">${n.title}</span>
-                ${n.tag ? `<span style="font-size:10px; font-weight:bold; color:var(--cyan-accent); background:var(--surface-variant); padding:2px 6px; border-radius:4px;">${n.tag.toUpperCase()}</span>` : ''}
+                <span style="font-weight:bold; font-size:16px; color:${n.isArchived ? 'var(--text-secondary)' : 'var(--gold-accent)'};">${escapeHtml(n.title)}</span>
+                ${n.tag ? `<span style="font-size:10px; font-weight:bold; color:var(--cyan-accent); background:var(--surface-variant); padding:2px 6px; border-radius:4px;">${escapeHtml(n.tag.toUpperCase())}</span>` : ''}
                 ${n.isArchived ? `<span style="font-size:9px; font-weight:bold; color:var(--crimson-primary); background:rgba(229,57,53,0.15); padding:2px 6px; border-radius:4px;">ARCHIVED</span>` : ''}
               </div>
               <div style="display:flex; gap:4px; align-items:center;">
@@ -4717,7 +4449,7 @@
 
             ${n.content ? `
               <div style="background:var(--surface-variant); padding:10px; border-radius:8px; cursor:${isLong ? 'pointer' : 'default'};" ${isLong ? `onclick="toggleCardExpansion('${n.id}')"` : ''}>
-                <div style="font-size:14px; font-weight:400; color:var(--text-primary); white-space:pre-line;">${displayText}</div>
+                <div style="font-size:14px; font-weight:400; color:var(--text-primary); white-space:pre-line;">${escapeHtml(displayText)}</div>
               </div>
             ` : ''}
           </div>
@@ -4832,16 +4564,16 @@
         const isCollapsed = c.equipmentCategoryCollapsed && c.equipmentCategoryCollapsed[cat] === true;
         
         htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
-        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('equipment', '${cat}')">`;
+        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('equipment', ${jsArg(cat)})">`;
         htmlStr += `  <div style="font-weight:bold; color:var(--gold-accent);">`;
-        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${cat.toUpperCase()} (${items.length})`;
+        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${escapeHtml(cat.toUpperCase())} (${items.length})`;
         htmlStr += `  </div>`;
         htmlStr += `  <div style="display:flex; gap:8px;" onclick="event.stopPropagation()">`;
         if (catIdx > 0) {
-            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', '${cat}', 'up')">🔼</button>`;
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', ${jsArg(cat)}, 'up')">🔼</button>`;
         }
         if (catIdx < categories.length - 1) {
-            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', '${cat}', 'down')">🔽</button>`;
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('equipment', ${jsArg(cat)}, 'down')">🔽</button>`;
         }
         htmlStr += `  </div>`;
         htmlStr += `</div>`;
@@ -4853,7 +4585,7 @@
             <div class="item-card equipped">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                  <span style="font-weight:bold; font-size:15px;">${item.name}</span>
+                  <span style="font-weight:bold; font-size:15px;">${escapeHtml(item.name)}</span>
                 </div>
                 <div>
                   <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', true)">🔼</button>
@@ -4865,9 +4597,9 @@
               <div style="display:flex; gap:6px; flex-wrap:wrap;">
                 ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
                 ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
-                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
+                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${escapeHtml(st.toUpperCase())}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
               </div>
-              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
+              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${escapeHtml(item.attackDamage) || 'Base'} Dmg)</div>` : ''}
               ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px; margin-top:4px;">✨ Equipped Effect: ${escapeHtml(item.specialEffectsText)}</div>` : ''}
               ${(item.hasSpecialEffects && item.onHandSpecialEffectsText) ? `<div style="font-size:12px; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px; margin-top:4px;">🗡️ On-Hand Effect: ${escapeHtml(item.onHandSpecialEffectsText)}</div>` : ''}
               ${item.hasMagic && (item.spellDamageModifier || item.spellHealingModifier) ? `
@@ -4918,16 +4650,16 @@
         const isCollapsed = c.inventoryCategoryCollapsed && c.inventoryCategoryCollapsed[cat] === true;
         
         htmlStr += `<div class="category-group" style="margin-bottom: 16px;">`;
-        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('inventory', '${cat}')">`;
+        htmlStr += `<div class="category-header" style="display:flex; justify-content:space-between; align-items:center; background:var(--surface-variant); padding:8px 12px; border-radius:6px; cursor:pointer;" onclick="toggleCategoryCollapse('inventory', ${jsArg(cat)})">`;
         htmlStr += `  <div style="font-weight:bold; color:var(--text-secondary);">`;
-        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${cat.toUpperCase()} (${items.length})`;
+        htmlStr += `    ${isCollapsed ? '▶' : '▼'} ${escapeHtml(cat.toUpperCase())} (${items.length})`;
         htmlStr += `  </div>`;
         htmlStr += `  <div style="display:flex; gap:8px;" onclick="event.stopPropagation()">`;
         if (catIdx > 0) {
-            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', '${cat}', 'up')">🔼</button>`;
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', ${jsArg(cat)}, 'up')">🔼</button>`;
         }
         if (catIdx < categories.length - 1) {
-            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', '${cat}', 'down')">🔽</button>`;
+            htmlStr += `    <button class="action-icon-btn" style="color:var(--text-secondary);" onclick="moveCategory('inventory', ${jsArg(cat)}, 'down')">🔽</button>`;
         }
         htmlStr += `  </div>`;
         htmlStr += `</div>`;
@@ -4939,7 +4671,7 @@
             <div class="item-card">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                  <span style="font-weight:bold; font-size:15px;">${item.name}</span>
+                  <span style="font-weight:bold; font-size:15px;">${escapeHtml(item.name)}</span>
                 </div>
                 <div>
                   <button class="action-icon-btn" style="color:var(--text-secondary);" title="Move Up" onclick="moveItem('inventory', '${item.id}', 'up', false)">🔼</button>
@@ -4951,9 +4683,9 @@
               <div style="display:flex; gap:6px; flex-wrap:wrap;">
                 ${(item.hasArmor && item.armorSave > 0) ? `<span class="save-badge save-armor">🛡️ Armor: ${item.armorSave}</span>` : ''}
                 ${(item.hasWard && item.wardSave > 0) ? `<span class="save-badge save-ward">✨ Ward: ${item.wardSave}</span>` : ''}
-                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${st.toUpperCase()}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
+                ${(item.hasStatModifiers && item.statModifiers) ? Object.entries(item.statModifiers).map(([st, val]) => val !== 0 ? `<span class="save-badge" style="background:rgba(76,175,80,0.15); color:${val > 0 ? 'var(--green-hp)' : 'var(--crimson-primary)'};">${escapeHtml(st.toUpperCase())}: ${val > 0 ? '+' + val : val}</span>` : '').join('') : ''}
               </div>
-              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${item.attackDamage || 'Base'} Dmg)</div>` : ''}
+              ${item.hasAttacks ? `<div style="font-size:12px; font-weight:bold; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px;">⚔️ Attacks: ${item.attackCount || 1} × (${escapeHtml(item.attackDamage) || 'Base'} Dmg)</div>` : ''}
               ${(item.hasSpecialEffects && item.specialEffectsText) ? `<div style="font-size:12px; color:var(--cyan-accent); background:rgba(0,188,212,0.12); padding:4px 8px; border-radius:6px; margin-top:4px;">✨ Equipped Effect: ${escapeHtml(item.specialEffectsText)}</div>` : ''}
               ${(item.hasSpecialEffects && item.onHandSpecialEffectsText) ? `<div style="font-size:12px; color:var(--gold-accent); background:rgba(212,175,55,0.12); padding:4px 8px; border-radius:6px; margin-top:4px;">🗡️ On-Hand Effect: ${escapeHtml(item.onHandSpecialEffectsText)}</div>` : ''}
               ${item.hasMagic && (item.spellDamageModifier || item.spellHealingModifier) ? `
@@ -5014,7 +4746,7 @@
       if (!collapseState) collapseState = {};
       
       const anyExpanded = categories.some(cat => collapseState[cat] === false);
-      const newState = anyExpanded ? true : false;
+      const newState = anyExpanded;
       
       categories.forEach(cat => { collapseState[cat] = newState; });
       if (isEquip) c.equipmentCategoryCollapsed = collapseState;
@@ -5065,8 +4797,7 @@
         const item = c.inventory.find(i => i.id === itemId);
         if (item) {
           item.isEquipped = !item.isEquipped;
-          c.currentArmor = null;
-          c.currentWard = null;
+          capDefensesToGear(c);
         }
       });
       saveData();
@@ -5079,8 +4810,7 @@
       if (!c || !c.inventory) return;
       adjustVitalsOnMaxChange(c, () => {
         c.inventory = c.inventory.filter(i => i.id !== itemId);
-        c.currentArmor = null;
-        c.currentWard = null;
+        capDefensesToGear(c);
       });
       saveData();
       switchSessionTab(currentSessionTab);
@@ -5345,6 +5075,7 @@
           c.inventory.push(newItem);
         }
 
+        capDefensesToGear(c);
         if (isEquipped) {
           if (!c.equipmentCategoryOrder) c.equipmentCategoryOrder = [];
           if (!c.equipmentCategoryOrder.includes(category)) c.equipmentCategoryOrder.push(category);
@@ -5355,8 +5086,6 @@
           if (c.inventoryCategoryCollapsed) c.inventoryCategoryCollapsed[category] = false;
         }
         
-        c.currentArmor = null;
-        c.currentWard = null;
       });
 
       saveData();
@@ -5543,7 +5272,7 @@
 
       document.getElementById('modalTitle').innerText = 'EDIT HERO';
       document.getElementById('modalSaveBtn').innerText = 'SAVE CHANGES';
-      document.getElementById('photoPreviewContent').innerHTML = uploadedImageBase64 ? `<img src="${uploadedImageBase64}">` : `📷`;
+      document.getElementById('photoPreviewContent').innerHTML = uploadedImageBase64 ? `<img src="${uploadedImageBase64}" alt="Hero picture">` : `📷`;
       document.getElementById('inputName').value = c.name;
       document.getElementById('inputRace').value = c.race;
       document.getElementById('inputLevel').value = c.level || 1;
@@ -5578,7 +5307,7 @@
     function updateModalDerivedPreview() {
       const isHideMp = document.getElementById('inputHideMp')?.checked || false;
       const hp = (tempStats.endurance || 0) * 10;
-      const mp = (tempStats.intelligence || 0) * 1;
+      const mp = (tempStats.intelligence || 0);
       const spi = (tempStats.spirit || 0);
 
       const hpEl = document.getElementById('modalPreviewHp');
@@ -5604,10 +5333,10 @@
     function saveNewCharacter() {
       const name = document.getElementById('inputName').value.trim();
       const race = document.getElementById('inputRace').value.trim();
-      const level = parseInt(document.getElementById('inputLevel').value) || 1;
+      const level = Math.min(99, Math.max(1, parseInt(document.getElementById('inputLevel').value) || 1));
       const hideMp = document.getElementById('inputHideMp').checked;
       const maxHp = (tempStats.endurance || 0) * 10;
-      const maxMp = (tempStats.intelligence || 0) * 1;
+      const maxMp = (tempStats.intelligence || 0);
 
       if (!name) { alert("Please enter a character name"); return; }
       if (!race) { alert("Please enter a race"); return; }
@@ -5657,7 +5386,7 @@
           document.getElementById('appTitle').innerText = c.name;
           document.getElementById('appSubtitle').innerText = `${c.race}`;
           if (c.imageUri) {
-            document.getElementById('headerAvatarBox').innerHTML = `<img src="${c.imageUri}">`;
+            document.getElementById('headerAvatarBox').innerHTML = `<img src="${escapeHtml(c.imageUri)}" alt="">`;
           }
         }
         renderUseScreen();
@@ -5758,20 +5487,15 @@
       reader.onload = function(e) {
         try {
           const parsed = JSON.parse(e.target.result);
-          if (Array.isArray(parsed)) {
-              parsed.forEach(c => {
-                  if(c.name) {
-                      c.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-                      characters.push(c);
-                      totalImported++;
-                  }
-              });
-          } else {
-              if (!parsed.name) throw new Error("Invalid format");
-              parsed.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-              characters.push(parsed);
-              totalImported++;
-          }
+          (Array.isArray(parsed) ? parsed : [parsed]).forEach(raw => {
+              const c = normalizeCharacter(raw);
+              if (c) {
+                  // Always give imported heroes a fresh id so they never overwrite an existing hero.
+                  c.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+                  characters.push(c);
+                  totalImported++;
+              }
+          });
         } catch(err) {
           console.error("Invalid character file.", err);
         }
@@ -5873,52 +5597,21 @@
       });
     }
 
-    window.onload = init;
-    let apiSyncInterval = null;
-
-    function openApiModal() {
-      document.getElementById('apiServerUrl').value = localStorage.getItem('apiServerUrl') || '';
-      document.getElementById('apiKeyInput').value = localStorage.getItem('apiKeyInput') || '';
-      document.getElementById('apiAutoSync').checked = localStorage.getItem('apiAutoSync') === 'true';
-      document.getElementById('apiSyncIntervalMins').value = localStorage.getItem('apiSyncIntervalMins') || '3';
-      document.getElementById('apiModal').classList.remove('hidden');
-    }
-
-    function closeApiModal() {
-      localStorage.setItem('apiServerUrl', document.getElementById('apiServerUrl').value.trim());
-      localStorage.setItem('apiKeyInput', document.getElementById('apiKeyInput').value.trim());
-      const mins = parseInt(document.getElementById('apiSyncIntervalMins').value) || 3;
-      localStorage.setItem('apiSyncIntervalMins', mins);
-      document.getElementById('apiModal').classList.add('hidden');
-    }
-
-    function toggleAutoSync() {
-      const isAuto = document.getElementById('apiAutoSync').checked;
-      const mins = parseInt(document.getElementById('apiSyncIntervalMins').value) || 3;
-      localStorage.setItem('apiAutoSync', isAuto);
-      localStorage.setItem('apiSyncIntervalMins', mins);
-      if (isAuto) {
-        startAutoSync();
-      } else {
-        stopAutoSync();
-      }
-    }
-
-    function startAutoSync() {
-      if (apiSyncInterval) clearInterval(apiSyncInterval);
-      const mins = parseInt(localStorage.getItem('apiSyncIntervalMins')) || 3;
-      apiSyncInterval = setInterval(() => {
-        manualApiSync(true);
-      }, mins * 60 * 1000);
-    }
-
-    function stopAutoSync() {
-      if (apiSyncInterval) clearInterval(apiSyncInterval);
-      apiSyncInterval = null;
-    }
-
-        let pendingSyncTimeout = null;
-    
+    // Skills and spell books come from the same JSON files the Android app uses (one copy of the data).
+    window.addEventListener('load', () => {
+      const load = f => fetch(f).then(r => (r.ok ? r.json() : null)).catch(() => null);
+      Promise.all([load('skills.json'), load('spellbooks.json')]).then(([skills, books]) => {
+        if (skills) window.SKILLS_DATABASE = skills;
+        if (books) window.SPELLBOOKS_DATABASE = books;
+        if (!skills || !books) {
+          // A page opened as a file (file://) cannot read the JSON files; spell books and skills would just look empty.
+          const bar = document.createElement('div');
+          bar.style.cssText = 'background:#b71c1c;color:#fff;padding:8px 12px;font-size:12px;text-align:center;';
+          bar.textContent = 'Skills and spell books could not be loaded. Open this page from its web address or a local web server, not as a file.';
+          document.body.prepend(bar);
+        }
+      }).finally(init);
+    });
     function showToast(message, color) {
         let toast = document.getElementById('syncToastMsg');
         if (!toast) {
@@ -5944,73 +5637,6 @@
             if (toast.parentNode) toast.parentNode.removeChild(toast);
         }, 4000);
     }
-
-    async function manualApiSync(silent = false) {
-        if (!activeCharId) return;
-        const c = characters.find(item => item.id === activeCharId);
-        if (!c) return;
-
-        if (silent) {
-           const hasOpenDialog = Array.from(document.querySelectorAll('.modal-overlay')).some(modal => !modal.classList.contains('hidden'));
-           if (hasOpenDialog) {
-             if (pendingSyncTimeout) clearTimeout(pendingSyncTimeout);
-             showToast("Website is waiting for you to finish to Sync...", "var(--gold-accent)");
-             
-             pendingSyncTimeout = setTimeout(() => {
-                 manualApiSync(true);
-             }, 3000);
-             return;
-           }
-        }
-
-        const url = document.getElementById('apiServerUrl').value.trim() || localStorage.getItem('apiServerUrl');
-        const key = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem('apiKeyInput');
-
-        if (!url) {
-          if (!silent) alert('Please enter a Server URL (e.g. 192.168.1.5:8080)');
-          return;
-        }
-
-        let fetchUrl = url;
-        if (!fetchUrl.startsWith('http')) fetchUrl = 'http://' + fetchUrl;
-        if (!fetchUrl.endsWith('/api/sync')) fetchUrl = fetchUrl.replace(/\/?$/, '/api/sync');
-
-        try {
-          const payload = new URLSearchParams();
-          payload.append('postData', JSON.stringify(c));
-
-          const res = await fetch(fetchUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'Authorization': 'Bearer ' + key
-            },
-            body: payload
-          });
-
-          if (res.ok) {
-            if (!silent) {
-              alert('Character synced successfully to local Android app!');
-              closeApiModal();
-            } else {
-              showToast("Auto-sync successful!", "var(--green-hp)");
-            }
-          } else {
-            if (!silent) alert('Sync failed! Status: ' + res.status);
-            else showToast('Sync failed! Status: ' + res.status, "var(--crimson-primary)");
-          }
-        } catch (err) {
-          if (!silent) alert('Sync failed! Could not reach the server: ' + err.message);
-          else showToast('Sync failed! Server unreachable.', "var(--crimson-primary)");
-        }
-      }
-
-      // Initialize Auto Sync on load
-    window.addEventListener('load', () => {
-      if (localStorage.getItem('apiAutoSync') === 'true') {
-        startAutoSync();
-      }
-    });
 
     /* Level Up Logic */
     function openLevelUpModal() {

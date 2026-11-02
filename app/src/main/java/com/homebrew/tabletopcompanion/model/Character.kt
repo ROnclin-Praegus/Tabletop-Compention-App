@@ -7,8 +7,7 @@ data class Character(
     val name: String,
     val race: String,
     var level: Int = 1,
-    val maxHp: Int,
-    var currentHp: Int = maxHp,
+    var currentHp: Int,
     var boostHp: Int = 0,
     var maxBoostHp: Int = 0,
     var boostHpTurns: Int = 0, // 0 = unlimited/expired
@@ -23,8 +22,7 @@ data class Character(
     var maxBoostWard: Int = 0,
     var boostWardTurns: Int = 0,
     var boostWardResetOnNextRound: Boolean = true,
-    val maxMp: Int,
-    var currentMp: Int = maxMp,
+    var currentMp: Int = 0,
     val hideMp: Boolean = false,
     var gold: Int = 0,
     val imageUri: String? = null,
@@ -50,6 +48,22 @@ data class Character(
     fun getTotalWard(): Int = inventory
         .filter { it.isEquipped && (it.hasWard || it.wardSave > 0) }
         .sumOf { it.wardSave }
+
+    /**
+     * Returns this hero with a new inventory. Armor and ward that already took damage stay damaged
+     * (they are only capped to the new total), so changing gear mid-round does not heal them.
+     * Armor that is still untouched (null = "full") stays full, so newly equipped armor counts at once.
+     */
+    fun withInventory(newInventory: List<EquipmentItem>): Character {
+        val changed = copy(inventory = newInventory)
+        return changed.copy(
+            currentArmor = currentArmor?.coerceAtMost(changed.getTotalArmor()),
+            currentWard = currentWard?.coerceAtMost(changed.getTotalWard())
+        )
+    }
+
+    /** Gold after adding [amount], stopping at the largest Int instead of wrapping to a negative number. */
+    fun goldPlus(amount: Int): Int = (gold.toLong() + amount).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
     fun getEffectiveCurrentArmor(): Int = currentArmor ?: getTotalArmor()
     fun getEffectiveCurrentWard(): Int = currentWard ?: getTotalWard()
@@ -89,6 +103,19 @@ data class Character(
     fun getEffectiveSpirit(): Int {
         val totalSpi = spirit + getStatModifier("spirit")
         return totalSpi.coerceAtLeast(0)
+    }
+
+    /**
+     * [changed] is this hero after a stat or gear change. Max HP/MP moved, so current HP/MP move by the
+     * same amount (never below 0 or above the new max). Used by the Use screen and the edit dialog.
+     */
+    fun withVitalsAdjustedTo(changed: Character): Character {
+        val newMaxHp = changed.getEffectiveMaxHp()
+        val newMaxMp = changed.getEffectiveMaxMp()
+        return changed.copy(
+            currentHp = (currentHp + newMaxHp - getEffectiveMaxHp()).coerceIn(0, newMaxHp),
+            currentMp = (currentMp + newMaxMp - getEffectiveMaxMp()).coerceIn(0, newMaxMp)
+        )
     }
 
     fun formatAbilityDescription(rawDesc: String): String {

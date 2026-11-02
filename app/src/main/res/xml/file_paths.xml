@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-files-path name="external_files" path="." />
-    <external-path name="external" path="." />
-    <files-path name="files" path="." />
-    <cache-path name="cache" path="." />
+<!-- Only the folder the update APK is saved in (see GitHubUpdateChecker.downloadApk). Never share "." here:
+     that would let a FileProvider URI point at saved heroes and settings. -->
+<paths>
+    <external-files-path name="downloads" path="Download/" />
+    <cache-path name="cache_downloads" path="." />
 </paths>

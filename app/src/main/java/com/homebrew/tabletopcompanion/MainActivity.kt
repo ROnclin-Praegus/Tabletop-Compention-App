@@ -5,8 +5,10 @@ import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import android.os.Bundle
 import android.widget.Toast
+import java.io.File
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.work.ExistingWorkPolicy
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -32,9 +34,6 @@ import com.homebrew.tabletopcompanion.worker.PhotoApiWorker
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 sealed class Screen {
     object Select : Screen()
@@ -52,10 +51,20 @@ class MainActivity : ComponentActivity() {
         handleNotificationIntent(intent)
     }
 
+    /**
+     * True only if [path] really points inside our cache folder. MainActivity is exported, so the path
+     * can come from another app; comparing real (canonical) paths stops tricks like "<cache>/../shared_prefs/x".
+     */
+    private fun isInsideCache(path: String): Boolean = try {
+        File(path).canonicalPath.startsWith(cacheDir.canonicalPath + File.separator)
+    } catch (e: Exception) {
+        false
+    }
+
     private fun handleNotificationIntent(intent: Intent?) {
         intent?.let {
             if (it.getBooleanExtra(PhotoApiWorker.EXTRA_OPEN_PHOTO, false)) {
-                val path = it.getStringExtra(PhotoApiWorker.EXTRA_PHOTO_PATH)
+                val path = it.getStringExtra(PhotoApiWorker.EXTRA_PHOTO_PATH)?.takeIf { p -> isInsideCache(p) }
                 if (!path.isNullOrBlank()) {
                     pendingPhotoPathState.value = path
                     openPendingPhotoState.value = true
@@ -74,12 +83,11 @@ class MainActivity : ComponentActivity() {
             requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         repository = CharacterRepository(this)
-        com.homebrew.tabletopcompanion.server.GameServerManager.init(this)
 
         handleNotificationIntent(intent)
 
         if (repository.isPremium() && repository.getPhotoApiUrl().isNotBlank()) {
-            PhotoApiWorker.scheduleNext(this, repository.getPhotoIntervalMinutes())
+            PhotoApiWorker.scheduleNext(this, repository.getPhotoIntervalMinutes(), ExistingWorkPolicy.KEEP)
         }
 
         setContent {
@@ -93,6 +101,17 @@ class MainActivity : ComponentActivity() {
 
                     var currentScreen by remember { mutableStateOf<Screen>(Screen.Select) }
                     var characters by remember { mutableStateOf(repository.getCharacters()) }
+                    var unreadableBackup by remember { mutableStateOf(repository.unreadableBackup()) }
+
+                    // Tell the user once if some saved heroes could not be read (a copy of the data is kept).
+                    LaunchedEffect(Unit) {
+                        val unreadable = repository.takeUnreadableNotice()
+                        if (unreadable != 0) {
+                            val message = if (unreadable < 0) "Saved heroes could not be read. A copy of the data was kept."
+                            else "$unreadable saved hero(es) could not be read and were left out. A copy of the data was kept."
+                            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                        }
+                    }
                     var updateInfoState by remember { mutableStateOf<UpdateInfo?>(null) }
                     var isPremium by remember { mutableStateOf(repository.isPremium()) }
 
@@ -107,20 +126,6 @@ class MainActivity : ComponentActivity() {
                     // Premium image display state
                     var showPremiumImage by remember { mutableStateOf(false) }
                     var currentPremiumImageUrl by remember { mutableStateOf<String?>(null) }
-
-                    LaunchedEffect(Unit) {
-                        com.homebrew.tabletopcompanion.server.GameServerManager.onSyncReceived = { jsonData ->
-                            try {
-                                val gson = com.google.gson.Gson()
-                                val syncedChar = gson.fromJson(jsonData, Character::class.java)
-                                runOnUiThread {
-                                    Toast.makeText(this@MainActivity, "Upload received: ${syncedChar.name}!", Toast.LENGTH_SHORT).show()
-                                }
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                        }
-                    }
 
                     LaunchedEffect(openPendingPhotoState.value) {
                         if (openPendingPhotoState.value) {
@@ -144,49 +149,7 @@ class MainActivity : ComponentActivity() {
 
                             android.util.Log.d("PhotoAPI", "Timer elapsed! Initiating photo GET request to: $photoApiUrl")
                             val fetchedUrl = withContext(Dispatchers.IO) {
-                                try {
-                                    android.util.Log.d("PhotoAPI", "Opening connection to $photoApiUrl (Auth header: ${if (photoApiKey.isNotBlank()) "Bearer present (${photoApiKey.length} chars)" else "none"})")
-                                    val conn = URL(photoApiUrl).openConnection() as HttpURLConnection
-                                    conn.requestMethod = "GET"
-                                    conn.setRequestProperty("Accept", "image/*, application/json")
-                                    if (photoApiKey.isNotBlank()) {
-                                        conn.setRequestProperty("Authorization", "Bearer $photoApiKey")
-                                    }
-                                    conn.connectTimeout = 10_000
-                                    conn.readTimeout = 10_000
-                                    conn.instanceFollowRedirects = true
-
-                                    val code = conn.responseCode
-                                    val contentType = conn.contentType ?: "unknown"
-                                    val contentLength = conn.contentLengthLong
-                                    android.util.Log.d("PhotoAPI", "Received response: HTTP $code | Content-Type: $contentType | Content-Length: ${if (contentLength >= 0) "$contentLength bytes" else "unknown"}")
-
-                                    if (code in 200..299) {
-                                        if (contentType.contains("json", ignoreCase = true)) {
-                                            val json = conn.inputStream.bufferedReader().readText()
-                                            android.util.Log.d("PhotoAPI", "JSON response received (${json.length} chars): $json")
-                                            val extracted = extractImageUrl(json)
-                                            android.util.Log.d("PhotoAPI", "Extracted image URL from JSON: $extracted")
-                                            extracted
-                                        } else {
-                                            val tempFile = java.io.File(context.cacheDir, "premium_photo_${System.currentTimeMillis()}.jpg")
-                                            var bytesWritten = 0L
-                                            conn.inputStream.use { input ->
-                                                tempFile.outputStream().use { output ->
-                                                    bytesWritten = input.copyTo(output)
-                                                }
-                                            }
-                                            android.util.Log.d("PhotoAPI", "Direct image downloaded successfully ($bytesWritten bytes) -> saved to ${tempFile.absolutePath}")
-                                            tempFile.absolutePath
-                                        }
-                                    } else {
-                                        android.util.Log.e("PhotoAPI", "Photo fetch FAILED: HTTP $code ($contentType) for $photoApiUrl")
-                                        null
-                                    }
-                                } catch (e: Exception) {
-                                    android.util.Log.e("PhotoAPI", "Photo fetch EXCEPTION for $photoApiUrl: ${e.message}", e)
-                                    null
-                                }
+                                PhotoApiWorker.fetchPhoto(context, photoApiUrl, photoApiKey)
                             }
 
                             if (fetchedUrl != null) {
@@ -255,7 +218,12 @@ class MainActivity : ComponentActivity() {
                                     showPhotoApiSetupDialog = true
                                 },
                                 photoApiUrl = photoApiUrl,
-                                photoIntervalMinutes = photoIntervalMinutes
+                                photoIntervalMinutes = photoIntervalMinutes,
+                                unreadableBackup = unreadableBackup,
+                                onBackupExported = {
+                                    repository.clearUnreadableBackup()
+                                    unreadableBackup = null
+                                }
                             )
                         }
                         is Screen.Use -> {
@@ -299,7 +267,7 @@ class MainActivity : ComponentActivity() {
                             val pathToDelete = currentPremiumImageUrl
                             currentPremiumImageUrl = null
                             showPremiumImage = false
-                            if (pathToDelete != null && pathToDelete.startsWith(context.cacheDir.absolutePath)) {
+                            if (pathToDelete != null && isInsideCache(pathToDelete)) {
                                 try {
                                     val f = java.io.File(pathToDelete)
                                     if (f.exists()) {
@@ -366,40 +334,3 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * Heuristically extracts an image URL from a JSON response string.
- * Supports common photo-API patterns:
- *  - `{ "url": "..." }`
- *  - `{ "download_url": "..." }` (picsum.photos)
- *  - `{ "src": { "original": "..." } }` (Pexels)
- *  - `{ "urls": { "regular": "..." } }` (Unsplash)
- *  - `{ "link": "..." }`
- *  - `{ "image_url": "..." }`
- */
-private fun extractImageUrl(json: String): String? {
-    return try {
-        val obj = JSONObject(json)
-        // Direct string fields
-        for (key in listOf("url", "download_url", "link", "image_url", "photo_url", "file_url")) {
-            if (obj.has(key) && !obj.isNull(key)) {
-                val v = obj.optString(key)
-                if (v.startsWith("http")) return v
-            }
-        }
-        // Nested: urls.regular / urls.full (Unsplash)
-        if (obj.has("urls")) {
-            val urls = obj.optJSONObject("urls")
-            val v = urls?.optString("regular") ?: urls?.optString("full") ?: ""
-            if (v.startsWith("http")) return v
-        }
-        // Nested: src.original / src.large (Pexels)
-        if (obj.has("src")) {
-            val src = obj.optJSONObject("src")
-            val v = src?.optString("original") ?: src?.optString("large") ?: ""
-            if (v.startsWith("http")) return v
-        }
-        null
-    } catch (e: Exception) {
-        null
-    }
-}

@@ -1,5 +1,6 @@
 package com.homebrew.tabletopcompanion.model
 
+import com.google.gson.annotations.SerializedName
 import java.util.UUID
 
 enum class EffectType {
@@ -9,8 +10,11 @@ enum class EffectType {
 }
 
 enum class DamageType {
+    @SerializedName(value = "PHYSICAL", alternate = ["physical"])
     PHYSICAL,   // Absorbed by Armor first, then Boost HP, then HP
+    @SerializedName(value = "MAGICAL", alternate = ["magical"])
     MAGICAL,    // Absorbed by Ward Save first, then Boost HP, then HP
+    @SerializedName(value = "UNSAVEABLE", alternate = ["unsaveable"])
     UNSAVEABLE  // Bypasses Armor & Ward, absorbed by Boost HP first, then HP
 }
 

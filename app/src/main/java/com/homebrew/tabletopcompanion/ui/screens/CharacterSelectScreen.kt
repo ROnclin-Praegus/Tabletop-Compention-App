@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.homebrew.tabletopcompanion.data.CharacterRepository
 import com.homebrew.tabletopcompanion.model.Character
 import com.homebrew.tabletopcompanion.ui.theme.*
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -41,8 +42,8 @@ import java.util.UUID
 import android.widget.Toast
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
-import com.homebrew.tabletopcompanion.ui.screens.ApiConfigDialog
-import androidx.compose.material.icons.filled.Settings
+
+private const val MAX_IMPORT_CHARS = 5_000_000
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +58,9 @@ fun CharacterSelectScreen(
     onCheckForUpdates: () -> Unit = {},
     onOpenPhotoApiSettings: () -> Unit = {},
     photoApiUrl: String = "",
-    photoIntervalMinutes: Int = 15
+    photoIntervalMinutes: Int = 15,
+    unreadableBackup: String? = null,
+    onBackupExported: () -> Unit = {}
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var showApiDialog by remember { mutableStateOf(false) }
@@ -76,7 +79,10 @@ fun CharacterSelectScreen(
                     context.contentResolver.openOutputStream(safeUri)?.use { out ->
                         out.write(gson.toJson(char).toByteArray())
                     }
-                    Toast.makeText(context, "Character exported successfully", Toast.LENGTH_SHORT).show()
+                    // A picture picked on this phone is only a link to a file here. It will not show on another device.
+                    val pictureStaysHere = char.imageUri?.startsWith("content://") == true
+                    val message = if (pictureStaysHere) "Exported. The picture stays on this phone." else "Character exported successfully"
+                    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Toast.makeText(context, "Failed to export character", Toast.LENGTH_SHORT).show()
                 }
@@ -85,12 +91,41 @@ fun CharacterSelectScreen(
         characterToExport = null
     }
 
+    // Saves the text of heroes that could not be read, so the user can repair it or send it to someone.
+    val backupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let { safeUri ->
+            try {
+                context.contentResolver.openOutputStream(safeUri)?.use { out ->
+                    out.write((unreadableBackup ?: "").toByteArray())
+                }
+                Toast.makeText(context, "Backup saved", Toast.LENGTH_SHORT).show()
+                onBackupExported()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to save backup", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { safeUri ->
             try {
-                val json = context.contentResolver.openInputStream(safeUri)?.bufferedReader().use { it?.readText() }
+                // A hero file is a few KB. Refuse anything huge instead of loading it all into memory.
+                val json = context.contentResolver.openInputStream(safeUri)?.bufferedReader().use { reader ->
+                    if (reader == null) null else {
+                        val text = StringBuilder()
+                        val buffer = CharArray(8192)
+                        var n = reader.read(buffer)
+                        while (n != -1 && text.length <= MAX_IMPORT_CHARS) {
+                            text.append(buffer, 0, n)
+                            n = reader.read(buffer)
+                        }
+                        if (text.length > MAX_IMPORT_CHARS) throw IllegalArgumentException("file too large")
+                        text.toString()
+                    }
+                }
                 if (json != null) {
-                    val importedChar = gson.fromJson(json, Character::class.java)
+                    // Same cleanup as for saved heroes: a file with missing parts must not crash the app.
+                    val importedChar = gson.fromJson(json, Character::class.java)?.let { CharacterRepository.sanitizeCharacter(it) }
                     if (importedChar != null && importedChar.name.isNotBlank()) {
                         val newChar = importedChar.copy(id = UUID.randomUUID().toString())
                         onCreateCharacter(newChar)
@@ -134,6 +169,11 @@ fun CharacterSelectScreen(
                     }
                 },
                 actions = {
+                    if (unreadableBackup != null) {
+                        TextButton(onClick = { backupLauncher.launch("unreadable-heroes.json") }) {
+                            Text(text = "💾 BACKUP", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = CrimsonPrimary)
+                        }
+                    }
                     TextButton(onClick = { importLauncher.launch("application/json") }) {
                         Text(
                             text = "📥 IMPORT",
@@ -345,27 +385,7 @@ fun CharacterSelectScreen(
             }
         } // Close the Column here!
         
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
-            FloatingActionButton(
-                onClick = { showApiDialog = true },
-                containerColor = DarkSurfaceVariant,
-                contentColor = GoldAccent,
-                modifier = Modifier.padding(start = 16.dp, bottom = 16.dp)
-            ) {
-                Icon(Icons.Default.Settings, contentDescription = "API Settings")
-            }
         }
-        }
-    }
-
-    if (showApiDialog) {
-        ApiConfigDialog(
-            onDismiss = { showApiDialog = false },
-            onExport = { c ->
-                characterToExport = c
-                exportLauncher.launch("${c.name}.json")
-            }
-        )
     }
 
     // Create Hero Dialog
@@ -541,7 +561,7 @@ fun CharacterCard(
                         Text("HP", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GreenHp)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "${character.currentHp} / ${character.maxHp}",
+                                text = "${character.currentHp} / ${character.getEffectiveMaxHp()}",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
@@ -565,7 +585,7 @@ fun CharacterCard(
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
-                    val isLowHp = (character.currentHp.toFloat() / character.maxHp.coerceAtLeast(1).toFloat()) <= 0.25f && character.boostHp <= 0
+                    val isLowHp = (character.currentHp.toFloat() / character.getEffectiveMaxHp().coerceAtLeast(1).toFloat()) <= 0.25f && character.boostHp <= 0
                     val hpTransition = rememberInfiniteTransition(label = "listHpBlink")
                     val listBlinkColor by hpTransition.animateColor(
                         initialValue = CrimsonPrimary,
@@ -578,7 +598,7 @@ fun CharacterCard(
                     )
                     val hpColor = if (character.boostHp > 0) GoldAccent else if (isLowHp) listBlinkColor else GreenHp
                     LinearProgressIndicator(
-                        progress = { (character.currentHp.toFloat() / character.maxHp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
+                        progress = { (character.currentHp.toFloat() / character.getEffectiveMaxHp().coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
@@ -589,7 +609,7 @@ fun CharacterCard(
                 }
 
                 // MP Bar (Only shown if character uses MP and maxMp > 0)
-                if (!character.hideMp && character.maxMp > 0) {
+                if (character.getEffectiveMaxMp() > 0) {
                     Column {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -597,7 +617,7 @@ fun CharacterCard(
                         ) {
                             Text("MP", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = BlueMp)
                             Text(
-                                text = "${character.currentMp} / ${character.maxMp}",
+                                text = "${character.currentMp} / ${character.getEffectiveMaxMp()}",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
@@ -605,7 +625,7 @@ fun CharacterCard(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         LinearProgressIndicator(
-                            progress = { (character.currentMp.toFloat() / character.maxMp.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
+                            progress = { (character.currentMp.toFloat() / character.getEffectiveMaxMp().coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(6.dp)
