@@ -180,7 +180,7 @@ fun PremiumPhotoApiDialog(
                                         conn.readTimeout   = 8_000
                                         conn.instanceFollowRedirects = true
                                         val code = conn.responseCode
-                                        android.util.Log.d("PhotoAPI", "Test connection to $trimmedUrl returned HTTP $code")
+                                        android.util.Log.d("PhotoAPI", "Test connection to ${URL(trimmedUrl).host} returned HTTP $code")
                                         conn.disconnect()
                                         code
                                     } catch (e: Exception) {

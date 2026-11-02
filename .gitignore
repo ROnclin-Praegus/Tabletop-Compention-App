@@ -93,3 +93,10 @@ err.txt
 /Premium/images4.jpg
 /app/src/main/res/drawable/images5.jpg
 /Premium/images5.jpg
+
+# Release signing config
+keystore.properties
+
+# Copied from docs/ at build time
+app/src/main/assets/skills.json
+app/src/main/assets/spellbooks.json

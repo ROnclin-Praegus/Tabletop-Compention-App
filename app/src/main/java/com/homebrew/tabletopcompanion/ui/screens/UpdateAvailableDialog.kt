@@ -43,6 +43,7 @@ fun UpdateAvailableDialog(
     var downloadProgress by remember { mutableFloatStateOf(0f) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var showBackupPrompt by remember { mutableStateOf(false) }
+    var backupFailedCount by remember { mutableStateOf<Int?>(null) }
 
     fun startUpdate() {
         showBackupPrompt = false
@@ -70,36 +71,59 @@ fun UpdateAvailableDialog(
     }
 
     val backupLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) {
-            try {
-                val documentUri = DocumentsContract.buildDocumentUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri))
-                val gson = Gson()
-                var successCount = 0
-                characters.forEach { char ->
-                    val newFileUri = DocumentsContract.createDocument(
-                        context.contentResolver, 
-                        documentUri, 
-                        "application/json", 
-                        "${char.name}.json"
-                    )
-                    if (newFileUri != null) {
-                        context.contentResolver.openOutputStream(newFileUri)?.use { out ->
-                            out.write(gson.toJson(char).toByteArray())
-                        }
-                        successCount++
-                    }
-                }
-                Toast.makeText(context, "Backed up $successCount characters successfully!", Toast.LENGTH_LONG).show()
-                startUpdate()
-            } catch (e: Exception) {
-                Toast.makeText(context, "Backup failed: ${e.message}", Toast.LENGTH_LONG).show()
-                startUpdate()
-            }
-        } else {
-            // User cancelled folder picker
+        if (uri == null) {
+            // User cancelled the folder picker
             Toast.makeText(context, "Backup cancelled. Starting update...", Toast.LENGTH_SHORT).show()
             startUpdate()
+            return@rememberLauncherForActivityResult
         }
+        val gson = Gson()
+        var saved = 0
+        var failed = 0
+        val folder = try {
+            DocumentsContract.buildDocumentUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri))
+        } catch (e: Exception) {
+            null
+        }
+        characters.forEach { char ->
+            // One broken hero must not stop the others from being saved.
+            try {
+                val file = DocumentsContract.createDocument(
+                    context.contentResolver, folder!!, "application/json", safeFileName(char.name) + ".json"
+                )
+                context.contentResolver.openOutputStream(file!!)?.use { out ->
+                    out.write(gson.toJson(char).toByteArray())
+                }
+                saved++
+            } catch (e: Exception) {
+                failed++
+            }
+        }
+        if (failed == 0) {
+            Toast.makeText(context, "Backed up $saved characters successfully!", Toast.LENGTH_LONG).show()
+            startUpdate()
+        } else {
+            // Do not install an update over heroes that are not saved without asking first.
+            backupFailedCount = failed
+        }
+    }
+
+    backupFailedCount?.let { failed ->
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Backup incomplete", fontWeight = FontWeight.Bold, color = GoldAccent) },
+            text = { Text("$failed character(s) could not be saved. Update anyway?", color = TextPrimary) },
+            confirmButton = {
+                Button(
+                    onClick = { backupFailedCount = null; startUpdate() },
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = DarkBackground)
+                ) { Text("UPDATE ANYWAY", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { backupFailedCount = null }) { Text("CANCEL", color = TextSecondary) }
+            },
+            containerColor = DarkSurface
+        )
     }
 
     if (showBackupPrompt) {
@@ -125,7 +149,7 @@ fun UpdateAvailableDialog(
     }
 
     Dialog(
-        onDismissRequest = { if (!isDownloading && !showBackupPrompt) onDismiss() },
+        onDismissRequest = { if (!isDownloading && !showBackupPrompt && backupFailedCount == null) onDismiss() },
         properties = DialogProperties(
             dismissOnBackPress = !isDownloading,
             dismissOnClickOutside = !isDownloading,
@@ -148,7 +172,7 @@ fun UpdateAvailableDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("??", fontSize = 26.sp)
+                    Text("🚀", fontSize = 26.sp) // rocket
                     Column {
                         Text(
                             text = "UPDATE AVAILABLE!",
@@ -185,7 +209,7 @@ fun UpdateAvailableDialog(
                             Text("CURRENT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
                             Text(currentVersion, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                         }
-                        Text("??", fontSize = 16.sp, color = GoldAccent, fontWeight = FontWeight.Bold)
+                        Text("→", fontSize = 16.sp, color = GoldAccent, fontWeight = FontWeight.Bold)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("LATEST", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
                             Text(updateInfo.versionTag, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = GreenHp)
@@ -285,3 +309,7 @@ fun UpdateAvailableDialog(
         }
     }
 }
+
+/** Turns a hero name into a safe file name: characters a file name cannot contain become "_". */
+internal fun safeFileName(name: String): String =
+    name.replace(Regex("""[\/:*?"<>|]"""), "_").trim().ifEmpty { "hero" }

@@ -538,7 +538,8 @@ fun AddEffectDialog(
                                 isDiceRoll = if (selectedType != EffectType.STAT_MODIFIER) isDiceRoll else false,
                                 diceFormula = if (selectedType != EffectType.STAT_MODIFIER && isDiceRoll) diceFormulaText.trim() else "",
                                 changeMode = if (selectedType != EffectType.STAT_MODIFIER) (if (isDiceRoll) diceMode else fixedMode) else "DMG",
-                                isEnabled = if (selectedType == EffectType.STAT_MODIFIER) isEnabled else true
+                                // Only stat effects have the switch in this dialog; the others keep their on/off state when edited.
+                                isEnabled = if (selectedType == EffectType.STAT_MODIFIER) isEnabled else (effectToEdit?.enabled ?: true)
                             )
                             onEffectSaved(effect)
                         },

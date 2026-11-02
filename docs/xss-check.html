@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Hostile hero check</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>body { font-family: system-ui, sans-serif; background: #121218; color: #eee; padding: 16px; } .pass { color: #4caf50; } .fail { color: #e53935; font-weight: bold; } iframe { width: 400px; height: 300px; border: 1px solid #444; }</style>
+</head>
+<body>
+  <h1>Hostile hero check</h1>
+  <p>Loads index.html with a hero whose every text field carries a script, draws every tab and dialog, and reports
+  which fields ran code. Serve the docs folder over http and open this page. Run it after you change any HTML template in index.html.
+  Your own saved heroes are put back afterwards.</p>
+  <pre id="result">running...</pre>
+  <iframe id="app"></iframe>
+  <script>
+    const STORAGE_KEY = 'rpg_homebrew_characters_v14'; // same key as index.html
+    const result = document.getElementById('result');
+    const ran = [];
+    window.__ran = ran; // the planted scripts call top.__ran.push(...)
+    const SAVED = (() => { try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; } })();
+
+    // One text for every field; the field name is inside so a hit says where it came from.
+    const hostile = field => `'"><img src=x onerror="top.__ran.push('${field}')">`;
+    // Same script written as entities (digits only), which survives upper-casing.
+    const entities = field => '<img src=x onerror="' + [...`top.__ran.push('${field}')`].map(c => '&#' + c.charCodeAt(0) + ';').join('') + '">';
+
+    const hero = {
+      id: 'h1', name: hostile('hero.name'), race: hostile('hero.race'), level: 1, currentHp: 10, currentMp: 3,
+      endurance: 2, intelligence: 3, spirit: 1, gold: 5, imageUri: 'data:image/png;base64,AAAA',
+      onHandWeaponId: 'i1',
+      abilities: [
+        { id: 'a1', name: 'Magic: Water', description: hostile('ability.description'), tier: 1, category: hostile('ability.category') },
+        { id: 'a2', name: hostile('ability.name'), description: hostile('ability2.description') },
+        { id: 'a3', name: 'Reaction spells', description: 'p' },
+        { id: 'a4', name: 'Reaction Spell: Dispel', description: hostile('subspell.description') },
+        { id: 'a5', name: 'Bible of Felis', description: hostile('bible.description') }
+      ],
+      notes: [{ id: 'n1', title: hostile('note.title'), tag: hostile('note.tag'), content: hostile('note.content') }],
+      effects: [
+        { id: 'e1', name: hostile('effect.name'), effectType: 'HP_CHANGE_PER_ROUND', value: -1, damageType: 'physical', isDiceRoll: true, diceFormula: hostile('effect.diceFormula'), changeMode: hostile('effect.changeMode'), roundsRemaining: 3 },
+        { id: 'e2', name: hostile('effect2.name'), effectType: 'STAT_MODIFIER', targetStat: hostile('effect.targetStat'), value: 1, statModifiers: { [hostile('effect.statKey')]: 2 } },
+        { id: 'e3', name: hostile('effect3.name'), effectType: hostile('effect.effectType'), value: 1, damageType: hostile('effect.damageType') },
+        { id: 'e4', name: hostile('effect4.name'), effectType: 'HP_CHANGE_PER_ROUND', value: -2, damageType: entities('effect4.damageType.entities') },
+        { id: 'e5', name: hostile('effect5.name'), effectType: 'MP_CHANGE_PER_ROUND', isDiceRoll: true, diceFormula: '1d4', changeMode: hostile('effect5.changeMode'), value: 0 }
+      ],
+      inventory: [
+        { id: 'i1', name: hostile('item.name'), category: hostile('item.category'), isEquipped: true, hasArmor: true, armorSave: 2,
+          hasStatModifiers: true, statModifiers: { [hostile('item.statKey')]: 1 }, hasAttacks: true, attackDamage: hostile('item.attackDamage'), attackCount: 1,
+          specialEffectsText: hostile('item.specialEffects'), onHandSpecialEffectsText: hostile('item.onHandEffects'), hasMagic: true, spellDamageModifier: 1,
+          customProperties: { [hostile('item.propKey')]: hostile('item.propValue') } },
+        { id: 'i2', name: hostile('item2.name'), category: hostile('item2.category'), isEquipped: false, isConsumable: true, consumableAmount: 2, specialEffectsText: hostile('item2.specialEffects') }
+      ]
+    };
+
+    function finish(note) {
+      try { if (SAVED === null) localStorage.removeItem(STORAGE_KEY); else localStorage.setItem(STORAGE_KEY, SAVED); } catch (e) {}
+      const hits = [...new Set(ran)];
+      document.title = (hits.length || note ? 'FAILED' : 'ALL CLEAN') + ' - Hostile hero check';
+      result.className = hits.length || note ? 'fail' : 'pass';
+      result.textContent = (note ? note + '\n' : '') + (hits.length ? 'Code ran from: ' + hits.join(', ') : note ? '' : 'PASS: no planted script ran.');
+    }
+
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify([hero])); } catch (e) { finish('Could not use localStorage: ' + e); }
+    const frame = document.getElementById('app');
+    frame.onload = () => {
+      if (!frame.contentWindow.useCharacter) return;
+      setTimeout(() => {
+        const w = frame.contentWindow, d = w.document;
+        const problems = [];
+        const call = (fn, ...args) => { try { w[fn](...args); } catch (e) { problems.push(fn + ': ' + e); } };
+        call('renderSelectScreen');
+        call('useCharacter', 'h1');
+        ['vitals', 'abilities', 'spellbook', 'equipment', 'inventory', 'notes'].forEach(tab => {
+          call('switchSessionTab', tab);
+          d.querySelectorAll('.category-header').forEach(h => h.click());
+        });
+        call('openRollDiceRoundModal', w.eval('characters[0].effects.filter(e => e.isDiceRoll)'));
+        call('openSelectOnHandModal', false); call('openSelectOnHandModal', true);
+        ['e1', 'e2', 'e3', 'e4', 'e5'].forEach(id => call('openAddEffectModal', id));
+        ['a1', 'a2'].forEach(id => call('openEditAbilityModal', id));
+        ['i1', 'i2'].forEach(id => call('openEditItemModal', id));
+        call('openEditNoteModal', 'n1'); call('openEditModal', 'h1'); call('promptDelete', 'h1');
+        call('openChooseSkillModal'); call('showSelectScreen');
+        setTimeout(() => finish(problems.length ? 'A step failed (the check is incomplete): ' + problems.join('; ') : ''), 800);
+      }, 1500);
+    };
+    frame.src = 'index.html';
+  </script>
+</body>
+</html>

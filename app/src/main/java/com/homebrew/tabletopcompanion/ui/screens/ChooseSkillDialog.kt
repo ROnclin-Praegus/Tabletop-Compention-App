@@ -64,7 +64,7 @@ fun ChooseSkillDialog(
                 it.name.lowercase().contains(query) || it.description.lowercase().contains(query)
             }
         } else {
-            val currentCategory = categories.getOrElse(selectedTabIndex) { categories.first() }
+            val currentCategory = categories.getOrNull(selectedTabIndex) ?: categories.firstOrNull()
             allSkills.filter { it.category == currentCategory }
         }
     }
@@ -216,7 +216,7 @@ fun ChooseSkillDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Category Tabs (Only shown if not searching)
-                if (searchQuery.isEmpty()) {
+                if (searchQuery.isEmpty() && categories.isNotEmpty()) {
                     ScrollableTabRow(
                         selectedTabIndex = selectedTabIndex,
                         containerColor = DarkSurface,
@@ -270,7 +270,7 @@ fun ChooseSkillDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (searchQuery.isNotEmpty()) "No skills matching '$searchQuery'" else "No skills found",
+                            text = if (searchQuery.isNotEmpty()) "No skills matching '$searchQuery'" else if (allSkills.isEmpty()) "Skills could not be loaded" else "No skills found",
                             color = TextSecondary,
                             fontSize = 14.sp
                         )

@@ -1,13 +1,12 @@
-const SW_VERSION = 'v1.6.1';
+const SW_VERSION = 'v1.6.3';
 const CACHE_NAME = `rpg-companion-${SW_VERSION}`;
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './icon.svg',
-  './skills.js',
+  './hero-utils.js',
+  './icon.png',
   './skills.json',
-  './spellbooks.js',
   './spellbooks.json'
 ];
 
@@ -41,23 +40,40 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Pages, scripts and data (html/js/json) go to the network first, so a forgotten SW_VERSION bump can't
+// keep users on an old page. The cache is the offline fallback. Everything else is cache-first.
+function isPageOrData(request) {
+  if (request.mode === 'navigate') return true;
+  const path = new URL(request.url).pathname;
+  return path.endsWith('.html') || path.endsWith('.json') || path.endsWith('.js');
+}
+
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      if (response) {
-        return response;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200) {
-          return networkResponse;
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  if (isPageOrData(request)) {
+    event.respondWith(
+      fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
         return networkResponse;
-      }).catch(() => {
-        return caches.match('./index.html');
+      }).catch(() => caches.match(request).then((cached) => cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return networkResponse;
       });
     })
   );
